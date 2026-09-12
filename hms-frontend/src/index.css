@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* --- Light Mode (Default) --- */
+    /* Background: #F0FDFA -> hsl(166, 76%, 97%) */
+    --background: 166 76% 97%;
+    /* Text / Foreground: #134E4A -> hsl(176, 61%, 19%) */
+    --foreground: 176 61% 19%;
+
+    /* Card background: #FFFFFF */
+    --card: 0 0% 100%;
+    --card-foreground: 176 61% 19%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 176 61% 19%;
+
+    /* Primary: #0F766E -> hsl(175, 77%, 26%) */
+    --primary: 175 77% 26%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary: #14B8A6 -> hsl(173, 80%, 40%) */
+    --secondary: 173 80% 40%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Warning / Alert: #F59E0B -> hsl(38, 92%, 50%) */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Muted & borders tailored to teal tint */
+    --muted: 166 50% 93%;
+    --muted-foreground: 176 35% 38%;
+
+    --accent: 166 60% 92%;
+    --accent-foreground: 176 61% 19%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 166 40% 88%;
+    --input: 166 40% 88%;
+    --ring: 175 77% 26%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    /* --- Dark Mode --- */
+    /* Background: #0F172A -> hsl(222.2, 47.4%, 11.2%) */
+    --background: 222.2 47.4% 11.2%;
+    /* Text / Foreground: #F0FDFA -> hsl(166, 76%, 97%) */
+    --foreground: 166 76% 97%;
+
+    /* Card background: #1E293B -> hsl(217.2, 32.6%, 17.5%) */
+    --card: 217.2 32.6% 17.5%;
+    --card-foreground: 166 76% 97%;
+
+    --popover: 217.2 32.6% 17.5%;
+    --popover-foreground: 166 76% 97%;
+
+    /* Primary: #14B8A6 (Brighter teal for contrast) -> hsl(173, 80%, 40%) */
+    --primary: 173 80% 40%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    /* Secondary: #0F766E -> hsl(175, 77%, 26%) */
+    --secondary: 175 77% 26%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Warning / Alert: #F59E0B */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    /* Muted text: #94A3B8 -> hsl(215.4, 16.3%, 65.3%) */
+    --muted: 217.2 32.6% 22%;
+    --muted-foreground: 215.4 16.3% 65.3%;
+
+    --accent: 217.2 32.6% 24%;
+    --accent-foreground: 166 76% 97%;
+
+    --destructive: 0 62.8% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217.2 32.6% 25%;
+    --input: 217.2 32.6% 25%;
+    --ring: 173 80% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.2);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.4);
+}
