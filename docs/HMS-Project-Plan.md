@@ -221,20 +221,25 @@ This setup keeps 100% of the app on Vercel as you wanted, with zero external hos
 
 ---
 
-## 8. Theme & Design Direction (Proposed)
+## 8. Theme & Design Direction — FINALIZED ✅
 
-Since you wanted something people will genuinely find beautiful — steering **away** from the generic flat blue/white "government hospital software" look, toward a **premium healthcare-SaaS aesthetic** (think Linear/Notion/modern fintech, but healthcare-flavored):
+**Light mode (primary/default):**
+- **Primary:** `#0F766E`
+- **Secondary:** `#14B8A6`
+- **Background:** `#F0FDFA`
+- **Cards:** `#FFFFFF`
+- **Text:** `#134E4A`
 
-- **Primary color:** Deep Teal/Emerald (`#0F766E` – `#14B8A6`) — feels clinical yet calming, not sterile
-- **Accent color:** Warm Coral/Amber (`#F97316` or `#FB923C`) — for CTAs, alerts, highlights (creates contrast & warmth against the cool teal)
-- **Backgrounds:** Soft off-white (`#FAFAF9`) in light mode, deep slate (`#0F172A`) in dark mode — **dark mode toggle included**
-- **Cards:** Rounded corners (12–16px), soft layered shadows, subtle glassmorphism on dashboard widgets
-- **Typography:** **Inter** or **Plus Jakarta Sans** — clean, modern, highly legible
-- **Micro-interactions:** Smooth hover states, subtle transitions on cards/buttons, skeleton loaders instead of spinners
-- **Iconography:** Lucide icons (consistent, modern, matches shadcn/ui)
-- **Data viz:** Recharts styled with the teal/coral palette for a cohesive dashboard feel
+**Dark mode (restored 05 Sep — mistakenly dropped earlier, this was always meant to stay):**
+- **Background:** `#0F172A`
+- **Cards:** `#1E293B`
+- **Primary/accent:** `#14B8A6` (brighter teal for contrast against dark background)
+- **Text:** `#F0FDFA`
+- **Muted text:** `#94A3B8`
 
-This gives every role a dashboard that feels premium and trustworthy rather than clinical/cold — while still being highly functional and information-dense where needed (billing, lab, pharmacy screens).
+**Functional warning color (both modes):** `#F59E0B` (bg) / `#B45309` (text in light mode) — used ONLY for things like trial-ending badges, never decoratively.
+
+Clean teal + white palette (with a proper dark variant), locked in 05 Sep 2026. No other accent colors (no coral/purple) anywhere in the app.
 
 ---
 

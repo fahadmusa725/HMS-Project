@@ -77,8 +77,12 @@ function tenantPlugin(schema, options = {}) {
     });
   });
 
-  // Auto-stamp hospitalId on create/save if not already set
-  schema.pre("save", function (next) {
+  // Auto-stamp hospitalId BEFORE validation runs. Mongoose's document
+  // lifecycle is: pre-validate -> validate -> pre-save -> actual save.
+  // Since hospitalId is a required field, it must be set in pre-validate,
+  // not pre-save - by the time pre-save fires, validation has already
+  // happened and would reject the document as missing hospitalId.
+  schema.pre("validate", function (next) {
     if (!this.hospitalId) {
       const hospitalId = getCurrentHospitalId();
       if (!hospitalId && strict) {

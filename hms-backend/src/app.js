@@ -5,6 +5,12 @@ const cookieParser = require("cookie-parser");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
+const patientRoutes = require("./routes/patientRoutes");
+const appointmentRoutes = require("./routes/appointmentRoutes");
+const hospitalAdminRoutes = require("./routes/hospitalAdminRoutes");
+const consultationRoutes = require("./routes/consultationRoutes");
+const wardRoutes = require("./routes/wardRoutes");
+const admissionRoutes = require("./routes/admissionRoutes");
 
 const app = express();
 
@@ -34,6 +40,12 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/super-admin", superAdminRoutes);
+app.use("/api/patients", patientRoutes);
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/hospital-admin", hospitalAdminRoutes);
+app.use("/api/consultations", consultationRoutes);
+app.use("/api/wards", wardRoutes);
+app.use("/api/admissions", admissionRoutes);
 
 // Fallback 404
 app.use((req, res) => {
