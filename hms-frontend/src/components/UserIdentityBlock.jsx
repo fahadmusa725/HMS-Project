@@ -1,12 +1,12 @@
 import React from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { Badge } from '@/components/ui/badge';
 
 export function UserIdentityBlock({ showInitialOnly = false, className = '' }) {
   const { user } = useAuthStore();
   
   const name = user?.name || user?.email?.split('@')[0] || 'User';
   const role = user?.role || 'staff';
+  const hospitalName = user?.hospitalName;
   const initial = name.charAt(0).toUpperCase();
 
   const getRoleDisplayName = (r) => {
@@ -33,12 +33,20 @@ export function UserIdentityBlock({ showInitialOnly = false, className = '' }) {
 
       {!showInitialOnly && (
         <div className="flex flex-col min-w-0 text-left">
-          <span className="font-semibold text-xs sm:text-sm text-foreground truncate max-w-[130px] leading-tight">
+          <span className="font-semibold text-xs sm:text-sm text-foreground truncate max-w-[150px] leading-tight">
             {name}
           </span>
-          <span className="text-[11px] text-muted-foreground font-medium capitalize truncate">
-            {getRoleDisplayName(role)}
-          </span>
+          <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium truncate max-w-[170px]">
+            <span className="capitalize">{getRoleDisplayName(role)}</span>
+            {hospitalName && (
+              <>
+                <span className="opacity-40">•</span>
+                <span className="truncate text-primary/90 font-medium" title={hospitalName}>
+                  {hospitalName}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
