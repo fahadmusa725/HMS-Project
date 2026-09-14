@@ -25,7 +25,7 @@
 ## Phase 1 — Foundation
 
 - [x] Base UI layout & theme setup — done via Antigravity Prompt 1, theme went through 2 revisions (see notes below), **final palette locked 05 Sep** (see Section 8 of HMS-Project-Plan.md)
-- [x] Role-based dashboard shell/routing — Prompts 5 & 6 completed: Persistent left sidebar navigation, Staff management, Patient directory, and Appointments & live OPD queue built with role-specific views across all 7 hospital roles.
+- [🔶] Role-based dashboard shell/routing — Super Admin dashboard built with real functionality (Prompts 2 & 3); Hospital Admin, Doctor, Nurse, Receptionist, Lab, Pharmacist, Accountant, Patient dashboards still placeholder-only
 - [x] Patient registration module (OPD, auto-generated MRN) — done 05 Sep by Claude (backend), MRN format `PREFIX-000042`
 - [x] Appointment booking module (doctor-wise slots) — done 05 Sep by Claude (backend)
 - [x] OPD queue/token system — done 05 Sep by Claude (backend), tokens reset daily per hospital
@@ -63,8 +63,7 @@
 ## Phase 5 — Polish & Deploy
 
 - [ ] Patient self-service portal (book appointment, view reports/bills)
-- [x] Dark mode support & Theme Toggle (light/dark with persistence) — restored & polished 05 Sep (Prompt 6)
-- [x] Proper Toast Notification System (Sonner hover-to-pause) — implemented 05 Sep (Prompt 7)
+- [ ] Dark mode final polish
 - [ ] Full responsive pass (mobile/tablet)
 - [ ] Deploy frontend to Vercel (`hms-frontend`)
 - [ ] Deploy backend to Vercel as serverless function (`hms-backend`)
@@ -106,4 +105,6 @@
 - 05 Sep 2026 — User chose to catch up frontend first. Antigravity Prompt 5 built: role-based sidebar-less top-tab nav (later corrected, see below), Staff Management, Patient Directory, Appointments/Live OPD Queue — all working against live backend, tested successfully by user across hospital_admin and doctor roles.
 - 05 Sep 2026 — **Mistake caught by user, corrected:** when the user gave only light-mode hex values for the final theme, Claude assumed dark mode should be dropped entirely and told Antigravity to remove it (Prompt 4) — without clearly flagging this assumption to the user first. Dark mode was always meant to stay per the original plan. Fixed: dark palette now formally defined (see HMS-Project-Plan.md Section 8), Antigravity Prompt 6 sent to restore it. **Lesson: flag assumptions explicitly when a decision changes something established earlier, don't silently drop features.**
 - 05 Sep 2026 — Additional user feedback on Prompt 5 output: remove "Quick fill demo role" buttons from login (not appropriate for a real product), switch from top-tab navigation to a proper left sidebar (user's explicit preference), and show the actual logged-in user's name (not just a role badge) somewhere visible. All three folded into Prompt 6 along with the dark mode fix.
-- 05 Sep 2026 — Antigravity Prompt 7 executed: Sonner toast notification system integrated across root `App.jsx`, themed to both light and dark mode, auto-dismiss pause on hover enabled, and ad-hoc success/error states replaced with `toast.success` and `toast.error` (with MRN and Token # formatting).
+- 05 Sep 2026 — Prompt 6 and Prompt 7 (sonner toasts, hover-to-pause built in) both delivered successfully by Antigravity.
+- 05 Sep 2026 — Two gaps found by user: (1) Super Admin had no way to delete a hospital tenant, (2) hospital-scoped users had no way to see their own hospital's NAME anywhere (only a raw Mongo ID was visible). Backend fixed by Claude: `DELETE /api/super-admin/hospitals/:hospitalId` now cascade-deletes every piece of that tenant's data (staff, patients, appointments, consultations, wards, beds, admissions, nurse notes, counters) with zero orphaned data left behind; login response and new `GET /api/auth/me` endpoint now both return `hospitalName`. Live-tested (`test-delete-hospital.js`), all checks passed. Antigravity Prompt 8 sent for the frontend side (delete confirmation UI requiring the hospital name to be typed before enabling delete, and displaying the real hospital name in the dashboard header).
+- 14 Sep 2026 — ✅ Prompt 8 delivered by Antigravity: (1) Added "Delete" action button to Super Admin dashboard hospital tenants table with a high-safety confirmation modal that enforces typing the exact hospital name to delete all tenant data via `DELETE /api/super-admin/hospitals/:hospitalId`, with toast notifications and automatic query invalidation; (2) Persisted `hospitalName` in Zustand auth store (with `persist` middleware and session rehydration via `GET /api/auth/me` on mount); (3) Displayed the actual hospital name in the Hospital Dashboard header (next to portal title), left sidebar header, [UserIdentityBlock](file:///f:/Projects/HMS-Project/hms-frontend/src/components/UserIdentityBlock.jsx), and overview session card. Build and linter verified with 0 errors.

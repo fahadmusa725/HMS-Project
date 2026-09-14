@@ -4,10 +4,18 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { queryClient } from '@/lib/queryClient';
 import { useThemeStore } from '@/store/themeStore';
+import { useAuthStore } from '@/store/authStore';
 import { AppRoutes } from '@/routes';
 
 function App() {
   const { theme } = useThemeStore();
+  const { token, fetchMe } = useAuthStore();
+
+  useEffect(() => {
+    if (token) {
+      fetchMe();
+    }
+  }, [token, fetchMe]);
 
   useEffect(() => {
     if (theme === 'dark') {

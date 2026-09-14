@@ -1,5 +1,13 @@
 const Hospital = require("../models/Hospital");
 const User = require("../models/User");
+const Patient = require("../models/Patient");
+const Appointment = require("../models/Appointment");
+const Consultation = require("../models/Consultation");
+const Ward = require("../models/Ward");
+const Bed = require("../models/Bed");
+const Admission = require("../models/Admission");
+const NurseNote = require("../models/NurseNote");
+const { Counter } = require("../models/Counter");
 const { runWithTenantContext } = require("../utils/tenantContext");
 
 /**
@@ -108,4 +116,45 @@ async function updateHospitalStatus(req, res) {
   }
 }
 
-module.exports = { createHospital, listHospitals, updateHospitalStatus };
+/**
+ * Permanently deletes a hospital AND every piece of data belonging to it
+ * (staff, patients, appointments, consultations, wards, beds, admissions,
+ * nurse notes, counters). This is a genuine cross-tenant admin operation,
+ * so tenant scoping is explicitly bypassed (skipTenantScope) and the
+ * target hospitalId is supplied directly in each filter - nothing is left
+ * orphaned behind after a delete.
+ */
+async function deleteHospital(req, res) {
+  try {
+    const { hospitalId } = req.params;
+
+    const hospital = await Hospital.findById(hospitalId);
+    if (!hospital) {
+      return res.status(404).json({ message: "Hospital not found." });
+    }
+
+    const filter = { hospitalId };
+    const opts = { skipTenantScope: true };
+
+    await Promise.all([
+      User.deleteMany(filter).setOptions(opts),
+      Patient.deleteMany(filter).setOptions(opts),
+      Appointment.deleteMany(filter).setOptions(opts),
+      Consultation.deleteMany(filter).setOptions(opts),
+      Ward.deleteMany(filter).setOptions(opts),
+      Bed.deleteMany(filter).setOptions(opts),
+      Admission.deleteMany(filter).setOptions(opts),
+      NurseNote.deleteMany(filter).setOptions(opts),
+      Counter.deleteMany({ hospitalId }), // not tenant-plugin-scoped, plain filter
+    ]);
+
+    await Hospital.findByIdAndDelete(hospitalId);
+
+    res.json({ message: `"${hospital.name}" and all its data have been permanently deleted.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while deleting hospital." });
+  }
+}
+
+module.exports = { createHospital, listHospitals, updateHospitalStatus, deleteHospital };

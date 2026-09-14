@@ -1,5 +1,13 @@
 const User = require("../models/User");
+const Hospital = require("../models/Hospital");
 const generateToken = require("../utils/generateToken");
+
+/** Looks up the hospital's display name for a hospital-scoped user (null for super admin). */
+async function resolveHospitalName(hospitalId) {
+  if (!hospitalId) return null;
+  const hospital = await Hospital.findById(hospitalId);
+  return hospital ? hospital.name : null;
+}
 
 /**
  * Login works the same for every role including platform_super_admin.
@@ -31,6 +39,7 @@ async function login(req, res) {
     }
 
     const token = generateToken(user);
+    const hospitalName = await resolveHospitalName(user.hospitalId);
 
     res.json({
       token,
@@ -40,6 +49,7 @@ async function login(req, res) {
         email: user.email,
         role: user.role,
         hospitalId: user.hospitalId,
+        hospitalName, // e.g. "City Hospital" - null for platform_super_admin
       },
     });
   } catch (err) {
@@ -48,4 +58,30 @@ async function login(req, res) {
   }
 }
 
-module.exports = { login };
+/**
+ * Fetch the current user's fresh profile + hospital name at any time
+ * (not just at login) - useful for the frontend to re-hydrate identity
+ * info (e.g. after a page refresh) without forcing a re-login.
+ */
+async function getMe(req, res) {
+  try {
+    const user = await User.findById(req.user.userId).setOptions({ skipTenantScope: true });
+    if (!user) return res.status(404).json({ message: "User not found." });
+
+    const hospitalName = await resolveHospitalName(user.hospitalId);
+
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      hospitalId: user.hospitalId,
+      hospitalName,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching profile." });
+  }
+}
+
+module.exports = { login, getMe };

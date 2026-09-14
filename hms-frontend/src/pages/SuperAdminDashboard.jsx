@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  LayoutDashboard
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -52,6 +53,8 @@ export default function SuperAdminDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [extendTrialHospital, setExtendTrialHospital] = useState(null);
   const [extendDays, setExtendDays] = useState(14);
+  const [deleteHospitalTarget, setDeleteHospitalTarget] = useState(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [formError, setFormError] = useState(null);
 
   // Hook form setup
@@ -120,6 +123,24 @@ export default function SuperAdminDashboard() {
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to update hospital status.';
+      toast.error(message);
+    },
+  });
+
+  // Mutation: Delete Hospital Permanently
+  const deleteHospitalMutation = useMutation({
+    mutationFn: async (hospitalId) => {
+      const response = await api.delete(`/api/super-admin/hospitals/${hospitalId}`);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['super-admin-hospitals'] });
+      setDeleteHospitalTarget(null);
+      setDeleteConfirmName('');
+      toast.success(data?.message || 'Hospital and all associated data permanently deleted.');
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to delete hospital.';
       toast.error(message);
     },
   });
@@ -505,12 +526,26 @@ export default function SuperAdminDashboard() {
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleStatusChange(hospital._id, 'suspended')}
-                                disabled={updateStatusMutation.isPending}
-                                className="h-8 text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+                                disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
+                                className="h-8 text-xs font-semibold text-muted-foreground hover:text-warning hover:bg-warning/10 hover:border-warning/30"
                               >
                                 Suspend
                               </Button>
                             )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setDeleteHospitalTarget(hospital);
+                                setDeleteConfirmName('');
+                              }}
+                              disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
+                              className="h-8 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:border-destructive/40"
+                              title="Permanently Delete Hospital Tenant"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -688,6 +723,90 @@ export default function SuperAdminDashboard() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal: Delete Hospital Confirmation */}
+      <Modal
+        isOpen={!!deleteHospitalTarget}
+        onClose={() => {
+          if (!deleteHospitalMutation.isPending) {
+            setDeleteHospitalTarget(null);
+            setDeleteConfirmName('');
+          }
+        }}
+        title="Delete Hospital Permanently"
+        description="Irreversible destructive action - all hospital data will be permanently removed."
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive leading-relaxed font-medium">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="font-bold text-sm text-destructive">
+                Warning: Irreversible Tenant Data Destruction
+              </p>
+              <p>
+                Deleting <strong>{deleteHospitalTarget?.name}</strong> will permanently erase all of that hospital's data (staff, patients, appointments, consultations, wards, beds, admissions, nurse notes, and counters) with no way to recover it.
+              </p>
+              <p className="font-bold underline">
+                This action cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground/90 block">
+              To confirm deletion, please type the exact hospital name <span className="font-mono font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20 select-all">{deleteHospitalTarget?.name}</span> below:
+            </label>
+            <Input
+              placeholder={deleteHospitalTarget?.name}
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              disabled={deleteHospitalMutation.isPending}
+              className="border-destructive/40 focus-visible:ring-destructive font-medium"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteHospitalTarget(null);
+                setDeleteConfirmName('');
+              }}
+              disabled={deleteHospitalMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                deleteConfirmName.trim() !== deleteHospitalTarget?.name ||
+                deleteHospitalMutation.isPending
+              }
+              onClick={() => {
+                if (deleteHospitalTarget && deleteConfirmName.trim() === deleteHospitalTarget.name) {
+                  deleteHospitalMutation.mutate(deleteHospitalTarget._id);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+            >
+              {deleteHospitalMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting Everything...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-1.5 h-4 w-4" />
+                  Delete Hospital
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
