@@ -21,6 +21,7 @@ import {
 import StaffManagement from '@/components/hospital/StaffManagement';
 import PatientDirectory from '@/components/hospital/PatientDirectory';
 import AppointmentsQueue from '@/components/hospital/AppointmentsQueue';
+import WardsBeds from '@/components/hospital/WardsBeds';
 
 export default function HospitalDashboard() {
   const { user, logout } = useAuthStore();
@@ -35,23 +36,25 @@ export default function HospitalDashboard() {
           { id: 'staff', label: 'Staff Directory', icon: Users },
           { id: 'patients', label: 'Patient Records', icon: UserCheck },
           { id: 'appointments', label: 'Appointments & Queue', icon: Calendar },
-          { id: 'wards', label: 'Wards & Beds', icon: Bed, isPlaceholder: true },
+          { id: 'wards', label: 'Wards & Beds', icon: Bed },
         ];
       case 'doctor':
         return [
           { id: 'appointments', label: 'My OPD Queue', icon: Calendar },
           { id: 'patients', label: 'Patient Directory', icon: UserCheck },
-          { id: 'consultations', label: 'Consultations', icon: Stethoscope, isPlaceholder: true },
+          { id: 'consultations', label: 'Consultations', icon: Stethoscope },
+          { id: 'wards', label: 'Wards & Beds', icon: Bed },
         ];
       case 'receptionist':
         return [
           { id: 'patients', label: 'Patient Registration', icon: UserCheck },
           { id: 'appointments', label: 'Appointments & Queue', icon: Calendar },
+          { id: 'wards', label: 'Wards & Beds', icon: Bed },
         ];
       case 'nurse':
         return [
           { id: 'patients', label: 'Patient Directory', icon: UserCheck },
-          { id: 'wards', label: 'Wards & IPD', icon: Bed, isPlaceholder: true },
+          { id: 'wards', label: 'Wards & IPD', icon: Bed },
         ];
       case 'lab_technician':
       case 'pharmacist':
@@ -95,31 +98,11 @@ export default function HospitalDashboard() {
     }
 
     if (activeTab === 'wards') {
-      return (
-        <Card className="p-12 text-center border-border shadow-soft animate-fade-in">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-            <Bed className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold text-foreground">Ward &amp; Bed Management (IPD)</h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Live ward availability, bed tracking, and IPD admission &amp; discharge workflows will be integrated in the upcoming clinical phase.
-          </p>
-        </Card>
-      );
+      return <WardsBeds />;
     }
 
     if (activeTab === 'consultations') {
-      return (
-        <Card className="p-12 text-center border-border shadow-soft animate-fade-in">
-          <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-            <Stethoscope className="h-7 w-7" />
-          </div>
-          <h2 className="text-xl font-bold text-foreground">Doctor Consultations &amp; E-Prescriptions</h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Clinical vitals recording, diagnosis entry, and e-prescription generation are coming up next.
-          </p>
-        </Card>
-      );
+      return <AppointmentsQueue />
     }
 
     switch (activeTab) {

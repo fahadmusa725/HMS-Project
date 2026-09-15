@@ -8,9 +8,6 @@ import {
   Building2,
   Plus,
   Search,
-  CheckCircle2,
-  Clock,
-  Ban,
   Shield,
   LogOut,
   AlertCircle,
@@ -26,7 +23,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 
@@ -312,71 +309,43 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Stat Summary Strip */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <Card className="bg-card hover:shadow-soft transition-all border-border">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Total Hospitals
-                  </p>
-                  <h3 className="text-2xl font-extrabold text-foreground mt-1">
-                    {isLoading ? '—' : stats.total}
-                  </h3>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                  <Building2 className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
+          {/* Unified Stat Strip */}
+          <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
+            <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
+              <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                {isLoading ? '—' : stats.total}
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
+                Total hospitals
+              </div>
+            </div>
 
-            <Card className="bg-card hover:shadow-soft transition-all border-border">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Active Tenants
-                  </p>
-                  <h3 className="text-2xl font-extrabold text-primary mt-1">
-                    {isLoading ? '—' : stats.active}
-                  </h3>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
-                  <CheckCircle2 className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-border">
+              <div className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">
+                {isLoading ? '—' : stats.active}
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
+                Active tenants
+              </div>
+            </div>
 
-            <Card className="bg-card hover:shadow-soft transition-all border-border">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Trial Mode
-                  </p>
-                  <h3 className="text-2xl font-extrabold text-warning-foreground mt-1">
-                    {isLoading ? '—' : stats.trial}
-                  </h3>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-warning/15 text-warning-foreground flex items-center justify-center">
-                  <Clock className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-4 sm:p-5 border-r border-border">
+              <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+                {isLoading ? '—' : stats.trial}
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
+                Trial mode
+              </div>
+            </div>
 
-            <Card className="bg-card hover:shadow-soft transition-all border-border">
-              <CardContent className="p-5 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Suspended
-                  </p>
-                  <h3 className="text-2xl font-extrabold text-muted-foreground mt-1">
-                    {isLoading ? '—' : stats.suspended}
-                  </h3>
-                </div>
-                <div className="h-11 w-11 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                  <Ban className="h-6 w-6" />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-4 sm:p-5">
+              <div className="text-2xl sm:text-3xl font-extrabold text-muted-foreground tracking-tight">
+                {isLoading ? '—' : stats.suspended}
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
+                Suspended
+              </div>
+            </div>
           </div>
 
           {/* Table Container */}

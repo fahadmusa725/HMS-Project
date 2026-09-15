@@ -22,37 +22,39 @@
 - [ ] Build Hospital Admin invite-more-staff flow (admin invites doctor/nurse/etc.) — next up in Phase 1
 - [x] Real end-to-end test against a live MongoDB Atlas cluster — **DONE, all 5 checks passed** 04 Sep
 
-## Phase 1 — Foundation
+## Phase 1 — Foundation ✅ COMPLETE (backend + frontend)
 
-- [x] Base UI layout & theme setup — done via Antigravity Prompt 1, theme went through 2 revisions (see notes below), **final palette locked 05 Sep** (see Section 8 of HMS-Project-Plan.md)
-- [🔶] Role-based dashboard shell/routing — Super Admin dashboard built with real functionality (Prompts 2 & 3); Hospital Admin, Doctor, Nurse, Receptionist, Lab, Pharmacist, Accountant, Patient dashboards still placeholder-only
-- [x] Patient registration module (OPD, auto-generated MRN) — done 05 Sep by Claude (backend), MRN format `PREFIX-000042`
-- [x] Appointment booking module (doctor-wise slots) — done 05 Sep by Claude (backend)
-- [x] OPD queue/token system — done 05 Sep by Claude (backend), tokens reset daily per hospital
-- [x] Hospital Admin staff-invite endpoint (doctor/nurse/etc.) — done 05 Sep, needed for appointments to work
-- [x] Phase 1 live end-to-end test passed (`test-phase1.js`) — verified 05 Sep after fixing the pre-validate/pre-save ordering bug
+- [x] Base UI layout & theme setup — final palette locked 05 Sep, verified via independent code review 14 Sep
+- [x] Role-based dashboard shell/routing — sidebar navigation (not tabs, per user preference), all hospital roles covered except lab_technician/pharmacist/accountant (those get their real UI in Phase 3 frontend)
+- [x] Patient registration module (OPD, auto-generated MRN) — backend + frontend done, live-tested
+- [x] Appointment booking module (doctor-wise slots) — backend + frontend done, live-tested
+- [x] OPD queue/token system — backend + frontend done, live-tested
+- [x] Hospital Admin staff-invite endpoint (doctor/nurse/etc.) — backend + frontend done
+- [x] Phase 1 live end-to-end test passed (`test-phase1.js`)
 
-## Phase 2 — Clinical Core ✅ BACKEND COMPLETE
+## Phase 2 — Clinical Core ✅ COMPLETE (backend + frontend)
 
-- [x] Doctor consultation screen (vitals entry, diagnosis) — backend done 05 Sep, `POST /api/consultations`
-- [x] E-prescription generator — structured prescription data stored (PDF generation deferred to Phase 5 polish)
-- [x] Patient EMR timeline (consultation history view) — backend done, `GET /api/consultations/patient/:patientId`
-- [x] Ward & Bed model + management UI — backend done, `POST/GET /api/wards`, bed status auto-synced
-- [x] IPD admission & discharge workflow — backend done, `POST /api/admissions`, `PATCH /api/admissions/:id/discharge`
-- [x] Nurse notes / rounds module — backend done, `POST/GET /api/admissions/:admissionId/notes`
-- [x] Phase 2 live end-to-end test passed (`test-phase2.js`) — 8 checks including double-booking rejection and bed status sync, verified 05 Sep
-- [ ] Frontend UI for all of the above — **not started yet**, only Super Admin dashboard has real UI so far
+- [x] Doctor consultation screen (vitals, diagnosis, dynamic prescription builder) — backend + frontend done, verified via independent code review 14 Sep
+- [x] E-prescription — structured data stored (PDF generation deferred to Phase 5 polish)
+- [x] Patient EMR timeline — backend + frontend done ("Medical History" tab in Patient Directory), role-gating verified to exactly match backend
+- [x] Ward & Bed model + management UI — backend + frontend done, color-coded live bed status board
+- [x] IPD admission & discharge workflow — backend + frontend done, 409 bed-conflict handling verified
+- [x] Nurse notes / rounds module — backend + frontend done
+- [x] Phase 2 live end-to-end test passed (`test-phase2.js`)
+- [x] Frontend UI for all of the above — done via Antigravity Prompts 9 & 10, independently code-reviewed by Claude 14 Sep
 
-## Phase 3 — Support Services
+## Phase 3 — Support Services 🔶 BACKEND COMPLETE, FRONTEND NOT STARTED
 
-- [ ] Lab test catalog (CRUD)
-- [ ] Lab order creation + status tracking
-- [ ] Lab result upload (Cloudinary) + downloadable report
-- [ ] Pharmacy medicine inventory (CRUD, stock, expiry)
-- [ ] Low-stock auto-alert
-- [ ] Dispense medicine against prescription (auto stock deduction)
-- [ ] Billing/invoice generation (OPD/IPD/lab/pharmacy)
-- [ ] Payment status tracking (Paid/Partial/Due)
+- [x] Lab test catalog (CRUD) — backend done 14 Sep, `POST/GET /api/lab/tests`
+- [x] Lab order creation + status tracking — backend done, `POST/GET /api/lab/orders`, `PATCH /api/lab/orders/:id/status`
+- [x] Lab result entry — backend done, `PATCH /api/lab/orders/:id/result` (file upload via Cloudinary deferred - text notes work now)
+- [x] Pharmacy medicine inventory (CRUD, stock, expiry) — backend done, `/api/pharmacy/medicines`
+- [ ] Low-stock auto-alert — model has `lowStockThreshold` field and a `?lowStock=true` filter, but no active notification yet (belongs with Phase 4 notifications)
+- [x] Dispense medicine against prescription (atomic stock deduction + rollback on failure) — backend done, live-tested including the over-dispense rejection case
+- [x] Billing/invoice generation (OPD/IPD/lab/pharmacy) — backend done, `/api/billing`
+- [x] Payment status tracking (unpaid/partial/paid) — backend done, `PATCH /api/billing/:id/payment`
+- [x] Phase 3 live end-to-end test passed (`test-phase3.js`)
+- [ ] Frontend UI for Lab, Pharmacy, Billing — **not started**, this is the next major frontend push
 
 ## Phase 4 — Admin & Insights
 
@@ -107,4 +109,10 @@
 - 05 Sep 2026 — Additional user feedback on Prompt 5 output: remove "Quick fill demo role" buttons from login (not appropriate for a real product), switch from top-tab navigation to a proper left sidebar (user's explicit preference), and show the actual logged-in user's name (not just a role badge) somewhere visible. All three folded into Prompt 6 along with the dark mode fix.
 - 05 Sep 2026 — Prompt 6 and Prompt 7 (sonner toasts, hover-to-pause built in) both delivered successfully by Antigravity.
 - 05 Sep 2026 — Two gaps found by user: (1) Super Admin had no way to delete a hospital tenant, (2) hospital-scoped users had no way to see their own hospital's NAME anywhere (only a raw Mongo ID was visible). Backend fixed by Claude: `DELETE /api/super-admin/hospitals/:hospitalId` now cascade-deletes every piece of that tenant's data (staff, patients, appointments, consultations, wards, beds, admissions, nurse notes, counters) with zero orphaned data left behind; login response and new `GET /api/auth/me` endpoint now both return `hospitalName`. Live-tested (`test-delete-hospital.js`), all checks passed. Antigravity Prompt 8 sent for the frontend side (delete confirmation UI requiring the hospital name to be typed before enabling delete, and displaying the real hospital name in the dashboard header).
-- 14 Sep 2026 — ✅ Prompt 8 delivered by Antigravity: (1) Added "Delete" action button to Super Admin dashboard hospital tenants table with a high-safety confirmation modal that enforces typing the exact hospital name to delete all tenant data via `DELETE /api/super-admin/hospitals/:hospitalId`, with toast notifications and automatic query invalidation; (2) Persisted `hospitalName` in Zustand auth store (with `persist` middleware and session rehydration via `GET /api/auth/me` on mount); (3) Displayed the actual hospital name in the Hospital Dashboard header (next to portal title), left sidebar header, [UserIdentityBlock](file:///f:/Projects/HMS-Project/hms-frontend/src/components/UserIdentityBlock.jsx), and overview session card. Build and linter verified with 0 errors.
+- 14 Sep 2026 — Backend Phase 3 (Lab, Pharmacy with atomic stock deduction + rollback, Billing) delivered by Claude and live-tested (`test-phase3.js`), all checks passed including the over-dispense rejection + stock-untouched-on-failure case.
+- 14 Sep 2026 — Prompt 9 (Doctor Consultation form + Patient EMR timeline) and Prompt 10 (Wards & Beds + IPD admit/discharge + nurse notes, with the 3-point correction: doctor nav item, receptionist excluded from Add Note/Discharge, CSS-token colors instead of raw Tailwind) both implemented by Antigravity.
+- 14 Sep 2026 — **User requested Claude independently verify the frontend code** (not just trust Antigravity's self-reported summary) — good practice, now established as standard workflow going forward for major frontend milestones. Claude extracted and reviewed `hms-frontend.zip` directly:
+  - ✅ Verified correct: theme tokens (exact hex→HSL conversion, dark mode), auth store (persist + fetchMe + 401 auto-logout), Login page (demo buttons removed, dark toggle present), Delete Hospital (type-to-confirm exact-name pattern), Wards/Admissions RBAC (`canAdmit`/`canActOnIPD` exactly match backend role lists), bed status colors (CSS tokens, no raw `teal-*`), Doctor's Wards nav item present, EMR "Medical History" tab role-check exactly matches backend, hospitalName displayed in 3 places.
+  - ✅ Independently re-ran `npm install` + `vite build` from scratch (the zip's `node_modules` was Windows-built, had to reinstall for Linux to test) — confirmed genuinely 0 build errors, matching Antigravity's claim.
+  - ✅ **Stat card regression fixed**: the Super Admin dashboard's top summary section was updated to ONE unified horizontal stat strip (single bordered container with thin internal vertical dividers, sentence case labels under numbers, no icon badges, CSS variable tokens applied). Scanned all other pages (Login, Hospital Dashboard tabs, Wards & Beds, Patient Directory, Appointments) and confirmed no other stat card anti-patterns exist. Build verified with 0 errors.
+  - **Lesson: previously-fixed issues can silently regress when a later prompt touches/rebuilds the same file. Worth spot-checking earlier fixes are still intact after major structural changes (like adding a sidebar layout), not just checking the new feature being added.**
