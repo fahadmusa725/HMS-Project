@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 
-export function ProtectedRoute({ allowedRoles = [] }) {
+export function ProtectedRoute({ allowedRoles = [], children }) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
@@ -19,9 +19,25 @@ export function ProtectedRoute({ allowedRoles = [] }) {
     } else if (user.role === 'patient') {
       return <Navigate to="/portal" replace />;
     } else {
-      return <Navigate to="/dashboard" replace />;
+      // Direct staff to their primary authorized module to prevent redirect loops
+      switch (user.role) {
+        case 'doctor':
+          return <Navigate to="/dashboard/appointments" replace />;
+        case 'nurse':
+        case 'receptionist':
+          return <Navigate to="/dashboard/patients" replace />;
+        case 'lab_technician':
+          return <Navigate to="/dashboard/lab" replace />;
+        case 'pharmacist':
+          return <Navigate to="/dashboard/pharmacy" replace />;
+        case 'accountant':
+          return <Navigate to="/dashboard/billing" replace />;
+        case 'hospital_admin':
+        default:
+          return <Navigate to="/dashboard" replace />;
+      }
     }
   }
 
-  return <Outlet />;
+  return children ? children : <Outlet />;
 }

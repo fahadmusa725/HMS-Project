@@ -21,8 +21,10 @@ import {
   Pill,
   CalendarCheck,
   HeartPulse,
-  User
+  User,
+  FlaskConical
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
@@ -234,6 +236,12 @@ export default function PatientDirectory() {
   const [detailConditions, setDetailConditions] = useState([]);
   const [detailConditionInput, setDetailConditionInput] = useState('');
 
+  // Lab Order from Patient Directory state
+  const canOrderLab = ['doctor', 'hospital_admin', 'receptionist'].includes(user?.role);
+  const [isOrderLabOpen, setIsOrderLabOpen] = useState(false);
+  const [selectedLabTestIds, setSelectedLabTestIds] = useState([]);
+  const [labSearchQuery, setLabSearchQuery] = useState('');
+
   const {
     register,
     handleSubmit,
@@ -329,6 +337,44 @@ export default function PatientDirectory() {
       toast.error(message);
     },
   });
+
+  // Query: Lab test catalog for ordering
+  const { data: labCatalog = [] } = useQuery({
+    queryKey: ['lab-tests-catalog'],
+    queryFn: async () => {
+      const res = await api.get('/api/lab/tests');
+      return res.data;
+    },
+    enabled: isOrderLabOpen,
+  });
+
+  // Mutation: Place Lab Order
+  const createLabOrderMutation = useMutation({
+    mutationFn: async ({ patientId, testIds }) => {
+      const res = await api.post('/api/lab/orders', { patientId, testIds });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['lab-orders-list'] });
+      setIsOrderLabOpen(false);
+      setSelectedLabTestIds([]);
+      toast.success(`Lab test order placed successfully for ${selectedPatient?.name}.`);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to place lab order.');
+    },
+  });
+
+  // Toggle test checkbox
+  const toggleLabTestSelection = (testId) => {
+    setSelectedLabTestIds((prev) =>
+      prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId]
+    );
+  };
+
+  const labOrderModalTotal = (labCatalog || []).reduce((sum, item) => {
+    return selectedLabTestIds.includes(item._id) ? sum + (item.price || 0) : sum;
+  }, 0);
 
   const onSubmitRegister = (values) => {
     setFormError(null);
@@ -886,18 +932,34 @@ export default function PatientDirectory() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border">
+                <div className="flex items-center justify-between pt-4 border-t border-border gap-2 flex-wrap">
                   <span className="text-xs text-muted-foreground">
                     Registered on: {new Date(selectedPatient.createdAt).toLocaleDateString()}
                   </span>
-                  <Button
-                    type="button"
-                    onClick={() => setIsEditingDetail(true)}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                    Edit Profile
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {canOrderLab && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedLabTestIds([]);
+                          setIsOrderLabOpen(true);
+                        }}
+                        className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
+                      >
+                        <FlaskConical className="h-3.5 w-3.5" />
+                        Order Lab Test
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={() => setIsEditingDetail(true)}
+                      className="h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      Edit Profile
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -1041,6 +1103,107 @@ export default function PatientDirectory() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Modal: Order Lab Test for Selected Patient */}
+      <Modal
+        isOpen={isOrderLabOpen}
+        onClose={() => setIsOrderLabOpen(false)}
+        title="Order Diagnostic Lab Tests"
+        description={selectedPatient ? `Patient: ${selectedPatient.name} (MRN: ${selectedPatient.mrn})` : ''}
+      >
+        <div className="space-y-4 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-foreground/80 uppercase tracking-wider block">
+              Choose Tests ({selectedLabTestIds.length} selected)
+            </span>
+            <span className="text-xs font-bold text-primary">
+              Running Total: {formatCurrency(labOrderModalTotal)}
+            </span>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search tests..."
+              value={labSearchQuery}
+              onChange={(e) => setLabSearchQuery(e.target.value)}
+              className="pl-9 h-8 text-xs bg-muted/30"
+            />
+          </div>
+
+          <div className="max-h-56 overflow-y-auto rounded-xl border border-border p-2 space-y-1 bg-card divide-y divide-border/40">
+            {labCatalog.length === 0 ? (
+              <p className="text-xs text-muted-foreground p-3 text-center">
+                No diagnostic tests available in catalog.
+              </p>
+            ) : (
+              labCatalog
+                .filter(
+                  (t) =>
+                    !labSearchQuery ||
+                    t.name.toLowerCase().includes(labSearchQuery.toLowerCase()) ||
+                    (t.department && t.department.toLowerCase().includes(labSearchQuery.toLowerCase()))
+                )
+                .map((test) => {
+                  const isChecked = selectedLabTestIds.includes(test._id);
+                  return (
+                    <label
+                      key={test._id}
+                      onClick={() => toggleLabTestSelection(test._id)}
+                      className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${
+                        isChecked ? 'bg-primary/10 border border-primary/25' : 'hover:bg-muted/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="rounded border-input text-primary focus:ring-primary h-4 w-4"
+                        />
+                        <div>
+                          <div className="text-xs font-semibold text-foreground">{test.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{test.department || 'Diagnostic'}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-primary">{formatCurrency(test.price)}</div>
+                        <div className="text-[10px] text-muted-foreground">{test.turnaroundTime || '24h'}</div>
+                      </div>
+                    </label>
+                  );
+                })
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOrderLabOpen(false)}
+              disabled={createLabOrderMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedLabTestIds.length === 0) {
+                  toast.error('Please select at least one test.');
+                  return;
+                }
+                createLabOrderMutation.mutate({
+                  patientId: selectedPatient._id,
+                  testIds: selectedLabTestIds,
+                });
+              }}
+              disabled={createLabOrderMutation.isPending || selectedLabTestIds.length === 0}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createLabOrderMutation.isPending ? 'Placing Order...' : `Order Tests (${formatCurrency(labOrderModalTotal)})`}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

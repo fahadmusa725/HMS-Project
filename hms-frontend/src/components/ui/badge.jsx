@@ -14,11 +14,26 @@ const badgeVariants = ({ variant = "default", className = "" } = {}) => {
     
     // Appointment Queue status variants
     scheduled: "bg-primary/10 text-primary border border-primary/25",
-    checked_in: "bg-secondary/15 text-[#0F766E] border border-secondary/30",
-    in_consultation: "bg-warning/15 text-[#B45309] border border-warning/30",
-    completed: "bg-muted text-muted-foreground border border-border",
+    checked_in: "bg-secondary/15 text-primary border border-secondary/30",
+    in_consultation: "bg-warning/15 text-warning-foreground border border-warning/30",
+    completed: "bg-primary/10 text-primary border border-primary/25",
     cancelled: "bg-destructive/10 text-destructive border border-destructive/20",
     no_show: "bg-muted text-muted-foreground border border-border",
+
+    // Lab Order status variants
+    ordered: "bg-secondary/15 text-secondary border border-secondary/30",
+    sample_collected: "bg-warning/15 text-warning-foreground border border-warning/30",
+    in_progress: "bg-primary/10 text-primary border border-primary/30",
+
+    // Billing status variants
+    paid: "bg-primary/15 text-primary border border-primary/30",
+    partial: "bg-warning/15 text-warning-foreground border border-warning/30",
+    unpaid: "bg-destructive/10 text-destructive border border-destructive/25",
+
+    // Stock status variants
+    in_stock: "bg-primary/10 text-primary border border-primary/20",
+    low_stock: "bg-warning/15 text-warning-foreground border border-warning/30",
+    out_of_stock: "bg-destructive/10 text-destructive border border-destructive/25",
 
     // Role variants
     hospital_admin: "bg-primary/10 text-primary border border-primary/20",
