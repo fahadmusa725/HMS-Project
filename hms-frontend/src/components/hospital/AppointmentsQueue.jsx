@@ -15,7 +15,8 @@ import {
   Check,
   UserCheck,
   Stethoscope,
-  Ticket
+  Ticket,
+  FileText
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -24,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import ConsultationForm from '@/components/hospital/ConsultationForm';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
@@ -45,6 +47,7 @@ export default function AppointmentsQueue() {
   const [doctorFilter, setDoctorFilter] = useState(isDoctor ? user?.id : 'all');
   const [isBookOpen, setIsBookOpen] = useState(false);
   const [patientSearch, setPatientSearch] = useState('');
+  const [consultationAppointment, setConsultationAppointment] = useState(null);
   const [formError, setFormError] = useState(null);
 
   const {
@@ -193,6 +196,19 @@ export default function AppointmentsQueue() {
           </Button>
         );
       case 'in_consultation':
+        if (isDoctor) {
+          return (
+            <Button
+              size="sm"
+              onClick={() => setConsultationAppointment(appointment)}
+              disabled={statusMutation.isPending}
+              className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1.5 shadow-sm"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Record Consultation
+            </Button>
+          );
+        }
         return (
           <Button
             size="sm"
@@ -568,6 +584,14 @@ export default function AppointmentsQueue() {
           </div>
         </form>
       </Modal>
+
+      {/* Consultation Form Modal (doctor only) */}
+      {consultationAppointment && (
+        <ConsultationForm
+          appointment={consultationAppointment}
+          onClose={() => setConsultationAppointment(null)}
+        />
+      )}
     </div>
   );
 }
