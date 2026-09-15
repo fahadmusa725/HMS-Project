@@ -27,7 +27,7 @@
 
     /* Warning / Alert: #F59E0B -> hsl(38, 92%, 50%) */
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 28 85% 35%;
 
     /* Muted & borders tailored to teal tint */
     --muted: 166 50% 93%;
@@ -70,7 +70,7 @@
 
     /* Warning / Alert: #F59E0B */
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 45 93% 58%;
 
     /* Muted text: #94A3B8 -> hsl(215.4, 16.3%, 65.3%) */
     --muted: 217.2 32.6% 22%;

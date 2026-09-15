@@ -14,14 +14,19 @@ import {
   Calendar,
   Bed,
   Stethoscope,
-  Sparkles,
-  LayoutDashboard
+  LayoutDashboard,
+  FlaskConical,
+  Pill,
+  Receipt
 } from 'lucide-react';
 
 import StaffManagement from '@/components/hospital/StaffManagement';
 import PatientDirectory from '@/components/hospital/PatientDirectory';
 import AppointmentsQueue from '@/components/hospital/AppointmentsQueue';
 import WardsBeds from '@/components/hospital/WardsBeds';
+import LabModule from '@/components/hospital/LabModule';
+import PharmacyModule from '@/components/hospital/PharmacyModule';
+import BillingModule from '@/components/hospital/BillingModule';
 
 export default function HospitalDashboard() {
   const { user, logout } = useAuthStore();
@@ -37,6 +42,9 @@ export default function HospitalDashboard() {
           { id: 'patients', label: 'Patient Records', icon: UserCheck },
           { id: 'appointments', label: 'Appointments & Queue', icon: Calendar },
           { id: 'wards', label: 'Wards & Beds', icon: Bed },
+          { id: 'lab', label: 'Lab & Diagnostics', icon: FlaskConical },
+          { id: 'pharmacy', label: 'Pharmacy & Stock', icon: Pill },
+          { id: 'billing', label: 'Billing & Invoices', icon: Receipt },
         ];
       case 'doctor':
         return [
@@ -44,23 +52,38 @@ export default function HospitalDashboard() {
           { id: 'patients', label: 'Patient Directory', icon: UserCheck },
           { id: 'consultations', label: 'Consultations', icon: Stethoscope },
           { id: 'wards', label: 'Wards & Beds', icon: Bed },
+          { id: 'lab', label: 'Lab Orders', icon: FlaskConical },
         ];
       case 'receptionist':
         return [
           { id: 'patients', label: 'Patient Registration', icon: UserCheck },
           { id: 'appointments', label: 'Appointments & Queue', icon: Calendar },
           { id: 'wards', label: 'Wards & Beds', icon: Bed },
+          { id: 'billing', label: 'Billing & Payments', icon: Receipt },
         ];
       case 'nurse':
         return [
           { id: 'patients', label: 'Patient Directory', icon: UserCheck },
           { id: 'wards', label: 'Wards & IPD', icon: Bed },
+          { id: 'lab', label: 'Lab Worklist', icon: FlaskConical },
         ];
       case 'lab_technician':
+        return [
+          { id: 'lab', label: 'Diagnostic Lab', icon: FlaskConical },
+          { id: 'patients', label: 'Patient Records', icon: UserCheck },
+        ];
       case 'pharmacist':
+        return [
+          { id: 'pharmacy', label: 'Pharmacy & Stock', icon: Pill },
+          { id: 'patients', label: 'Patient Directory', icon: UserCheck },
+        ];
       case 'accountant':
+        return [
+          { id: 'billing', label: 'Billing & Invoices', icon: Receipt },
+          { id: 'patients', label: 'Patient Records', icon: UserCheck },
+        ];
       default:
-        return [{ id: 'overview', label: 'Workspace', icon: LayoutDashboard }];
+        return [{ id: 'overview', label: 'Overview', icon: LayoutDashboard }];
     }
   };
 
@@ -81,20 +104,16 @@ export default function HospitalDashboard() {
   };
 
   const renderContent = () => {
-    if (['lab_technician', 'pharmacist', 'accountant'].includes(role)) {
-      return (
-        <Card className="p-12 text-center border-border shadow-soft animate-fade-in">
-          <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="h-8 w-8" />
-          </div>
-          <h2 className="text-xl font-extrabold text-foreground">
-            {getRoleDisplayName(role)} Workspace
-          </h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-            Your specialized departmental module (Phase 3: Support Services) is currently in development and will be available soon.
-          </p>
-        </Card>
-      );
+    if (activeTab === 'lab') {
+      return <LabModule />;
+    }
+
+    if (activeTab === 'pharmacy') {
+      return <PharmacyModule />;
+    }
+
+    if (activeTab === 'billing') {
+      return <BillingModule />;
     }
 
     if (activeTab === 'wards') {
@@ -102,7 +121,7 @@ export default function HospitalDashboard() {
     }
 
     if (activeTab === 'consultations') {
-      return <AppointmentsQueue />
+      return <AppointmentsQueue />;
     }
 
     switch (activeTab) {
@@ -208,10 +227,10 @@ export default function HospitalDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
       {/* Top Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-30 shadow-soft-sm">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm shrink-0">
               <HeartPulse className="h-5 w-5" />
@@ -251,10 +270,10 @@ export default function HospitalDashboard() {
         </div>
       </header>
 
-      {/* Main Body with Sidebar Layout */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto flex flex-col md:flex-row">
+      {/* Main Body Shell Layout */}
+      <div className="flex-1 overflow-hidden flex flex-row">
         {/* Left Sidebar */}
-        <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-card/50 p-4 shrink-0">
+        <aside className="w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex flex-col">
           {/* Hospital Tenant Display in Sidebar */}
           {user?.hospitalName && (
             <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15">
@@ -305,7 +324,7 @@ export default function HospitalDashboard() {
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in min-w-0">
+        <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 animate-fade-in min-w-0">
           {renderContent()}
         </main>
       </div>

@@ -27,11 +27,18 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import ConsultationForm from '@/components/hospital/ConsultationForm';
 
+const timeRegex = /^((0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM|am|pm)|([01]?[0-9]|2[0-3]):[0-5][0-9])$/;
+
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
   doctorId: z.string().min(1, 'Please select a doctor'),
   date: z.string().min(1, 'Date is required'),
-  time: z.string().optional(),
+  time: z
+    .string()
+    .min(1, 'Time is required')
+    .refine((val) => timeRegex.test(val.trim()), {
+      message: 'Please enter a valid time (e.g. 09:00 AM, 2:30 PM, or 14:30)',
+    }),
   reason: z.string().optional(),
 });
 
@@ -537,13 +544,17 @@ export default function AppointmentsQueue() {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Time Slot
+                Time Slot *
               </label>
               <Input
-                placeholder="e.g. 10:30 AM"
+                placeholder="e.g. 09:00 AM"
                 {...register('time')}
                 disabled={bookMutation.isPending}
+                className={errors.time ? 'border-destructive focus-visible:ring-destructive' : ''}
               />
+              {errors.time && (
+                <p className="text-xs text-destructive font-medium mt-1">{errors.time.message}</p>
+              )}
             </div>
           </div>
 

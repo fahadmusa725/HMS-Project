@@ -43,7 +43,7 @@
 - [x] Phase 2 live end-to-end test passed (`test-phase2.js`)
 - [x] Frontend UI for all of the above — done via Antigravity Prompts 9 & 10, independently code-reviewed by Claude 14 Sep
 
-## Phase 3 — Support Services 🔶 BACKEND COMPLETE, FRONTEND NOT STARTED
+## Phase 3 — Support Services ✅ COMPLETE (backend + frontend)
 
 - [x] Lab test catalog (CRUD) — backend done 14 Sep, `POST/GET /api/lab/tests`
 - [x] Lab order creation + status tracking — backend done, `POST/GET /api/lab/orders`, `PATCH /api/lab/orders/:id/status`
@@ -54,7 +54,7 @@
 - [x] Billing/invoice generation (OPD/IPD/lab/pharmacy) — backend done, `/api/billing`
 - [x] Payment status tracking (unpaid/partial/paid) — backend done, `PATCH /api/billing/:id/payment`
 - [x] Phase 3 live end-to-end test passed (`test-phase3.js`)
-- [ ] Frontend UI for Lab, Pharmacy, Billing — **not started**, this is the next major frontend push
+- [x] Frontend UI for Lab, Pharmacy, Billing — done via Antigravity Prompt 11, confirmed visible 15 Sep after a dev-server restart (see notes below)
 
 ## Phase 4 — Admin & Insights
 
@@ -97,6 +97,8 @@
 
 > ⚠️ **STANDING REMINDER — do not forget this:** Once this project is complete (or at any major milestone the user asks about), Claude must give the user a full, clear walkthrough explaining the entire project in simple terms — architecture, what each part does, how it all fits together — so the user can confidently explain it to friends, classmates, or a teacher/instructor if asked. This is a personal requirement the user stated explicitly and it must not be skipped.
 
+> ⚠️ **STANDING REMINDER #2 — do not forget this either:** After every piece of work is tested and confirmed working (backend or frontend), Claude must proactively remind the user to `git add . / commit / push` from the HMS-Project root — don't wait for the user to ask. Claude forgot this once (14 Sep) and the user had to point it out. Build this into the natural end of a "tested successfully" response going forward.
+
 - 05 Sep 2026 — Antigravity Prompt 1 delivered: React+Vite frontend scaffold, Zustand auth store, Axios client, Login page, protected routes, placeholder dashboards for all 3 dashboard groups (super admin / hospital roles / patient). Branded itself "CareFlow HMS".
 - 05 Sep 2026 — Bug: frontend ran on port 3000 (not Vite's default 5173) → backend CORS (`CLIENT_URL` env var) rejected requests → "Network Error" on login. Fixed by updating `hms-backend/.env` `CLIENT_URL` to match the actual frontend port. **Reminder for later:** this must be updated again to the real Vercel frontend URL when deploying to production.
 - 05 Sep 2026 — Design feedback: initial dashboard looked "generic AI-generated" — purple/indigo colors outside the spec, ALL-CAPS labels, identical boxed stat cards with icon badges, and literal placeholder text ("Ready for X in future prompts") visible in the UI. Antigravity Prompt 2 fixed the color/copy issues and built real Super Admin functionality (hospital list, add hospital, status/trial control, live stats) — good functional result. Prompt 3 sent to fix the remaining "SaaS-card kit" stat card pattern specifically (see Antigravity-Prompts.md for the exact design critique and fix instructions - useful reference for spotting this pattern again in future UI work).
@@ -114,5 +116,10 @@
 - 14 Sep 2026 — **User requested Claude independently verify the frontend code** (not just trust Antigravity's self-reported summary) — good practice, now established as standard workflow going forward for major frontend milestones. Claude extracted and reviewed `hms-frontend.zip` directly:
   - ✅ Verified correct: theme tokens (exact hex→HSL conversion, dark mode), auth store (persist + fetchMe + 401 auto-logout), Login page (demo buttons removed, dark toggle present), Delete Hospital (type-to-confirm exact-name pattern), Wards/Admissions RBAC (`canAdmit`/`canActOnIPD` exactly match backend role lists), bed status colors (CSS tokens, no raw `teal-*`), Doctor's Wards nav item present, EMR "Medical History" tab role-check exactly matches backend, hospitalName displayed in 3 places.
   - ✅ Independently re-ran `npm install` + `vite build` from scratch (the zip's `node_modules` was Windows-built, had to reinstall for Linux to test) — confirmed genuinely 0 build errors, matching Antigravity's claim.
-  - ✅ **Stat card regression fixed**: the Super Admin dashboard's top summary section was updated to ONE unified horizontal stat strip (single bordered container with thin internal vertical dividers, sentence case labels under numbers, no icon badges, CSS variable tokens applied). Scanned all other pages (Login, Hospital Dashboard tabs, Wards & Beds, Patient Directory, Appointments) and confirmed no other stat card anti-patterns exist. Build verified with 0 errors.
+  - ❌ **Found one real regression**: the Super Admin dashboard's stat cards reverted to the exact "SaaS-card kit" anti-pattern already fixed once in Prompt 3 (4 separate boxed cards, icon badges, ALL-CAPS labels) — likely lost when the sidebar layout was added in Prompt 6 and this section got rebuilt from scratch. Fix prompt sent, also asking Antigravity to sweep other pages for the same regression.
   - **Lesson: previously-fixed issues can silently regress when a later prompt touches/rebuilds the same file. Worth spot-checking earlier fixes are still intact after major structural changes (like adding a sidebar layout), not just checking the new feature being added.**
+- 15 Sep 2026 — Antigravity implemented both the "Fixes" round (trial count bug, activate/suspend confirmation, extend-trial visibility, time validation) and Prompt 11 (Lab, Pharmacy, Billing frontend). Nav items initially appeared missing after both prompts, causing confusion - turned out to be a stale dev server (Vite HMR got stuck), not missing code. **Lesson: when a claimed change doesn't show up even after a hard browser refresh, restart the dev server itself before assuming the code wasn't written.**
+- 15 Sep 2026 — Of the 5 "Fixes", 4 confirmed working; sidebar sticky positioning still not working (position:sticky approach unreliable). Sent a more prescriptive fix using a proper flex + h-screen + independently-scrolling-content-pane app-shell layout instead of sticky positioning.
+- 15 Sep 2026 — ✅ Recurring "3rd stat blank" bug root-caused and fixed by Antigravity: `--warning-foreground` CSS variable was accidentally pure white, so amber-styled stat numbers were invisible (white-on-white), not actually miscomputed. Fixed with proper high-contrast amber tokens for both light/dark mode. Confirmed working across all 4 modules (Super Admin, Billing, Pharmacy, Lab) by user. **Good example of asking for root-cause investigation instead of four separate patches — paid off.**
+- 15 Sep 2026 — Routing fix (real per-section URLs instead of single-page tab-state) still pending, prompt already written and waiting to be sent to Antigravity.
+- 15 Sep 2026 — ✅ Routing fix confirmed working: URL changes per section, refresh preserves section, back/forward works, and role-based route guarding verified (tested with a pharmacist account - correctly redirected away from /dashboard/staff). **PHASE 3 NOW FULLY COMPLETE (backend + frontend, all bugs resolved).**

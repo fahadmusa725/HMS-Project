@@ -50,6 +50,7 @@ export default function SuperAdminDashboard() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [extendTrialHospital, setExtendTrialHospital] = useState(null);
   const [extendDays, setExtendDays] = useState(14);
+  const [confirmStatusAction, setConfirmStatusAction] = useState(null);
   const [deleteHospitalTarget, setDeleteHospitalTarget] = useState(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [formError, setFormError] = useState(null);
@@ -87,6 +88,14 @@ export default function SuperAdminDashboard() {
     },
   });
 
+  // Safe array conversion for hospitals
+  const hospitalList = useMemo(() => {
+    if (Array.isArray(hospitals)) return hospitals;
+    if (Array.isArray(hospitals?.hospitals)) return hospitals.hospitals;
+    if (Array.isArray(hospitals?.data)) return hospitals.data;
+    return [];
+  }, [hospitals]);
+
   // Mutation: Create Hospital Tenant
   const createHospitalMutation = useMutation({
     mutationFn: async (formData) => {
@@ -116,6 +125,7 @@ export default function SuperAdminDashboard() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['super-admin-hospitals'] });
       setExtendTrialHospital(null);
+      setConfirmStatusAction(null);
       toast.success(`Hospital "${data.name}" status updated to ${data.status.toUpperCase()}.`);
     },
     onError: (err) => {
@@ -187,33 +197,33 @@ export default function SuperAdminDashboard() {
 
   // Compute summary stats
   const stats = useMemo(() => {
-    const total = hospitals.length;
-    const trial = hospitals.filter((h) => h.status === 'trial').length;
-    const active = hospitals.filter((h) => h.status === 'active').length;
-    const suspended = hospitals.filter((h) => h.status === 'suspended').length;
+    const total = hospitalList.length;
+    const trial = hospitalList.filter((h) => String(h?.status || '').toLowerCase().trim() === 'trial').length;
+    const active = hospitalList.filter((h) => String(h?.status || '').toLowerCase().trim() === 'active').length;
+    const suspended = hospitalList.filter((h) => String(h?.status || '').toLowerCase().trim() === 'suspended').length;
     return { total, trial, active, suspended };
-  }, [hospitals]);
+  }, [hospitalList]);
 
   // Filtered hospitals
   const filteredHospitals = useMemo(() => {
-    return hospitals.filter((h) => {
+    return hospitalList.filter((h) => {
       const matchesSearch =
         h.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         h._id?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || h.status === statusFilter;
+      const matchesStatus = statusFilter === 'all' || String(h?.status || '').toLowerCase().trim() === statusFilter.toLowerCase().trim();
       return matchesSearch && matchesStatus;
     });
-  }, [hospitals, searchQuery, statusFilter]);
+  }, [hospitalList, searchQuery, statusFilter]);
 
   const navItems = [
     { id: 'hospitals', label: 'Hospital Tenants', icon: Building2 },
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
       {/* Top Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-30 shadow-soft-sm">
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
+        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm">
               <Shield className="h-5 w-5" />
@@ -243,10 +253,10 @@ export default function SuperAdminDashboard() {
         </div>
       </header>
 
-      {/* Main Body with Sidebar Layout */}
-      <div className="flex-1 max-w-[1600px] w-full mx-auto flex flex-col md:flex-row">
+      {/* Main Body Shell Layout */}
+      <div className="flex-1 overflow-hidden flex flex-row">
         {/* Left Sidebar */}
-        <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-card/50 p-4 shrink-0">
+        <aside className="w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex flex-col">
           <div className="space-y-1">
             <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Platform Administration
@@ -273,7 +283,7 @@ export default function SuperAdminDashboard() {
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 animate-fade-in space-y-8 min-w-0">
+        <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 animate-fade-in space-y-8 min-w-0">
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -471,30 +481,32 @@ export default function SuperAdminDashboard() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleStatusChange(hospital._id, 'active')}
-                                disabled={updateStatusMutation.isPending}
+                                onClick={() => setConfirmStatusAction({ hospital, targetStatus: 'active' })}
+                                disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
                                 className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40"
                               >
                                 Activate
                               </Button>
                             )}
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setExtendTrialHospital(hospital);
-                                setExtendDays(14);
-                              }}
-                              disabled={updateStatusMutation.isPending}
-                              className="h-8 text-xs font-semibold text-secondary hover:bg-secondary/10 hover:border-secondary/40"
-                            >
-                              Extend Trial
-                            </Button>
+                            {hospital.status === 'trial' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setExtendTrialHospital(hospital);
+                                  setExtendDays(14);
+                                }}
+                                disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
+                                className="h-8 text-xs font-semibold text-secondary hover:bg-secondary/10 hover:border-secondary/40"
+                              >
+                                Extend Trial
+                              </Button>
+                            )}
                             {hospital.status !== 'suspended' && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => handleStatusChange(hospital._id, 'suspended')}
+                                onClick={() => setConfirmStatusAction({ hospital, targetStatus: 'suspended' })}
                                 disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
                                 className="h-8 text-xs font-semibold text-muted-foreground hover:text-warning hover:bg-warning/10 hover:border-warning/30"
                               >
@@ -692,6 +704,58 @@ export default function SuperAdminDashboard() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal: Confirm Status Change (Activate / Suspend) */}
+      <Modal
+        isOpen={!!confirmStatusAction}
+        onClose={() => {
+          if (!updateStatusMutation.isPending) {
+            setConfirmStatusAction(null);
+          }
+        }}
+        title={confirmStatusAction?.targetStatus === 'active' ? 'Activate Hospital Tenant' : 'Suspend Hospital Tenant'}
+        description="Please confirm this operational tenant status update."
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">
+            Are you sure you want to{' '}
+            <strong className="font-semibold lowercase">{confirmStatusAction?.targetStatus}</strong>{' '}
+            hospital <span className="font-bold text-primary">"{confirmStatusAction?.hospital?.name}"</span>?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {confirmStatusAction?.targetStatus === 'active'
+              ? 'This will activate the hospital tenant and grant full operational system access to all its users.'
+              : 'This will suspend the hospital tenant. Associated staff and users will temporarily lose operational access.'}
+          </p>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmStatusAction(null)}
+              disabled={updateStatusMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (confirmStatusAction) {
+                  handleStatusChange(confirmStatusAction.hospital._id, confirmStatusAction.targetStatus);
+                }
+              }}
+              disabled={updateStatusMutation.isPending}
+              className={
+                confirmStatusAction?.targetStatus === 'active'
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2'
+                  : 'bg-warning text-warning-foreground hover:bg-warning/90 font-semibold flex items-center gap-2'
+              }
+            >
+              {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span>{confirmStatusAction?.targetStatus === 'active' ? 'Confirm Activation' : 'Confirm Suspension'}</span>
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Modal: Delete Hospital Confirmation */}
