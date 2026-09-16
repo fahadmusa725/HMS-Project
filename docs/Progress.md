@@ -58,7 +58,7 @@
 
 ## Phase 4 — Admin & Insights
 
-- [ ] Reports/analytics dashboard (revenue, patient footfall, bed occupancy)
+- [x] Reports/analytics dashboard (revenue, patient footfall, bed occupancy) — backend done + live-tested (`test-reports.js`) 16 Sep, covers Overview/Financial/Clinical/Operations across 4 endpoints; frontend Prompt 12 sent to Antigravity, awaiting result
 - [ ] Audit log system (track critical actions)
 - [ ] Email notification system (Nodemailer — appointment reminders, low-stock alerts)
 
@@ -123,3 +123,4 @@
 - 15 Sep 2026 — ✅ Recurring "3rd stat blank" bug root-caused and fixed by Antigravity: `--warning-foreground` CSS variable was accidentally pure white, so amber-styled stat numbers were invisible (white-on-white), not actually miscomputed. Fixed with proper high-contrast amber tokens for both light/dark mode. Confirmed working across all 4 modules (Super Admin, Billing, Pharmacy, Lab) by user. **Good example of asking for root-cause investigation instead of four separate patches — paid off.**
 - 15 Sep 2026 — Routing fix (real per-section URLs instead of single-page tab-state) still pending, prompt already written and waiting to be sent to Antigravity.
 - 15 Sep 2026 — ✅ Routing fix confirmed working: URL changes per section, refresh preserves section, back/forward works, and role-based route guarding verified (tested with a pharmacist account - correctly redirected away from /dashboard/staff). **PHASE 3 NOW FULLY COMPLETE (backend + frontend, all bugs resolved).**
+- 16 Sep 2026 — Reports backend delivered (4 endpoints: overview/financial/clinical/operations, all MongoDB aggregations manually tenant-scoped since aggregate() bypasses the automatic middleware). Live-tested with known data across all 4 endpoints + a tenant-isolation check specifically for aggregations (empty second hospital confirmed zero leakage). Antigravity Prompt 12 sent for the frontend (Recharts-based, real routes per section, matches the just-established routing pattern).
