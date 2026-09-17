@@ -15,6 +15,7 @@ import WardsBeds from '@/components/hospital/WardsBeds';
 import LabModule from '@/components/hospital/LabModule';
 import PharmacyModule from '@/components/hospital/PharmacyModule';
 import BillingModule from '@/components/hospital/BillingModule';
+import AuditLogViewer from '@/components/hospital/AuditLogViewer';
 
 import ReportsLayout from '@/pages/hospital/reports/ReportsLayout';
 import ReportsOverview from '@/pages/hospital/reports/ReportsOverview';
@@ -171,6 +172,16 @@ export function AppRoutes() {
             element={
               <ProtectedRoute allowedRoles={['hospital_admin', 'accountant', 'receptionist']}>
                 <BillingModule />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Audit Logs - Hospital Admin only */}
+          <Route
+            path="audit-logs"
+            element={
+              <ProtectedRoute allowedRoles={['hospital_admin']}>
+                <AuditLogViewer />
               </ProtectedRoute>
             }
           />
