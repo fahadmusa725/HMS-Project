@@ -56,11 +56,11 @@
 - [x] Phase 3 live end-to-end test passed (`test-phase3.js`)
 - [x] Frontend UI for Lab, Pharmacy, Billing — done via Antigravity Prompt 11, confirmed visible 15 Sep after a dev-server restart (see notes below)
 
-## Phase 4 — Admin & Insights
+## Phase 4 — Admin & Insights ✅ COMPLETE
 
-- [x] Reports/analytics dashboard (revenue, patient footfall, bed occupancy) — backend done + live-tested (`test-reports.js`) 16 Sep, covers Overview/Financial/Clinical/Operations across 4 endpoints; frontend Prompt 12 sent to Antigravity, awaiting result
-- [ ] Audit log system (track critical actions)
-- [ ] Email notification system (Nodemailer — appointment reminders, low-stock alerts)
+- [x] Reports/analytics dashboard (revenue, patient footfall, bed occupancy) — backend done + live-tested (`test-reports.js`) 16 Sep, frontend done via Antigravity Prompt 12
+- [x] Audit log system (track critical actions) — done 16 Sep, automatic middleware-based logging across all 9 hospital-scoped route files, human-readable action labels, live-tested with tenant isolation check
+- [x] Email notification system (Nodemailer) — done 16 Sep: low-stock alerts (pharmacist/admin) and trial-ending reminders (Super Admin, daily cron + manual trigger) both live-tested. Appointment reminders to patients deliberately deferred to Phase 5 (Patient model has no email field yet — tied to building real patient accounts)
 
 ## Phase 5 — Polish & Deploy
 
@@ -124,3 +124,4 @@
 - 15 Sep 2026 — Routing fix (real per-section URLs instead of single-page tab-state) still pending, prompt already written and waiting to be sent to Antigravity.
 - 15 Sep 2026 — ✅ Routing fix confirmed working: URL changes per section, refresh preserves section, back/forward works, and role-based route guarding verified (tested with a pharmacist account - correctly redirected away from /dashboard/staff). **PHASE 3 NOW FULLY COMPLETE (backend + frontend, all bugs resolved).**
 - 16 Sep 2026 — Reports backend delivered (4 endpoints: overview/financial/clinical/operations, all MongoDB aggregations manually tenant-scoped since aggregate() bypasses the automatic middleware). Live-tested with known data across all 4 endpoints + a tenant-isolation check specifically for aggregations (empty second hospital confirmed zero leakage). Antigravity Prompt 12 sent for the frontend (Recharts-based, real routes per section, matches the just-established routing pattern).
+- 16 Sep 2026 — ✅ **PHASE 4 FULLY COMPLETE.** Audit logging implemented as automatic middleware (added to all 9 hospital-scoped route files) rather than manual per-controller calls — much more maintainable, catches every mutating action without needing to remember to add logging to future controllers too (just add `auditLogger` to a new route file's middleware chain). Low-stock and trial-reminder emails both live-tested (gracefully log to console since real email credentials aren't set up yet — will start actually sending the moment `.env` EMAIL_USER/EMAIL_PASS are filled in, no code changes needed).

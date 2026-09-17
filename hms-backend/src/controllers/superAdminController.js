@@ -9,6 +9,7 @@ const Admission = require("../models/Admission");
 const NurseNote = require("../models/NurseNote");
 const { Counter } = require("../models/Counter");
 const { runWithTenantContext } = require("../utils/tenantContext");
+const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
 
 /**
  * Create a new hospital (tenant) + its first Hospital Admin account.
@@ -157,4 +158,15 @@ async function deleteHospital(req, res) {
   }
 }
 
-module.exports = { createHospital, listHospitals, updateHospitalStatus, deleteHospital };
+/** Manually trigger the trial-ending check (normally runs on a daily cron) - useful for testing. */
+async function triggerTrialCheck(req, res) {
+  try {
+    const result = await checkTrialsEndingSoon();
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while checking trials." });
+  }
+}
+
+module.exports = { createHospital, listHospitals, updateHospitalStatus, deleteHospital, triggerTrialCheck };

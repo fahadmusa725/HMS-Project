@@ -1,5 +1,6 @@
 const express = require("express");
 const protect = require("../middleware/auth");
+const auditLogger = require("../middleware/auditLogger");
 const allowRoles = require("../middleware/rbac");
 const {
   createConsultation,
@@ -9,7 +10,7 @@ const {
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, auditLogger);
 
 router.post("/", allowRoles("doctor"), createConsultation);
 router.get("/patient/:patientId", allowRoles("doctor", "nurse", "hospital_admin", "receptionist"), getPatientEMR);

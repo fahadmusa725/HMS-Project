@@ -15,6 +15,7 @@ const labRoutes = require("./routes/labRoutes");
 const pharmacyRoutes = require("./routes/pharmacyRoutes");
 const billingRoutes = require("./routes/billingRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
+const auditRoutes = require("./routes/auditRoutes");
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/lab", labRoutes);
 app.use("/api/pharmacy", pharmacyRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/reports", reportsRoutes);
+app.use("/api/audit-logs", auditRoutes);
 
 // Fallback 404
 app.use((req, res) => {

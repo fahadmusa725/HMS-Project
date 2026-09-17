@@ -16,6 +16,12 @@ import LabModule from '@/components/hospital/LabModule';
 import PharmacyModule from '@/components/hospital/PharmacyModule';
 import BillingModule from '@/components/hospital/BillingModule';
 
+import ReportsLayout from '@/pages/hospital/reports/ReportsLayout';
+import ReportsOverview from '@/pages/hospital/reports/ReportsOverview';
+import FinancialReport from '@/pages/hospital/reports/FinancialReport';
+import ClinicalReport from '@/pages/hospital/reports/ClinicalReport';
+import OperationsReport from '@/pages/hospital/reports/OperationsReport';
+
 export function AppRoutes() {
   const { isAuthenticated, user } = useAuthStore();
 
@@ -168,6 +174,49 @@ export function AppRoutes() {
               </ProtectedRoute>
             }
           />
+
+          {/* Reports & Analytics - Hospital Admin (all 4) and Accountant (Financial only) */}
+          <Route
+            path="reports"
+            element={
+              <ProtectedRoute allowedRoles={['hospital_admin', 'accountant']}>
+                <ReportsLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              index
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <ReportsOverview />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="financial"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'accountant']}>
+                  <FinancialReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="clinical"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <ClinicalReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="operations"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <OperationsReport />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
         </Route>
       </Route>
 

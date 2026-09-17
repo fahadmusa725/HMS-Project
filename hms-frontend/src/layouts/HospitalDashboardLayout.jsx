@@ -16,7 +16,8 @@ import {
   LayoutDashboard,
   FlaskConical,
   Pill,
-  Receipt
+  Receipt,
+  BarChart3
 } from 'lucide-react';
 
 export default function HospitalDashboardLayout() {
@@ -30,6 +31,7 @@ export default function HospitalDashboardLayout() {
       case 'hospital_admin':
         return [
           { path: '/dashboard', end: true, label: 'Overview', icon: LayoutDashboard },
+          { path: '/dashboard/reports', label: 'Reports & Analytics', icon: BarChart3 },
           { path: '/dashboard/staff', label: 'Staff Directory', icon: Users },
           { path: '/dashboard/patients', label: 'Patient Records', icon: UserCheck },
           { path: '/dashboard/appointments', label: 'Appointments & Queue', icon: Calendar },
@@ -71,6 +73,7 @@ export default function HospitalDashboardLayout() {
       case 'accountant':
         return [
           { path: '/dashboard/billing', label: 'Billing & Invoices', icon: Receipt },
+          { path: '/dashboard/reports/financial', label: 'Financial Reports', icon: BarChart3 },
           { path: '/dashboard/patients', label: 'Patient Records', icon: UserCheck },
         ];
       default:

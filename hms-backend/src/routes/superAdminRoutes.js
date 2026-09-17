@@ -6,6 +6,7 @@ const {
   listHospitals,
   updateHospitalStatus,
   deleteHospital,
+  triggerTrialCheck,
 } = require("../controllers/superAdminController");
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.post("/hospitals", createHospital);
 router.get("/hospitals", listHospitals);
 router.patch("/hospitals/:hospitalId", updateHospitalStatus);
 router.delete("/hospitals/:hospitalId", deleteHospital);
+router.post("/trial-check", triggerTrialCheck);
 
 module.exports = router;
