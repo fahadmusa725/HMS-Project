@@ -7,6 +7,9 @@ const {
   getQueue,
   updateAppointmentStatus,
   getPatientAppointments,
+  getMyAppointments,
+  listDoctorsForBooking,
+  bookMyAppointment,
 } = require("../controllers/appointmentController");
 
 const router = express.Router();
@@ -16,6 +19,12 @@ router.use(protect, auditLogger);
 const canBook = allowRoles("hospital_admin", "receptionist");
 const canViewQueue = allowRoles("hospital_admin", "receptionist", "doctor", "nurse");
 const canUpdateStatus = allowRoles("hospital_admin", "receptionist", "doctor", "nurse");
+
+// Patient self-service - must come before "/patient/:patientId" so it's
+// never confused with a param route.
+router.get("/mine", allowRoles("patient"), getMyAppointments);
+router.get("/doctors", allowRoles("patient"), listDoctorsForBooking);
+router.post("/book-mine", allowRoles("patient"), bookMyAppointment);
 
 router.post("/", canBook, bookAppointment);
 router.get("/queue", canViewQueue, getQueue);

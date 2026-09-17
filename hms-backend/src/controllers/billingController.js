@@ -91,4 +91,18 @@ async function recordPayment(req, res) {
   }
 }
 
-module.exports = { createBill, listBills, getPatientBills, recordPayment };
+/** Patient self-service: their own billing history, derived from their linked patient record. */
+async function getMyBills(req, res) {
+  try {
+    const patient = await Patient.findOne({ userId: req.user.userId });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+
+    const bills = await Bill.find({ patientId: patient._id }).sort({ createdAt: -1 });
+    res.json(bills);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching your bills." });
+  }
+}
+
+module.exports = { createBill, listBills, getPatientBills, recordPayment, getMyBills };

@@ -1,7 +1,9 @@
 const Patient = require("../models/Patient");
 const Hospital = require("../models/Hospital");
+const User = require("../models/User");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
+const { sendEmail } = require("../utils/mailer");
 
 /** Builds a short prefix from the hospital name for readable MRNs, e.g. "City Hospital" -> "CTH" */
 function buildMrnPrefix(hospitalName) {
@@ -10,9 +12,13 @@ function buildMrnPrefix(hospitalName) {
   return (initials || "HSP").slice(0, 4);
 }
 
+function generateTempPassword() {
+  return Math.random().toString(36).slice(-10);
+}
+
 async function registerPatient(req, res) {
   try {
-    const { name, dob, gender, phone, address, allergies, chronicConditions } = req.body;
+    const { name, dob, gender, phone, email, cnic, address, allergies, chronicConditions } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Patient name is required." });
@@ -33,6 +39,8 @@ async function registerPatient(req, res) {
       dob,
       gender,
       phone,
+      email,
+      cnic,
       address,
       allergies: allergies || [],
       chronicConditions: chronicConditions || [],
@@ -41,6 +49,9 @@ async function registerPatient(req, res) {
 
     res.status(201).json(patient);
   } catch (err) {
+    if (err.code === 11000 && err.keyPattern?.cnic) {
+      return res.status(409).json({ message: "A patient with this CNIC is already registered at this hospital." });
+    }
     console.error(err);
     res.status(500).json({ message: "Server error while registering patient." });
   }
@@ -86,11 +97,13 @@ async function getPatientById(req, res) {
 
 async function updatePatient(req, res) {
   try {
-    const updates = (({ name, dob, gender, phone, address, allergies, chronicConditions }) => ({
+    const updates = (({ name, dob, gender, phone, email, cnic, address, allergies, chronicConditions }) => ({
       name,
       dob,
       gender,
       phone,
+      email,
+      cnic,
       address,
       allergies,
       chronicConditions,
@@ -103,9 +116,79 @@ async function updatePatient(req, res) {
     if (!patient) return res.status(404).json({ message: "Patient not found." });
     res.json(patient);
   } catch (err) {
+    if (err.code === 11000 && err.keyPattern?.cnic) {
+      return res.status(409).json({ message: "A patient with this CNIC is already registered at this hospital." });
+    }
     console.error(err);
     res.status(500).json({ message: "Server error while updating patient." });
   }
 }
 
-module.exports = { registerPatient, listPatients, getPatientById, updatePatient };
+/**
+ * Staff-assisted portal enrollment: creates a login account (role: patient)
+ * linked to this clinical record, with a system-generated temp password
+ * emailed to the patient. Requires the patient record to have an email.
+ */
+async function enablePortalAccess(req, res) {
+  try {
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ message: "Patient not found." });
+    if (!patient.email) {
+      return res.status(400).json({ message: "This patient has no email on file - add one before enabling portal access." });
+    }
+    if (patient.userId) {
+      return res.status(409).json({ message: "This patient already has portal access." });
+    }
+
+    const tempPassword = generateTempPassword();
+    const user = await User.create({
+      name: patient.name,
+      email: patient.email,
+      password: tempPassword,
+      role: "patient",
+      status: "active",
+    });
+
+    patient.userId = user._id;
+    await patient.save();
+
+    await sendEmail({
+      to: patient.email,
+      subject: "Your patient portal account is ready",
+      html: `<p>Hello ${patient.name},</p>
+             <p>An account has been created for you to access your patient portal.</p>
+             <p><strong>Email:</strong> ${patient.email}<br/>
+             <strong>Temporary password:</strong> ${tempPassword}</p>
+             <p>Please log in and change your password.</p>`,
+    });
+
+    res.json({ message: "Portal access enabled and credentials emailed to the patient." });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ message: "That email is already used by another account." });
+    }
+    console.error(err);
+    res.status(500).json({ message: "Server error while enabling portal access." });
+  }
+}
+
+/** For the logged-in patient: fetch their own clinical record. */
+async function getMyPatientRecord(req, res) {
+  try {
+    const patient = await Patient.findOne({ userId: req.user.userId });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+    res.json(patient);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching your record." });
+  }
+}
+
+module.exports = {
+  registerPatient,
+  listPatients,
+  getPatientById,
+  updatePatient,
+  enablePortalAccess,
+  getMyPatientRecord,
+};

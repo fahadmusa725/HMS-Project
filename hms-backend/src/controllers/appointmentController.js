@@ -1,5 +1,6 @@
 const Appointment = require("../models/Appointment");
 const Patient = require("../models/Patient");
+const User = require("../models/User");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 
@@ -97,4 +98,73 @@ async function getPatientAppointments(req, res) {
   }
 }
 
-module.exports = { bookAppointment, getQueue, updateAppointmentStatus, getPatientAppointments };
+// --- Patient self-service (secure by construction: always derives their
+// OWN linked Patient record from the JWT, never trusts a client-supplied
+// patientId for these three endpoints) ---
+
+async function getMyAppointments(req, res) {
+  try {
+    const patient = await Patient.findOne({ userId: req.user.userId });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+
+    const appointments = await Appointment.find({ patientId: patient._id })
+      .sort({ createdAt: -1 })
+      .populate("doctorId", "name department");
+    res.json(appointments);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching your appointments." });
+  }
+}
+
+/** List doctors a patient can choose from when self-booking. */
+async function listDoctorsForBooking(req, res) {
+  try {
+    const doctors = await User.find({ role: "doctor", status: "active" }).select("name department");
+    res.json(doctors);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while listing doctors." });
+  }
+}
+
+async function bookMyAppointment(req, res) {
+  try {
+    const { doctorId, date, time, reason } = req.body;
+    if (!doctorId || !date) {
+      return res.status(400).json({ message: "doctorId and date are required." });
+    }
+
+    const patient = await Patient.findOne({ userId: req.user.userId });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+
+    const hospitalId = getCurrentHospitalId();
+    const tokenNumber = await getNextSequence(hospitalId, `opd_token_${date}`);
+
+    const appointment = await Appointment.create({
+      patientId: patient._id,
+      doctorId,
+      type: "OPD",
+      date,
+      time,
+      tokenNumber,
+      reason,
+      bookedBy: req.user.userId,
+    });
+
+    res.status(201).json(appointment);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while booking your appointment." });
+  }
+}
+
+module.exports = {
+  bookAppointment,
+  getQueue,
+  updateAppointmentStatus,
+  getPatientAppointments,
+  getMyAppointments,
+  listDoctorsForBooking,
+  bookMyAppointment,
+};
