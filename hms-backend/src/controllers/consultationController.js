@@ -77,4 +77,20 @@ async function getConsultationById(req, res) {
   }
 }
 
-module.exports = { createConsultation, getPatientEMR, getConsultationById };
+/** Patient self-service: their own EMR timeline, derived from their linked patient record. */
+async function getMyEMR(req, res) {
+  try {
+    const patient = await Patient.findOne({ userId: req.user.userId });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+
+    const consultations = await Consultation.find({ patientId: patient._id })
+      .sort({ createdAt: -1 })
+      .populate("doctorId", "name department");
+    res.json(consultations);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching your medical history." });
+  }
+}
+
+module.exports = { createConsultation, getPatientEMR, getConsultationById, getMyEMR };

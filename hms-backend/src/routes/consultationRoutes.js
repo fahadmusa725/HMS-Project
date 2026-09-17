@@ -6,12 +6,14 @@ const {
   createConsultation,
   getPatientEMR,
   getConsultationById,
+  getMyEMR,
 } = require("../controllers/consultationController");
 
 const router = express.Router();
 
 router.use(protect, auditLogger);
 
+router.get("/mine", allowRoles("patient"), getMyEMR);
 router.post("/", allowRoles("doctor"), createConsultation);
 router.get("/patient/:patientId", allowRoles("doctor", "nurse", "hospital_admin", "receptionist"), getPatientEMR);
 router.get("/:id", allowRoles("doctor", "nurse", "hospital_admin"), getConsultationById);
