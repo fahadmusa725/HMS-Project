@@ -1,5 +1,7 @@
 const Medicine = require("../models/Medicine");
 const PharmacySale = require("../models/PharmacySale");
+const User = require("../models/User");
+const { sendEmail } = require("../utils/mailer");
 
 // --- Inventory management (pharmacist, hospital_admin) ---
 
@@ -95,6 +97,26 @@ async function restockMedicine(req, res) {
 
 // --- Dispensing ---
 
+/** Emails every pharmacist + hospital_admin in this hospital about a medicine that just crossed into low stock. */
+async function sendLowStockAlert(medicine) {
+  try {
+    const recipients = await User.find({ role: { $in: ["pharmacist", "hospital_admin"] }, status: "active" });
+    if (recipients.length === 0) return;
+
+    const subject = `Low Stock Alert: ${medicine.name}`;
+    const html = `
+      <p><strong>${medicine.name}</strong> has dropped to <strong>${medicine.stock}</strong> units,
+      at or below its threshold of ${medicine.lowStockThreshold}.</p>
+      <p>Please restock soon to avoid running out.</p>
+    `;
+
+    await Promise.all(recipients.map((u) => sendEmail({ to: u.email, subject, html })));
+  } catch (err) {
+    // Never let a notification failure break the actual dispense operation.
+    console.error("[LowStockAlert] failed:", err.message);
+  }
+}
+
 /**
  * Dispenses one or more medicines against inventory. Stock deduction is
  * done atomically PER ITEM using a conditional update (stock >= quantity),
@@ -104,6 +126,7 @@ async function restockMedicine(req, res) {
  */
 async function dispenseMedicine(req, res) {
   const deductedSoFar = []; // for manual rollback if a later item fails
+  const lowStockCrossed = []; // medicines that just crossed into low-stock, to alert about after success
 
   try {
     const { patientId, consultationId, items } = req.body;
@@ -135,6 +158,11 @@ async function dispenseMedicine(req, res) {
       const subtotal = medicine.price * quantity;
       totalAmount += subtotal;
       saleItems.push({ medicineId, medicineName: medicine.name, quantity, unitPrice: medicine.price, subtotal });
+
+      // preStock = current (post-decrement) stock + the quantity we just removed.
+      const preStock = medicine.stock + quantity;
+      const justCrossed = preStock > medicine.lowStockThreshold && medicine.stock <= medicine.lowStockThreshold;
+      if (justCrossed) lowStockCrossed.push(medicine);
     }
 
     const sale = await PharmacySale.create({
@@ -144,6 +172,9 @@ async function dispenseMedicine(req, res) {
       totalAmount,
       dispensedBy: req.user.userId,
     });
+
+    // Fire-and-forget: don't make the dispense wait on email sending.
+    lowStockCrossed.forEach((m) => sendLowStockAlert(m));
 
     res.status(201).json(sale);
   } catch (err) {

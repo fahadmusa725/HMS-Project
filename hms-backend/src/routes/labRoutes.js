@@ -1,5 +1,6 @@
 const express = require("express");
 const protect = require("../middleware/auth");
+const auditLogger = require("../middleware/auditLogger");
 const allowRoles = require("../middleware/rbac");
 const {
   createLabTest,
@@ -13,7 +14,7 @@ const {
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, auditLogger);
 
 // Catalog setup - hospital_admin only
 router.post("/tests", allowRoles("hospital_admin"), createLabTest);
