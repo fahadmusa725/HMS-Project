@@ -64,7 +64,7 @@
 
 ## Phase 5 — Polish & Deploy
 
-- [ ] Patient self-service portal (book appointment, view reports/bills)
+- [x] Patient self-service portal — backend done + live-tested (`test-patient-portal.js`) 17 Sep: hybrid account model (staff-assisted "Enable Portal Access" + public self-signup with CNIC-then-phone matching to prevent duplicate records), self-service endpoints for own record/appointments/EMR/bills, self-booking. Frontend Prompt 14 sent to Antigravity.
 - [ ] Dark mode final polish
 - [ ] Full responsive pass (mobile/tablet)
 - [ ] Deploy frontend to Vercel (`hms-frontend`)
@@ -125,3 +125,4 @@
 - 15 Sep 2026 — ✅ Routing fix confirmed working: URL changes per section, refresh preserves section, back/forward works, and role-based route guarding verified (tested with a pharmacist account - correctly redirected away from /dashboard/staff). **PHASE 3 NOW FULLY COMPLETE (backend + frontend, all bugs resolved).**
 - 16 Sep 2026 — Reports backend delivered (4 endpoints: overview/financial/clinical/operations, all MongoDB aggregations manually tenant-scoped since aggregate() bypasses the automatic middleware). Live-tested with known data across all 4 endpoints + a tenant-isolation check specifically for aggregations (empty second hospital confirmed zero leakage). Antigravity Prompt 12 sent for the frontend (Recharts-based, real routes per section, matches the just-established routing pattern).
 - 16 Sep 2026 — ✅ **PHASE 4 FULLY COMPLETE.** Audit logging implemented as automatic middleware (added to all 9 hospital-scoped route files) rather than manual per-controller calls — much more maintainable, catches every mutating action without needing to remember to add logging to future controllers too (just add `auditLogger` to a new route file's middleware chain). Low-stock and trial-reminder emails both live-tested (gracefully log to console since real email credentials aren't set up yet — will start actually sending the moment `.env` EMAIL_USER/EMAIL_PASS are filled in, no code changes needed).
+- 17 Sep 2026 — Working sandbox was reset mid-session; successfully reconstructed the full backend from previously-delivered individual phase files (verified byte-identical to the user's actual working copy, confirmed via diff against a fresh zip the user sent — only line-ending differences, zero code discrepancies). Added `email`, `cnic`, and `userId` fields to Patient model; CNIC uniquely indexed per hospital (sparse) as the primary duplicate-prevention mechanism, matching by CNIC first then phone during self-signup.
