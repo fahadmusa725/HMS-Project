@@ -9,6 +9,7 @@ const {
   updatePatient,
   enablePortalAccess,
   getMyPatientRecord,
+  updateMyProfile,
 } = require("../controllers/patientController");
 
 const router = express.Router();
@@ -21,6 +22,7 @@ const canManagePatients = allowRoles("hospital_admin", "receptionist", "doctor",
 
 // Must come before "/:id" so it isn't swallowed by the param route.
 router.get("/me", allowRoles("patient"), getMyPatientRecord);
+router.patch("/me", allowRoles("patient"), updateMyProfile);
 
 router.post("/", canManagePatients, registerPatient);
 router.get("/", canManagePatients, listPatients);

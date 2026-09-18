@@ -184,6 +184,33 @@ async function getMyPatientRecord(req, res) {
   }
 }
 
+/**
+ * For the logged-in patient: update their own record. Deliberately limited
+ * to demographic/self-reported fields - name, mrn, and cnic stay
+ * staff-controlled for record integrity (a patient can't silently rename
+ * themselves or swap their identity number after registration).
+ */
+async function updateMyProfile(req, res) {
+  try {
+    const updates = (({ dob, gender, phone, address, allergies, chronicConditions }) => ({
+      dob,
+      gender,
+      phone,
+      address,
+      allergies,
+      chronicConditions,
+    }))(req.body);
+    Object.keys(updates).forEach((k) => updates[k] === undefined && delete updates[k]);
+
+    const patient = await Patient.findOneAndUpdate({ userId: req.user.userId }, updates, { new: true });
+    if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+    res.json(patient);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while updating your profile." });
+  }
+}
+
 module.exports = {
   registerPatient,
   listPatients,
@@ -191,4 +218,5 @@ module.exports = {
   updatePatient,
   enablePortalAccess,
   getMyPatientRecord,
+  updateMyProfile,
 };
