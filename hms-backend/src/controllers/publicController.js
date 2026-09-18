@@ -39,7 +39,7 @@ function buildMrnPrefix(hospitalName) {
  */
 async function patientSignup(req, res) {
   try {
-    const { hospitalId, name, phone, cnic, email, password } = req.body;
+    const { hospitalId, name, phone, cnic, email, password, dob, gender, address } = req.body;
 
     if (!hospitalId || !name || !email || !password) {
       return res.status(400).json({ message: "hospitalId, name, email and password are required." });
@@ -68,15 +68,20 @@ async function patientSignup(req, res) {
       const user = await User.create({ name, email, password, role: "patient", status: "active" });
 
       if (patient) {
-        // Link the new account to the existing clinical record.
+        // Link the new account to the existing clinical record. Fill in
+        // any fields the existing record is missing, but never overwrite
+        // what staff already verified and entered.
         patient.userId = user._id;
         if (email && !patient.email) patient.email = email;
+        if (dob && !patient.dob) patient.dob = dob;
+        if (gender && !patient.gender) patient.gender = gender;
+        if (address && !patient.address) patient.address = address;
         await patient.save();
       } else {
-        // No existing record - self-register a new one.
+        // No existing record - self-register a new one with whatever they gave us.
         const seq = await getNextSequence(hospitalId, "patient_mrn");
         const mrn = `${buildMrnPrefix(hospital.name)}-${String(seq).padStart(6, "0")}`;
-        patient = await Patient.create({ mrn, name, phone, cnic, email, userId: user._id });
+        patient = await Patient.create({ mrn, name, phone, cnic, email, dob, gender, address, userId: user._id });
       }
 
       return { user, patient };

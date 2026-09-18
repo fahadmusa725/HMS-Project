@@ -3,8 +3,14 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Login from '@/pages/Login';
+import PatientSignup from '@/pages/PatientSignup';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
-import PatientPortal from '@/pages/PatientPortal';
+
+import PatientPortalLayout from '@/layouts/PatientPortalLayout';
+import PatientOverview from '@/pages/portal/PatientOverview';
+import PatientAppointments from '@/pages/portal/PatientAppointments';
+import PatientHistory from '@/pages/portal/PatientHistory';
+import PatientBills from '@/pages/portal/PatientBills';
 
 import HospitalDashboardLayout from '@/layouts/HospitalDashboardLayout';
 import HospitalOverview from '@/pages/hospital/HospitalOverview';
@@ -61,6 +67,14 @@ export function AppRoutes() {
         path="/login"
         element={
           isAuthenticated ? getHomeRedirect() : <Login />
+        }
+      />
+
+      {/* Public Patient Self-Signup Route */}
+      <Route
+        path="/signup"
+        element={
+          isAuthenticated ? getHomeRedirect() : <PatientSignup />
         }
       />
 
@@ -233,7 +247,12 @@ export function AppRoutes() {
 
       {/* Protected Routes: Patient Portal */}
       <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
-        <Route path="/portal" element={<PatientPortal />} />
+        <Route path="/portal" element={<PatientPortalLayout />}>
+          <Route index element={<PatientOverview />} />
+          <Route path="appointments" element={<PatientAppointments />} />
+          <Route path="history" element={<PatientHistory />} />
+          <Route path="bills" element={<PatientBills />} />
+        </Route>
       </Route>
 
       {/* Catch-all fallback */}

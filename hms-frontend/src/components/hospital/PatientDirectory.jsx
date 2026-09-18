@@ -22,7 +22,12 @@ import {
   CalendarCheck,
   HeartPulse,
   User,
-  FlaskConical
+  FlaskConical,
+  KeyRound,
+  Mail,
+  CreditCard,
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
@@ -37,6 +42,8 @@ const patientSchema = z.object({
   dob: z.string().optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
   phone: z.string().optional(),
+  email: z.string().email('Please enter a valid email address').optional().or(z.literal('')),
+  cnic: z.string().optional().or(z.literal('')),
   address: z.string().optional(),
 });
 
@@ -238,6 +245,7 @@ export default function PatientDirectory() {
 
   // Lab Order from Patient Directory state
   const canOrderLab = ['doctor', 'hospital_admin', 'receptionist'].includes(user?.role);
+  const canEnablePortal = ['hospital_admin', 'receptionist'].includes(user?.role);
   const [isOrderLabOpen, setIsOrderLabOpen] = useState(false);
   const [selectedLabTestIds, setSelectedLabTestIds] = useState([]);
   const [labSearchQuery, setLabSearchQuery] = useState('');
@@ -254,6 +262,8 @@ export default function PatientDirectory() {
       dob: '',
       gender: 'male',
       phone: '',
+      email: '',
+      cnic: '',
       address: '',
     },
   });
@@ -365,6 +375,23 @@ export default function PatientDirectory() {
     },
   });
 
+  // Mutation: Enable Portal Access
+  const enablePortalMutation = useMutation({
+    mutationFn: async (patientId) => {
+      const res = await api.post(`/api/patients/${patientId}/enable-portal`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-patients'] });
+      setSelectedPatient((prev) => (prev ? { ...prev, userId: 'linked' } : prev));
+      toast.success(data.message || 'Portal access enabled and credentials emailed to the patient.');
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to enable portal access.';
+      toast.error(message);
+    },
+  });
+
   // Toggle test checkbox
   const toggleLabTestSelection = (testId) => {
     setSelectedLabTestIds((prev) =>
@@ -395,6 +422,8 @@ export default function PatientDirectory() {
     setEditValue('dob', patient.dob ? new Date(patient.dob).toISOString().slice(0, 10) : '');
     setEditValue('gender', patient.gender || 'male');
     setEditValue('phone', patient.phone || '');
+    setEditValue('email', patient.email || '');
+    setEditValue('cnic', patient.cnic || '');
     setEditValue('address', patient.address || '');
     setIsDetailOpen(true);
   };
@@ -720,6 +749,36 @@ export default function PatientDirectory() {
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                Email Address <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+              </label>
+              <Input
+                type="email"
+                placeholder="patient@example.com"
+                {...register('email')}
+                disabled={registerMutation.isPending}
+                className={errors.email ? 'border-destructive' : ''}
+              />
+              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                CNIC / National ID <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+              </label>
+              <Input
+                placeholder="35201-1234567-1"
+                {...register('cnic')}
+                disabled={registerMutation.isPending}
+              />
+              <span className="text-[10px] text-muted-foreground block">
+                Used to prevent duplicate records
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Address
               </label>
               <Input
@@ -864,7 +923,7 @@ export default function PatientDirectory() {
             {detailTab === 'profile' && !isEditingDetail && (
               /* View Mode */
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                   <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
                     <span className="text-xs text-muted-foreground block font-medium">MRN Number</span>
                     <span className="font-mono text-xs font-bold text-primary">{selectedPatient.mrn}</span>
@@ -874,14 +933,22 @@ export default function PatientDirectory() {
                     <span className="font-semibold text-foreground capitalize">{selectedPatient.gender || '—'}</span>
                   </div>
                   <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
-                    <span className="text-xs text-muted-foreground block font-medium">Phone</span>
-                    <span className="font-medium text-foreground">{selectedPatient.phone || '—'}</span>
-                  </div>
-                  <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
                     <span className="text-xs text-muted-foreground block font-medium">Date of Birth</span>
                     <span className="font-medium text-foreground">
                       {selectedPatient.dob ? new Date(selectedPatient.dob).toLocaleDateString() : '—'}
                     </span>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
+                    <span className="text-xs text-muted-foreground block font-medium">Phone</span>
+                    <span className="font-medium text-foreground">{selectedPatient.phone || '—'}</span>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
+                    <span className="text-xs text-muted-foreground block font-medium">Email</span>
+                    <span className="font-medium text-foreground truncate block">{selectedPatient.email || '—'}</span>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
+                    <span className="text-xs text-muted-foreground block font-medium">CNIC / ID</span>
+                    <span className="font-medium text-foreground">{selectedPatient.cnic || '—'}</span>
                   </div>
                 </div>
 
@@ -933,10 +1000,49 @@ export default function PatientDirectory() {
                 </div>
 
                 <div className="flex items-center justify-between pt-4 border-t border-border gap-2 flex-wrap">
-                  <span className="text-xs text-muted-foreground">
-                    Registered on: {new Date(selectedPatient.createdAt).toLocaleDateString()}
-                  </span>
                   <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Registered: {new Date(selectedPatient.createdAt).toLocaleDateString()}
+                    </span>
+                    {selectedPatient.userId && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                        <ShieldCheck className="h-3 w-3" /> Portal Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {canEnablePortal && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          if (!selectedPatient.email) {
+                            toast.error('This patient has no email on file. Please edit their profile to add an email first.');
+                            return;
+                          }
+                          enablePortalMutation.mutate(selectedPatient._id);
+                        }}
+                        disabled={enablePortalMutation.isPending || !!selectedPatient.userId}
+                        className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
+                      >
+                        {enablePortalMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Enrolling...
+                          </>
+                        ) : selectedPatient.userId ? (
+                          <>
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Portal Active
+                          </>
+                        ) : (
+                          <>
+                            <KeyRound className="h-3.5 w-3.5" />
+                            Enable Portal Access
+                          </>
+                        )}
+                      </Button>
+                    )}
                     {canOrderLab && (
                       <Button
                         type="button"
@@ -1013,6 +1119,30 @@ export default function PatientDirectory() {
                       Phone Number
                     </label>
                     <Input {...registerEdit('phone')} disabled={updateMutation.isPending} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                      Email Address <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+                    </label>
+                    <Input
+                      type="email"
+                      {...registerEdit('email')}
+                      disabled={updateMutation.isPending}
+                      className={editErrors.email ? 'border-destructive' : ''}
+                    />
+                    {editErrors.email && <p className="text-xs text-destructive">{editErrors.email.message}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                      CNIC / ID <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+                    </label>
+                    <Input {...registerEdit('cnic')} disabled={updateMutation.isPending} />
+                    <span className="text-[10px] text-muted-foreground block">
+                      Used to prevent duplicate records
+                    </span>
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">

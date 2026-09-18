@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -178,6 +178,13 @@ export default function Login() {
                 )}
               </Button>
             </form>
+
+            <div className="mt-5 text-center text-sm text-muted-foreground">
+              Are you a patient without an account?{' '}
+              <Link to="/signup" className="font-semibold text-primary hover:underline">
+                Sign up
+              </Link>
+            </div>
           </CardContent>
 
           <CardFooter className="flex justify-center border-t border-border pt-4 pb-4 bg-muted/20 rounded-b-2xl">

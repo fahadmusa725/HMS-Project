@@ -46,6 +46,45 @@ export const useAuthStore = create(
         }
       },
 
+      signupPatient: async (signupData) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await axios.post(`${API_BASE_URL}/api/public/patient-signup`, signupData);
+          const { token, user } = response.data;
+          set({
+            token,
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          });
+          return { success: true, user, token };
+        } catch (err) {
+          const errorMessage =
+            err.response?.data?.message ||
+            err.message ||
+            'Registration failed. Please check your information.';
+          set({
+            token: null,
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: errorMessage,
+          });
+          return { success: false, error: errorMessage, status: err.response?.status };
+        }
+      },
+
+      setAuthSession: (token, user) => {
+        set({
+          token,
+          user,
+          isAuthenticated: true,
+          isLoading: false,
+          error: null,
+        });
+      },
+
       fetchMe: async () => {
         const token = get().token;
         if (!token) return null;
