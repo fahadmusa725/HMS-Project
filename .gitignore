@@ -22,3 +22,5 @@ Thumbs.db
 # Editor
 .vscode/*
 !.vscode/extensions.json
+
+docs/
