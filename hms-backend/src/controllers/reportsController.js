@@ -70,41 +70,62 @@ async function getFinancialReport(req, res) {
     const { startDate, endDate } = req.query;
     const match = { ...tenantMatch(), ...dateRangeMatch(startDate, endDate) };
 
-    const [revenueOverTime, revenueByCategory, paymentStatusBreakdown, totals] = await Promise.all([
-      Bill.aggregate([
-        { $match: match },
-        {
-          $group: {
-            _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-            invoiced: { $sum: "$totalAmount" },
-            collected: { $sum: "$amountPaid" },
+    const [revenueOverTime, revenueByCategory, paymentStatusBreakdown, totals, collectionsByMethod, collectionsBySponsorType] =
+      await Promise.all([
+        Bill.aggregate([
+          { $match: match },
+          {
+            $group: {
+              _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+              invoiced: { $sum: "$totalAmount" },
+              collected: { $sum: "$amountPaid" },
+            },
           },
-        },
-        { $sort: { _id: 1 } },
-      ]),
-      Bill.aggregate([
-        { $match: match },
-        { $unwind: "$items" },
-        { $group: { _id: "$items.category", total: { $sum: "$items.amount" } } },
-        { $sort: { total: -1 } },
-      ]),
-      Bill.aggregate([
-        { $match: match },
-        { $group: { _id: "$paymentStatus", count: { $sum: 1 }, total: { $sum: "$totalAmount" } } },
-      ]),
-      Bill.aggregate([
-        {
-          $match: match,
-        },
-        {
-          $group: {
-            _id: null,
-            totalInvoiced: { $sum: "$totalAmount" },
-            totalCollected: { $sum: "$amountPaid" },
+          { $sort: { _id: 1 } },
+        ]),
+        Bill.aggregate([
+          { $match: match },
+          { $unwind: "$items" },
+          { $group: { _id: "$items.category", total: { $sum: "$items.amount" } } },
+          { $sort: { total: -1 } },
+        ]),
+        Bill.aggregate([
+          { $match: match },
+          { $group: { _id: "$paymentStatus", count: { $sum: 1 }, total: { $sum: "$totalAmount" } } },
+        ]),
+        Bill.aggregate([
+          {
+            $match: match,
           },
-        },
-      ]),
-    ]);
+          {
+            $group: {
+              _id: null,
+              totalInvoiced: { $sum: "$totalAmount" },
+              totalCollected: { $sum: "$amountPaid" },
+            },
+          },
+        ]),
+        // Collections broken down by how the patient actually paid (cash/jazzcash/easypaisa/etc.)
+        Bill.aggregate([
+          { $match: match },
+          { $unwind: "$payments" },
+          { $group: { _id: "$payments.method", total: { $sum: "$payments.amount" }, count: { $sum: 1 } } },
+          { $sort: { total: -1 } },
+        ]),
+        // Collections broken down by who is footing the bill (self-pay patient vs. panel/TPA)
+        Bill.aggregate([
+          { $match: match },
+          { $unwind: "$sponsors" },
+          {
+            $group: {
+              _id: "$sponsors.payerType",
+              amountOwed: { $sum: "$sponsors.amountOwed" },
+              amountPaid: { $sum: "$sponsors.amountPaid" },
+            },
+          },
+          { $sort: { amountOwed: -1 } },
+        ]),
+      ]);
 
     const totalInvoiced = totals[0]?.totalInvoiced || 0;
     const totalCollected = totals[0]?.totalCollected || 0;
@@ -113,6 +134,8 @@ async function getFinancialReport(req, res) {
       revenueOverTime,
       revenueByCategory,
       paymentStatusBreakdown,
+      collectionsByMethod,
+      collectionsBySponsorType,
       totalInvoiced,
       totalCollected,
       totalOutstanding: Math.max(0, totalInvoiced - totalCollected),

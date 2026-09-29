@@ -101,10 +101,16 @@ export default function BillingModule({ initialPatient = null }) {
   ]);
   const [initialPaymentAmount, setInitialPaymentAmount] = useState(0);
   const [initialPaymentMethod, setInitialPaymentMethod] = useState('cash');
+  const [initialPaymentReference, setInitialPaymentReference] = useState('');
+  const [billSponsors, setBillSponsors] = useState([]);
 
   // Record Payment Form State
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentSponsorIndex, setPaymentSponsorIndex] = useState('');
+
+  const REFERENCE_REQUIRED_METHODS = ['jazzcash', 'easypaisa', 'bank_transfer'];
 
   // Query: Bills List
   const {
@@ -159,6 +165,8 @@ export default function BillingModule({ initialPatient = null }) {
       setBillItems([EMPTY_LINE_ITEM]);
       if (!initialPatient) setBillPatient(null);
       setInitialPaymentAmount(0);
+      setInitialPaymentReference('');
+      setBillSponsors([]);
       toast.success(`Invoice generated successfully. Total: ${formatCurrency(data.totalAmount)}`);
     },
     onError: (err) => {
@@ -168,13 +176,20 @@ export default function BillingModule({ initialPatient = null }) {
 
   // Mutation: Record Payment
   const recordPaymentMutation = useMutation({
-    mutationFn: async ({ billId, amount, paymentMethod }) => {
-      const res = await api.patch(`/api/billing/${billId}/payment`, { amount, paymentMethod });
+    mutationFn: async ({ billId, amount, paymentMethod, referenceNumber, sponsorIndex }) => {
+      const res = await api.patch(`/api/billing/${billId}/payment`, {
+        amount,
+        paymentMethod,
+        referenceNumber,
+        sponsorIndex: sponsorIndex === '' ? undefined : Number(sponsorIndex),
+      });
       return res.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setPaymentBillTarget(null);
+      setPaymentReference('');
+      setPaymentSponsorIndex('');
       toast.success(`Payment of ${formatCurrency(paymentAmount)} recorded. Status: ${data.paymentStatus.toUpperCase()}`);
     },
     onError: (err) => {
@@ -230,6 +245,23 @@ export default function BillingModule({ initialPatient = null }) {
   const createBillTotal = useMemo(() => {
     return billItems.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   }, [billItems]);
+
+  // Sponsor split actions (e.g. corporate panel/TPA covering part of the bill alongside the patient)
+  const handleAddSponsor = () => {
+    setBillSponsors((prev) => [...prev, { payerType: 'panel', payerName: '', amountOwed: 0, amountPaid: 0 }]);
+  };
+
+  const handleUpdateSponsor = (index, field, value) => {
+    setBillSponsors((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: field === 'amountOwed' ? Number(value) || 0 : value };
+      return updated;
+    });
+  };
+
+  const handleRemoveSponsor = (index) => {
+    setBillSponsors((prev) => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -531,7 +563,7 @@ export default function BillingModule({ initialPatient = null }) {
                       </td>
 
                       <td className="py-4 px-4 text-xs capitalize text-muted-foreground">
-                        {bill.paymentMethod || '—'}
+                        {bill.paymentMethod?.replace('_', ' ') || '—'}
                       </td>
 
                       <td className="py-4 px-6 text-right">
@@ -740,11 +772,72 @@ export default function BillingModule({ initialPatient = null }) {
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Credit/Debit Card</option>
+                  <option value="jazzcash">JazzCash</option>
+                  <option value="easypaisa">Easypaisa</option>
+                  <option value="bank_transfer">Bank Transfer</option>
                   <option value="insurance">Insurance</option>
                   <option value="other">Other</option>
                 </select>
               </div>
+
+              {REFERENCE_REQUIRED_METHODS.includes(initialPaymentMethod) && (
+                <div className="space-y-1 col-span-2">
+                  <label className="text-[11px] font-semibold text-muted-foreground block">
+                    Transaction / Reference Number *
+                  </label>
+                  <Input
+                    value={initialPaymentReference}
+                    onChange={(e) => setInitialPaymentReference(e.target.value)}
+                    placeholder="e.g. TXN12345678"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Sponsor split (e.g. patient + a corporate panel/TPA) */}
+          <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-foreground block">Sponsors / Payer Split (Optional)</span>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddSponsor} className="h-7 text-[11px]">
+                <Plus className="h-3 w-3 mr-1" /> Add Sponsor
+              </Button>
+            </div>
+            {billSponsors.map((sponsor, idx) => (
+              <div key={idx} className="grid grid-cols-4 gap-2 items-center">
+                <select
+                  value={sponsor.payerType}
+                  onChange={(e) => handleUpdateSponsor(idx, 'payerType', e.target.value)}
+                  className="flex h-8 rounded-lg border border-input bg-card px-2 text-xs text-foreground"
+                >
+                  <option value="patient">Patient</option>
+                  <option value="panel">Corporate Panel</option>
+                  <option value="tpa">TPA / Insurer</option>
+                </select>
+                <Input
+                  value={sponsor.payerName}
+                  onChange={(e) => handleUpdateSponsor(idx, 'payerName', e.target.value)}
+                  placeholder="Payer name"
+                  className="h-8 text-xs"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  value={sponsor.amountOwed}
+                  onChange={(e) => handleUpdateSponsor(idx, 'amountOwed', e.target.value)}
+                  placeholder="Amount owed"
+                  className="h-8 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveSponsor(idx)}
+                  className="text-muted-foreground hover:text-destructive p-1 justify-self-start"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
 
           {/* Actions */}
@@ -768,11 +861,21 @@ export default function BillingModule({ initialPatient = null }) {
                   toast.error('Please ensure all line items have descriptions and valid amounts.');
                   return;
                 }
+                if (
+                  initialPaymentAmount > 0 &&
+                  REFERENCE_REQUIRED_METHODS.includes(initialPaymentMethod) &&
+                  !initialPaymentReference.trim()
+                ) {
+                  toast.error('A transaction/reference number is required for this payment method.');
+                  return;
+                }
                 createBillMutation.mutate({
                   patientId: billPatient._id,
                   items: billItems,
                   amountPaid: initialPaymentAmount,
                   paymentMethod: initialPaymentAmount > 0 ? initialPaymentMethod : undefined,
+                  referenceNumber: initialPaymentAmount > 0 ? initialPaymentReference : undefined,
+                  sponsors: billSponsors,
                 });
               }}
               disabled={createBillMutation.isPending || !billPatient}
@@ -841,10 +944,47 @@ export default function BillingModule({ initialPatient = null }) {
                 >
                   <option value="cash">Cash</option>
                   <option value="card">Credit / Debit Card</option>
+                  <option value="jazzcash">JazzCash</option>
+                  <option value="easypaisa">Easypaisa</option>
+                  <option value="bank_transfer">Bank Transfer</option>
                   <option value="insurance">Insurance Claim</option>
-                  <option value="other">Bank Transfer / Other</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
+
+              {REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && (
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground/80 uppercase tracking-wider block text-xs">
+                    Transaction / Reference Number *
+                  </label>
+                  <Input
+                    value={paymentReference}
+                    onChange={(e) => setPaymentReference(e.target.value)}
+                    placeholder="e.g. TXN12345678"
+                    className="text-xs"
+                  />
+                </div>
+              )}
+
+              {paymentBillTarget.sponsors?.length > 0 && (
+                <div className="space-y-1">
+                  <label className="font-semibold text-foreground/80 uppercase tracking-wider block text-xs">
+                    Apply to Sponsor (Optional)
+                  </label>
+                  <select
+                    value={paymentSponsorIndex}
+                    onChange={(e) => setPaymentSponsorIndex(e.target.value)}
+                    className="flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1.5 text-xs text-foreground"
+                  >
+                    <option value="">— Not sponsor-specific —</option>
+                    {paymentBillTarget.sponsors.map((s, i) => (
+                      <option key={i} value={i}>
+                        {s.payerType} {s.payerName ? `(${s.payerName})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
@@ -862,10 +1002,16 @@ export default function BillingModule({ initialPatient = null }) {
                     toast.error('Payment amount must be greater than zero.');
                     return;
                   }
+                  if (REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !paymentReference.trim()) {
+                    toast.error('A transaction/reference number is required for this payment method.');
+                    return;
+                  }
                   recordPaymentMutation.mutate({
                     billId: paymentBillTarget._id,
                     amount: paymentAmount,
                     paymentMethod,
+                    referenceNumber: paymentReference,
+                    sponsorIndex: paymentSponsorIndex,
                   });
                 }}
                 disabled={recordPaymentMutation.isPending || paymentAmount <= 0}
@@ -934,9 +1080,50 @@ export default function BillingModule({ initialPatient = null }) {
               </div>
             </div>
 
+            {selectedBillForDetails.payments?.length > 0 && (
+              <div className="p-3 bg-card border border-border rounded-xl space-y-2">
+                <span className="font-bold text-foreground block">Payment History</span>
+                <div className="space-y-1 divide-y divide-border/40">
+                  {selectedBillForDetails.payments.map((p, i) => (
+                    <div key={i} className="pt-1.5 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-foreground capitalize">{p.method.replace('_', ' ')}</span>
+                        {p.referenceNumber && (
+                          <span className="ml-2 text-[10px] text-muted-foreground font-mono">Ref: {p.referenceNumber}</span>
+                        )}
+                        <span className="block text-[10px] text-muted-foreground">
+                          {p.date ? new Date(p.date).toLocaleString() : ''}
+                        </span>
+                      </div>
+                      <span className="font-bold text-foreground">{formatCurrency(p.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {selectedBillForDetails.sponsors?.length > 0 && (
+              <div className="p-3 bg-card border border-border rounded-xl space-y-2">
+                <span className="font-bold text-foreground block">Payer Split</span>
+                <div className="space-y-1 divide-y divide-border/40">
+                  {selectedBillForDetails.sponsors.map((s, i) => (
+                    <div key={i} className="pt-1.5 flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-foreground capitalize">{s.payerType}</span>
+                        {s.payerName && <span className="ml-2 text-[10px] text-muted-foreground">{s.payerName}</span>}
+                      </div>
+                      <span className="text-muted-foreground">
+                        {formatCurrency(s.amountPaid)} / {formatCurrency(s.amountOwed)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between pt-3 border-t border-border">
               <span className="text-muted-foreground">
-                Payment Method: <strong className="capitalize text-foreground">{selectedBillForDetails.paymentMethod || 'Unspecified'}</strong>
+                Payment Method: <strong className="capitalize text-foreground">{selectedBillForDetails.paymentMethod?.replace('_', ' ') || 'Unspecified'}</strong>
               </span>
               <Button type="button" variant="outline" size="sm" onClick={() => setSelectedBillForDetails(null)}>
                 Close

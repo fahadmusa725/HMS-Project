@@ -3,9 +3,24 @@ const Patient = require("../models/Patient");
 const LabOrder = require("../models/LabOrder");
 const PharmacySale = require("../models/PharmacySale");
 
+const REFERENCE_REQUIRED_METHODS = ["jazzcash", "easypaisa", "bank_transfer"];
+
+/** Recompute amountPaid + paymentStatus from the payments ledger so they never drift apart. */
+function recalcBillTotals(bill) {
+  bill.amountPaid = bill.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  if (bill.amountPaid >= bill.totalAmount && bill.totalAmount > 0) {
+    bill.paymentStatus = "paid";
+  } else if (bill.amountPaid > 0) {
+    bill.paymentStatus = "partial";
+  } else {
+    bill.paymentStatus = "unpaid";
+  }
+}
+
 async function createBill(req, res) {
   try {
-    const { patientId, items, paymentMethod, amountPaid, labOrderId, pharmacySaleId, admissionId } = req.body;
+    const { patientId, items, paymentMethod, amountPaid, referenceNumber, sponsors, labOrderId, pharmacySaleId, admissionId } =
+      req.body;
 
     if (!patientId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "patientId and a non-empty items array are required." });
@@ -17,22 +32,29 @@ async function createBill(req, res) {
     const totalAmount = items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     const paid = Number(amountPaid || 0);
 
-    let paymentStatus = "unpaid";
-    if (paid >= totalAmount && totalAmount > 0) paymentStatus = "paid";
-    else if (paid > 0) paymentStatus = "partial";
+    if (paid > 0 && REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !referenceNumber) {
+      return res.status(400).json({ message: "A reference/transaction number is required for this payment method." });
+    }
 
-    const bill = await Bill.create({
+    const payments = [];
+    if (paid > 0) {
+      payments.push({ method: paymentMethod || "cash", amount: paid, referenceNumber, paidBy: req.user.userId });
+    }
+
+    const bill = new Bill({
       patientId,
       items,
       totalAmount,
-      amountPaid: paid,
-      paymentStatus,
+      payments,
+      sponsors: Array.isArray(sponsors) ? sponsors : [],
       paymentMethod,
       labOrderId,
       pharmacySaleId,
       admissionId,
       createdBy: req.user.userId,
     });
+    recalcBillTotals(bill);
+    await bill.save();
 
     // Charged here, so an IPD discharge bill must not pick these up again.
     await Promise.all([
@@ -71,25 +93,38 @@ async function getPatientBills(req, res) {
   }
 }
 
-/** Record a payment (full or partial) against an existing bill. */
+/** Record a payment (full or partial, optionally against a specific sponsor) against an existing bill. */
 async function recordPayment(req, res) {
   try {
-    const { amount, paymentMethod } = req.body;
+    const { amount, paymentMethod, referenceNumber, sponsorIndex } = req.body;
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: "amount must be a positive number." });
+    }
+    if (REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !referenceNumber) {
+      return res.status(400).json({ message: "A reference/transaction number is required for this payment method." });
     }
 
     const bill = await Bill.findById(req.params.id);
     if (!bill) return res.status(404).json({ message: "Bill not found." });
 
-    bill.amountPaid += Number(amount);
-    if (paymentMethod) bill.paymentMethod = paymentMethod;
-
-    if (bill.amountPaid >= bill.totalAmount) {
-      bill.paymentStatus = "paid";
-    } else if (bill.amountPaid > 0) {
-      bill.paymentStatus = "partial";
+    const remaining = bill.totalAmount - bill.amountPaid;
+    if (Number(amount) > remaining) {
+      return res.status(400).json({ message: `Amount exceeds the remaining balance of ${remaining}.` });
     }
+
+    bill.payments.push({
+      method: paymentMethod || "cash",
+      amount: Number(amount),
+      referenceNumber,
+      paidBy: req.user.userId,
+    });
+    bill.paymentMethod = paymentMethod || bill.paymentMethod;
+
+    if (sponsorIndex !== undefined && bill.sponsors[sponsorIndex]) {
+      bill.sponsors[sponsorIndex].amountPaid += Number(amount);
+    }
+
+    recalcBillTotals(bill);
 
     await bill.save();
     res.json(bill);

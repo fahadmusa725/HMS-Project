@@ -68,6 +68,24 @@ export default function FinancialReport() {
   const revenueOverTime = report?.revenueOverTime || [];
   const revenueByCategory = report?.revenueByCategory || [];
   const paymentStatusBreakdown = report?.paymentStatusBreakdown || [];
+  const collectionsByMethod = report?.collectionsByMethod || [];
+  const collectionsBySponsorType = report?.collectionsBySponsorType || [];
+
+  const METHOD_LABELS = {
+    cash: 'Cash',
+    card: 'Card',
+    jazzcash: 'JazzCash',
+    easypaisa: 'Easypaisa',
+    bank_transfer: 'Bank Transfer',
+    insurance: 'Insurance',
+    other: 'Other',
+  };
+
+  const SPONSOR_LABELS = {
+    patient: 'Patient (Self-Pay)',
+    panel: 'Corporate Panel',
+    tpa: 'TPA / Insurer',
+  };
 
   return (
     <div className="space-y-6">
@@ -343,6 +361,61 @@ export default function FinancialReport() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </Card>
+
+          {/* Collections by Payment Method */}
+          <Card className="lg:col-span-1 p-5 border-border shadow-soft bg-card space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Collections by Payment Method</h3>
+              <p className="text-xs text-muted-foreground">Cash, cards, JazzCash, Easypaisa, and bank transfers</p>
+            </div>
+
+            {collectionsByMethod.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No payments recorded in this period.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {collectionsByMethod.map((m) => (
+                  <div key={m._id} className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-foreground">{METHOD_LABELS[m._id] || m._id}</span>
+                    <span className="font-bold text-foreground">{formatCurrency(m.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Collections by Sponsor Type */}
+          <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Collections by Sponsor Type</h3>
+              <p className="text-xs text-muted-foreground">
+                Self-pay patients vs. corporate panel and TPA/insurer sponsored bills
+              </p>
+            </div>
+
+            {collectionsBySponsorType.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No sponsor-split bills recorded in this period.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {collectionsBySponsorType.map((s) => (
+                  <div key={s._id} className="p-4 rounded-xl border border-border bg-muted/20">
+                    <span className="text-xs font-bold uppercase tracking-wider text-foreground">
+                      {SPONSOR_LABELS[s._id] || s._id}
+                    </span>
+                    <div className="mt-2 text-lg font-extrabold text-foreground">
+                      {formatCurrency(s.amountPaid)}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      of {formatCurrency(s.amountOwed)} owed
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Card>
