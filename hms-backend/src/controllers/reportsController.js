@@ -10,6 +10,7 @@ const Bed = require("../models/Bed");
 const Admission = require("../models/Admission");
 const User = require("../models/User");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
+const { hospitalDate } = require("../utils/scheduleSlots");
 
 /**
  * CRITICAL: Mongoose's tenantPlugin hooks into Query middleware (find,
@@ -46,7 +47,7 @@ async function getOverview(req, res) {
     const [revenueAgg, totalPatients, appointmentsToday, beds] = await Promise.all([
       Bill.aggregate([{ $match: match }, { $group: { _id: null, total: { $sum: "$totalAmount" } } }]),
       Patient.countDocuments(match),
-      Appointment.countDocuments({ ...match, date: new Date().toISOString().slice(0, 10) }),
+      Appointment.countDocuments({ ...match, date: hospitalDate(0) }),
       Bed.find(match),
     ]);
 

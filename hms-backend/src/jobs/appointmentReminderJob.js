@@ -1,6 +1,7 @@
 const Appointment = require("../models/Appointment");
 const { sendEmail } = require("../utils/mailer");
 const doctorName = require("../utils/doctorName");
+const { hospitalDate } = require("../utils/scheduleSlots");
 
 /**
  * Finds all appointments scheduled for TOMORROW (across every hospital)
@@ -14,7 +15,7 @@ const doctorName = require("../utils/doctorName");
  * testing, or later from a Vercel Cron Job in production.
  */
 async function sendAppointmentReminders() {
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const tomorrow = hospitalDate(1);
 
   const upcoming = await Appointment.aggregate([
     { $match: { date: tomorrow, status: { $in: ["scheduled", "checked_in"] } } },

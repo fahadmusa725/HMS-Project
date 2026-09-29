@@ -1,7 +1,7 @@
 const DoctorSchedule = require("../models/DoctorSchedule");
 const User = require("../models/User");
 const Appointment = require("../models/Appointment");
-const { HHMM_REGEX, dayOfWeekFor, slotsForDate } = require("../utils/scheduleSlots");
+const { HHMM_REGEX, dayOfWeekFor, slotsForDate, hospitalNow } = require("../utils/scheduleSlots");
 
 /** Upsert a doctor's weekly working hours, fee and slot length. Hospital admin only. */
 async function upsertSchedule(req, res) {
@@ -110,9 +110,21 @@ async function getAvailableSlots(req, res) {
       return res.json({ slots: [], consultationFee: 0, message: "This doctor has no schedule configured yet." });
     }
 
-    const allSlots = slotsForDate(schedule, date);
+    let allSlots = slotsForDate(schedule, date);
     if (allSlots.length === 0) {
       return res.json({ slots: [], consultationFee: schedule.consultationFee, message: "Doctor is not available on this day." });
+    }
+
+    // A slot that has already started today can't be booked any more.
+    const now = hospitalNow();
+    if (date < now.date) {
+      return res.json({ slots: [], consultationFee: schedule.consultationFee, message: "This date is in the past." });
+    }
+    if (date === now.date) {
+      allSlots = allSlots.filter((t) => t > now.time);
+      if (allSlots.length === 0) {
+        return res.json({ slots: [], consultationFee: schedule.consultationFee, message: "This doctor has no more slots left today." });
+      }
     }
 
     const bookedAppointments = await Appointment.find({

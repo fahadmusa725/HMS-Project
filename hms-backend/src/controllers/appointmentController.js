@@ -7,7 +7,7 @@ const DoctorSchedule = require("../models/DoctorSchedule");
 const Bill = require("../models/Bill");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
-const { slotsForDate } = require("../utils/scheduleSlots");
+const { slotsForDate, hospitalNow, APP_TIMEZONE } = require("../utils/scheduleSlots");
 const doctorName = require("../utils/doctorName");
 
 /**
@@ -46,7 +46,8 @@ async function createAppointmentWithBilling({ patientId, doctorId, type, date, t
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
     throw { status: 400, message: "date must be in YYYY-MM-DD format." };
   }
-  if (date < new Date().toISOString().slice(0, 10)) {
+  const now = hospitalNow();
+  if (date < now.date) {
     throw { status: 400, message: "Appointments cannot be booked for a past date." };
   }
 
@@ -65,6 +66,9 @@ async function createAppointmentWithBilling({ patientId, doctorId, type, date, t
     }
     if (!workingSlots.includes(time)) {
       throw { status: 400, message: "The selected time is outside this doctor's working hours." };
+    }
+    if (date === now.date && time <= now.time) {
+      throw { status: 400, message: "That time slot has already passed today. Please pick a later slot." };
     }
     const clash = await Appointment.findOne({ doctorId, date, time, status: { $ne: "cancelled" } });
     if (clash) {
@@ -161,7 +165,7 @@ async function bookAppointment(req, res) {
 async function getQueue(req, res) {
   try {
     const { date, doctorId } = req.query;
-    const targetDate = date || new Date().toISOString().slice(0, 10);
+    const targetDate = date || hospitalNow().date;
 
     const filter = { date: targetDate };
     if (doctorId) filter.doctorId = doctorId;
@@ -298,7 +302,7 @@ async function getAppointmentSlipPdf(req, res) {
     }
 
     doc.moveDown(1);
-    doc.font("Helvetica").fontSize(7).fillColor("#888").text(`Printed ${new Date().toLocaleString("en-GB")}`, { align: "center" });
+    doc.font("Helvetica").fontSize(7).fillColor("#888").text(`Printed ${new Date().toLocaleString("en-GB", { timeZone: APP_TIMEZONE })}`, { align: "center" });
     doc.text("Please wait for your token number to be called.", { align: "center" });
 
     doc.end();

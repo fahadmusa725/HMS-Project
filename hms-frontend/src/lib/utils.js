@@ -25,5 +25,10 @@ export function doctorName(name, fallback = '—') {
   return /^dr\.?\s/i.test(n) ? n : `Dr. ${n}`;
 }
 
+/** Today's date in the user's LOCAL timezone as "YYYY-MM-DD" (toISOString() would give the UTC date). */
+export function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

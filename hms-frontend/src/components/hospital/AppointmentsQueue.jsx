@@ -30,7 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import ConsultationForm from '@/components/hospital/ConsultationForm';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
-import { formatCurrency, formatSlotTime } from '@/lib/utils';
+import { formatCurrency, formatSlotTime, localDateStr } from '@/lib/utils';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
@@ -59,7 +59,7 @@ export default function AppointmentsQueue() {
   const canBook = role === 'hospital_admin' || role === 'receptionist';
   const can = (status) => STATUS_TRANSITION_ROLES[status]?.includes(role);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateStr();
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [doctorFilter, setDoctorFilter] = useState(isDoctor ? user?.id : 'all');
   const [isBookOpen, setIsBookOpen] = useState(false);

@@ -44,4 +44,35 @@ function slotsForDate(schedule, date) {
   return [...new Set(slots)].sort();
 }
 
-module.exports = { HHMM_REGEX, generateSlots, dayOfWeekFor, slotsForDate };
+/**
+ * The hospital's local "now". Schedules, appointment dates and "today's queue" are all in local
+ * clinic time, but servers (Vercel included) run in UTC - so "today" must never come from
+ * toISOString(), or between midnight and 5 AM in Pakistan it would still be yesterday.
+ */
+const APP_TIMEZONE = process.env.APP_TIMEZONE || "Asia/Karachi";
+
+function hospitalNow(at = new Date()) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: APP_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    })
+      .formatToParts(at)
+      .map((p) => [p.type, p.value])
+  );
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
+/** Local calendar date `days` away from today, as "YYYY-MM-DD" (e.g. 1 = tomorrow). */
+function hospitalDate(days = 0) {
+  const d = new Date(hospitalNow().date + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+module.exports = { HHMM_REGEX, generateSlots, dayOfWeekFor, slotsForDate, hospitalNow, hospitalDate, APP_TIMEZONE };

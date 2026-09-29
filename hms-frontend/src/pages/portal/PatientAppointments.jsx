@@ -23,7 +23,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
-import { formatCurrency, formatSlotTime, doctorName } from '@/lib/utils';
+import { formatCurrency, formatSlotTime, doctorName, localDateStr } from '@/lib/utils';
 
 const bookingSchema = z.object({
   doctorId: z.string().min(1, 'Please select a doctor'),
@@ -53,7 +53,7 @@ export default function PatientAppointments() {
     resolver: zodResolver(bookingSchema),
     defaultValues: {
       doctorId: '',
-      date: new Date().toISOString().slice(0, 10),
+      date: localDateStr(),
       time: '',
       reason: '',
     },
@@ -110,7 +110,7 @@ export default function PatientAppointments() {
   };
 
   // Filter appointments
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localDateStr();
 
   const filteredAppointments = useMemo(() => {
     const list = Array.isArray(appointments) ? appointments : [];
