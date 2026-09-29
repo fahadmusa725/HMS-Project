@@ -9,11 +9,13 @@ function getTransporter() {
     return null; // not configured yet - caller falls back to console logging
   }
 
+  const port = Number(process.env.EMAIL_PORT) || 587;
   transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: false,
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+    host: process.env.EMAIL_HOST || "smtp.gmail.com",
+    port,
+    secure: port === 465, // 465 = implicit TLS; 587 = STARTTLS
+    // Gmail shows App Passwords as "abcd efgh ijkl mnop" - accept it pasted with or without the spaces.
+    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS.replace(/\s+/g, "") },
   });
 
   return transporter;
@@ -35,7 +37,11 @@ async function sendEmail({ to, subject, html }) {
   }
 
   try {
-    await t.sendMail({ from: process.env.EMAIL_USER, to, subject, html });
+    // EMAIL_FROM_NAME is just the display name ("CareFlow HMS"); Gmail requires the address itself to be EMAIL_USER.
+    const from = process.env.EMAIL_FROM_NAME
+      ? `"${process.env.EMAIL_FROM_NAME}" <${process.env.EMAIL_USER}>`
+      : process.env.EMAIL_USER;
+    await t.sendMail({ from, to, subject, html });
     return { sent: true };
   } catch (err) {
     console.error("[Mailer] Failed to send email:", err.message);

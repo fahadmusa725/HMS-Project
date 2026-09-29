@@ -8,6 +8,7 @@ const {
   deleteHospital,
   triggerTrialCheck,
   triggerAppointmentReminders,
+  sendTestEmail,
 } = require("../controllers/superAdminController");
 
 const router = express.Router();
@@ -21,5 +22,6 @@ router.patch("/hospitals/:hospitalId", updateHospitalStatus);
 router.delete("/hospitals/:hospitalId", deleteHospital);
 router.post("/trial-check", triggerTrialCheck);
 router.post("/appointment-reminder-check", triggerAppointmentReminders);
+router.post("/test-email", sendTestEmail);
 
 module.exports = router;

@@ -18,6 +18,7 @@ const { Counter } = require("../models/Counter");
 const { runWithTenantContext } = require("../utils/tenantContext");
 const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
 const { sendAppointmentReminders } = require("../jobs/appointmentReminderJob");
+const { sendEmail } = require("../utils/mailer");
 
 /**
  * Create a new hospital (tenant) + its first Hospital Admin account.
@@ -196,7 +197,31 @@ async function triggerAppointmentReminders(req, res) {
   }
 }
 
+/**
+ * Sends a test email (to `to` from the body, or the super admin's own address) and reports
+ * whether SMTP actually accepted it - a quick way to check email config locally or on Vercel.
+ */
+async function sendTestEmail(req, res) {
+  try {
+    const me = await User.findById(req.user.userId).setOptions({ skipTenantScope: true });
+    const to = req.body.to || (me && me.email);
+    if (!to) return res.status(400).json({ message: "No recipient - pass { to } in the body." });
+
+    const result = await sendEmail({
+      to,
+      subject: "HMS test email",
+      html: `<p>This is a test email from your Hospital Management System, sent at ${new Date().toUTCString()}.</p>
+             <p>If you can read this, email notifications are working.</p>`,
+    });
+    res.status(result.sent ? 200 : 502).json({ to, ...result });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while sending test email." });
+  }
+}
+
 module.exports = {
+  sendTestEmail,
   createHospital,
   listHospitals,
   updateHospitalStatus,
