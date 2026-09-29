@@ -30,10 +30,11 @@ async function api(path, { method = "GET", token, body } = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
-function daysFromNow(n) {
-  const d = new Date();
+/** Local calendar date n days from today, "YYYY-MM-DD" (not toISOString, which would be the UTC date). */
+function daysFromNow(n, from = new Date()) {
+  const d = new Date(from);
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 async function main() {
@@ -154,7 +155,12 @@ async function main() {
     ].filter((a) => a.patientId && a.doctorId);
 
     for (const a of appts) {
-      const time = await firstOpenSlot(a.doctorId, a.date);
+      let time = await firstOpenSlot(a.doctorId, a.date);
+      if (!time) {
+        // e.g. seeding in the evening after today's OPD hours are over - use the next day instead
+        a.date = daysFromNow(1, new Date(a.date + "T00:00:00"));
+        time = await firstOpenSlot(a.doctorId, a.date);
+      }
       if (!time) {
         console.log(`   – skipped ${a.date} (doctor has no open slot that day)`);
         continue;
