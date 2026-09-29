@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import { DAY_NAMES, doctorName } from '@/lib/utils';
+import { DAY_NAMES, doctorName, formatSlotTime } from '@/lib/utils';
 
 const SLOT_OPTIONS = [10, 15, 20, 30, 45, 60];
 const NEW_BLOCK = { dayOfWeek: 1, startTime: '09:00', endTime: '13:00' };
@@ -85,7 +85,8 @@ function ScheduleForm({ doctor, schedule, onClose }) {
   const updateBlock = (idx, field, value) =>
     setBlocks((prev) => prev.map((b, i) => (i === idx ? { ...b, [field]: value } : b)));
 
-  const invalidBlock = blocks.some((b) => !b.startTime || !b.endTime || b.startTime >= b.endTime);
+  // An end time earlier than the start is a valid overnight shift (e.g. 21:00 -> 02:00); only a zero-length block is wrong.
+  const invalidBlock = blocks.some((b) => !b.startTime || !b.endTime || b.startTime === b.endTime);
   const busy = saveMutation.isPending;
 
   return (
@@ -146,49 +147,57 @@ function ScheduleForm({ doctor, schedule, onClose }) {
         ) : (
           <div className="space-y-2">
             {blocks.map((b, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
-                <select
-                  value={b.dayOfWeek}
-                  onChange={(e) => updateBlock(idx, 'dayOfWeek', Number(e.target.value))}
-                  disabled={busy}
-                  className={selectClass}
-                >
-                  {DAY_NAMES.map((d, i) => (
-                    <option key={d} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  type="time"
-                  value={b.startTime}
-                  onChange={(e) => updateBlock(idx, 'startTime', e.target.value)}
-                  disabled={busy}
-                  className="h-9 w-28"
-                />
-                <span className="text-xs text-muted-foreground">to</span>
-                <Input
-                  type="time"
-                  value={b.endTime}
-                  onChange={(e) => updateBlock(idx, 'endTime', e.target.value)}
-                  disabled={busy}
-                  className={`h-9 w-28 ${b.startTime >= b.endTime ? 'border-destructive' : ''}`}
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  title="Remove"
-                  onClick={() => setBlocks((prev) => prev.filter((_, i) => i !== idx))}
-                  disabled={busy}
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+              <div key={idx} className="space-y-1">
+                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
+                  <select
+                    value={b.dayOfWeek}
+                    onChange={(e) => updateBlock(idx, 'dayOfWeek', Number(e.target.value))}
+                    disabled={busy}
+                    className={selectClass}
+                  >
+                    {DAY_NAMES.map((d, i) => (
+                      <option key={d} value={i}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    type="time"
+                    value={b.startTime}
+                    onChange={(e) => updateBlock(idx, 'startTime', e.target.value)}
+                    disabled={busy}
+                    className="h-9 w-28"
+                  />
+                  <span className="text-xs text-muted-foreground">to</span>
+                  <Input
+                    type="time"
+                    value={b.endTime}
+                    onChange={(e) => updateBlock(idx, 'endTime', e.target.value)}
+                    disabled={busy}
+                    className={`h-9 w-28 ${b.startTime === b.endTime ? 'border-destructive' : ''}`}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    title="Remove"
+                    onClick={() => setBlocks((prev) => prev.filter((_, i) => i !== idx))}
+                    disabled={busy}
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {b.startTime && b.endTime && b.endTime < b.startTime && (
+                  <p className="text-[10px] text-muted-foreground pl-1">
+                    Overnight shift — runs past midnight until {formatSlotTime(b.endTime)} on{' '}
+                    {DAY_NAMES[(Number(b.dayOfWeek) + 1) % 7]}.
+                  </p>
+                )}
               </div>
             ))}
             {invalidBlock && (
-              <p className="text-xs text-destructive">Each block&rsquo;s end time must be after its start time.</p>
+              <p className="text-xs text-destructive">A block&rsquo;s start and end time can&rsquo;t be the same.</p>
             )}
           </div>
         )}

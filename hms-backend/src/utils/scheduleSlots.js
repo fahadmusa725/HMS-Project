@@ -19,14 +19,24 @@ function toHHMM(mins) {
   return `${h}:${m}`;
 }
 
-function generateSlots(startTime, endTime, stepMinutes) {
+const DAY_MINUTES = 24 * 60;
+
+/** A block whose endTime is earlier than its startTime (e.g. 21:00 -> 02:00) runs past midnight into the next day. */
+function isOvernight(block) {
+  return toMinutes(block.endTime) < toMinutes(block.startTime);
+}
+
+/**
+ * Slot start times for one block, in minutes from midnight of the block's OWN day. An overnight
+ * block keeps stepping past 24:00, so 21:00 -> 02:00 in 60-min slots gives 21:00, 22:00, 23:00,
+ * 24:00 (= 00:00 next day) and 25:00 (= 01:00 next day). A slot is only offered if it finishes
+ * by the block's end.
+ */
+function blockSlotMinutes(block, stepMinutes) {
+  const start = toMinutes(block.startTime);
+  const end = toMinutes(block.endTime) + (isOvernight(block) ? DAY_MINUTES : 0);
   const slots = [];
-  let cur = toMinutes(startTime);
-  const end = toMinutes(endTime);
-  while (cur + stepMinutes <= end) {
-    slots.push(toHHMM(cur));
-    cur += stepMinutes;
-  }
+  for (let cur = start; cur + stepMinutes <= end; cur += stepMinutes) slots.push(cur);
   return slots;
 }
 
@@ -35,12 +45,29 @@ function dayOfWeekFor(date) {
   return new Date(date + "T00:00:00").getDay();
 }
 
-/** Every slot the doctor works on this date (booked or not), in time order. */
+/**
+ * Every slot the doctor works on this calendar date (booked or not), in time order. That's the
+ * part of this day's blocks before midnight, plus the after-midnight tail of the PREVIOUS day's
+ * overnight blocks - e.g. a Monday 21:00-02:00 shift puts its 00:00 and 01:00 slots on Tuesday.
+ */
 function slotsForDate(schedule, date) {
   const dayOfWeek = dayOfWeekFor(date);
-  const slots = schedule.weeklyAvailability
-    .filter((b) => b.dayOfWeek === dayOfWeek)
-    .flatMap((b) => generateSlots(b.startTime, b.endTime, schedule.slotDurationMinutes));
+  const previousDay = (dayOfWeek + 6) % 7;
+  const step = schedule.slotDurationMinutes;
+  const slots = [];
+
+  for (const block of schedule.weeklyAvailability) {
+    if (block.dayOfWeek === dayOfWeek) {
+      blockSlotMinutes(block, step)
+        .filter((m) => m < DAY_MINUTES)
+        .forEach((m) => slots.push(toHHMM(m)));
+    }
+    if (block.dayOfWeek === previousDay && isOvernight(block)) {
+      blockSlotMinutes(block, step)
+        .filter((m) => m >= DAY_MINUTES)
+        .forEach((m) => slots.push(toHHMM(m - DAY_MINUTES)));
+    }
+  }
   return [...new Set(slots)].sort();
 }
 
@@ -75,4 +102,4 @@ function hospitalDate(days = 0) {
   return d.toISOString().slice(0, 10);
 }
 
-module.exports = { HHMM_REGEX, generateSlots, dayOfWeekFor, slotsForDate, hospitalNow, hospitalDate, APP_TIMEZONE };
+module.exports = { HHMM_REGEX, isOvernight, dayOfWeekFor, slotsForDate, hospitalNow, hospitalDate, APP_TIMEZONE };

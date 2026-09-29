@@ -30,10 +30,11 @@ async function upsertSchedule(req, res) {
           block.dayOfWeek > 6 ||
           !HHMM_REGEX.test(block.startTime || "") ||
           !HHMM_REGEX.test(block.endTime || "") ||
-          block.startTime >= block.endTime
+          block.startTime === block.endTime // endTime before startTime is fine: an overnight shift, e.g. 21:00-02:00
         ) {
           return res.status(400).json({
-            message: "Each availability block needs a dayOfWeek (0-6) and HH:MM startTime earlier than endTime.",
+            message:
+              "Each availability block needs a dayOfWeek (0-6) and different HH:MM start and end times (an end time earlier than the start means the shift runs past midnight).",
           });
         }
       }
@@ -75,13 +76,15 @@ async function getAvailableDoctors(req, res) {
     const { date } = req.query;
     if (!date) return res.status(400).json({ message: "date query param is required (YYYY-MM-DD)." });
 
-    const schedules = await DoctorSchedule.find({ "weeklyAvailability.dayOfWeek": dayOfWeekFor(date) }).populate(
-      "doctorId",
-      "name department status"
-    );
+    // Candidates: blocks on this weekday, or on the day before (an overnight shift spills into today).
+    const dayOfWeek = dayOfWeekFor(date);
+    const schedules = await DoctorSchedule.find({
+      "weeklyAvailability.dayOfWeek": { $in: [dayOfWeek, (dayOfWeek + 6) % 7] },
+    }).populate("doctorId", "name department status");
 
     const doctors = schedules
       .filter((s) => s.doctorId && s.doctorId.status === "active") // skip deleted/disabled doctor accounts
+      .filter((s) => slotsForDate(s, date).length > 0) // e.g. yesterday's block that ends at midnight gives nothing today
       .map((s) => ({
         id: s.doctorId._id,
         name: s.doctorId.name,
