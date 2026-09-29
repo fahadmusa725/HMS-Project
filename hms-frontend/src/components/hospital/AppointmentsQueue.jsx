@@ -66,6 +66,13 @@ export default function AppointmentsQueue() {
   const [patientSearch, setPatientSearch] = useState('');
   const [consultationAppointment, setConsultationAppointment] = useState(null);
   const [formError, setFormError] = useState(null);
+  const [consultationFee, setConsultationFee] = useState(0);
+  const [collectPaymentNow, setCollectPaymentNow] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentReference, setPaymentReference] = useState('');
+
+  const REFERENCE_REQUIRED_METHODS = ['jazzcash', 'easypaisa', 'bank_transfer'];
 
   const {
     register,
@@ -148,7 +155,17 @@ export default function AppointmentsQueue() {
       reset();
       setPatientSearch('');
       setFormError(null);
-      const feeText = data.bill ? ` Consultation fee ${formatCurrency(data.bill.totalAmount)} billed (unpaid).` : '';
+      setConsultationFee(0);
+      setCollectPaymentNow(false);
+      setPaymentAmount(0);
+      setPaymentReference('');
+      const feeText = data.bill
+        ? data.bill.paymentStatus === 'paid'
+          ? ` Consultation fee ${formatCurrency(data.bill.totalAmount)} collected in full.`
+          : data.bill.amountPaid > 0
+            ? ` Consultation fee ${formatCurrency(data.bill.totalAmount)} billed (${formatCurrency(data.bill.amountPaid)} collected, balance due).`
+            : ` Consultation fee ${formatCurrency(data.bill.totalAmount)} billed (unpaid).`
+        : '';
       toast.success(`Token #${data.tokenNumber} assigned successfully!`, {
         description: `Appointment booked for ${data.date} at ${formatSlotTime(data.time)}.${feeText}`,
         action: { label: 'Print slip', onClick: () => printSlip(data._id) },
@@ -188,9 +205,26 @@ export default function AppointmentsQueue() {
     },
   });
 
+  const closeBookModal = () => {
+    setIsBookOpen(false);
+    setConsultationFee(0);
+    setCollectPaymentNow(false);
+    setPaymentAmount(0);
+    setPaymentReference('');
+  };
+
   const onSubmitBook = (values) => {
     setFormError(null);
-    bookMutation.mutate(values);
+    if (collectPaymentNow && paymentAmount > 0 && REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !paymentReference.trim()) {
+      setFormError('A transaction/reference number is required for this payment method.');
+      return;
+    }
+    bookMutation.mutate({
+      ...values,
+      paymentMethod: collectPaymentNow && paymentAmount > 0 ? paymentMethod : undefined,
+      paymentAmount: collectPaymentNow ? paymentAmount : undefined,
+      referenceNumber: collectPaymentNow && paymentAmount > 0 ? paymentReference : undefined,
+    });
   };
 
   const handleStatusChange = (id, newStatus, tokenNumber) => {
@@ -564,7 +598,7 @@ export default function AppointmentsQueue() {
       <Modal
         isOpen={isBookOpen}
         onClose={() => {
-          if (!bookMutation.isPending) setIsBookOpen(false);
+          if (!bookMutation.isPending) closeBookModal();
         }}
         title="Book OPD Appointment"
         description="Assign a daily token number and schedule a patient consultation."
@@ -644,11 +678,86 @@ export default function AppointmentsQueue() {
             date={bookingDate}
             doctorId={bookingDoctorId}
             time={bookingTime}
-            onDoctorChange={(id) => setValue('doctorId', id, { shouldValidate: true })}
+            onDoctorChange={(id) => {
+              setValue('doctorId', id, { shouldValidate: true });
+              setCollectPaymentNow(false);
+              setPaymentAmount(0);
+              setPaymentReference('');
+            }}
             onTimeChange={(t) => setValue('time', t, { shouldValidate: !!t })}
+            onFeeChange={setConsultationFee}
             disabled={bookMutation.isPending}
             errors={errors}
           />
+
+          {/* Collect the consultation fee right here instead of a separate trip to Billing */}
+          {consultationFee > 0 && (
+            <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
+              <label className="flex items-center gap-2 font-semibold text-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={collectPaymentNow}
+                  onChange={(e) => {
+                    setCollectPaymentNow(e.target.checked);
+                    setPaymentAmount(e.target.checked ? consultationFee : 0);
+                  }}
+                  disabled={bookMutation.isPending}
+                  className="h-4 w-4"
+                />
+                Collect payment now ({formatCurrency(consultationFee)} consultation fee)
+              </label>
+
+              {collectPaymentNow && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground block">Amount Paid Now (PKR)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max={consultationFee}
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(Number(e.target.value) || 0)}
+                      disabled={bookMutation.isPending}
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground block">Payment Method</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      disabled={bookMutation.isPending}
+                      className="flex h-8 w-full rounded-lg border border-input bg-card px-2 text-xs text-foreground"
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="card">Credit/Debit Card</option>
+                      <option value="jazzcash">JazzCash</option>
+                      <option value="easypaisa">Easypaisa</option>
+                      <option value="bank_transfer">Bank Transfer</option>
+                      <option value="insurance">Insurance</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  {REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && (
+                    <div className="space-y-1 col-span-2">
+                      <label className="text-[11px] font-semibold text-muted-foreground block">
+                        Transaction / Reference Number *
+                      </label>
+                      <Input
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder="e.g. TXN12345678"
+                        disabled={bookMutation.isPending}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -665,7 +774,7 @@ export default function AppointmentsQueue() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsBookOpen(false)}
+              onClick={closeBookModal}
               disabled={bookMutation.isPending}
             >
               Cancel

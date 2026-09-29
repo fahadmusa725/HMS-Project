@@ -9,6 +9,7 @@ const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { slotsForDate, hospitalNow, APP_TIMEZONE, HHMM_REGEX, toMinutes, toHHMM } = require("../utils/scheduleSlots");
 const doctorName = require("../utils/doctorName");
+const { REFERENCE_REQUIRED_METHODS, recalcBillTotals } = require("../utils/billTotals");
 
 /**
  * Who may move an appointment INTO each status. The front desk runs arrival
@@ -45,9 +46,24 @@ function formatSlotTime(time) {
  * straight away so the front desk can collect it at check-in.
  * Throws { status, message } for anything the caller should report as-is.
  */
-async function createAppointmentWithBilling({ patientId, doctorId, type, date, time, reason, bookedByUserId }) {
+async function createAppointmentWithBilling({
+  patientId,
+  doctorId,
+  type,
+  date,
+  time,
+  reason,
+  bookedByUserId,
+  paymentMethod,
+  paymentAmount,
+  referenceNumber,
+}) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
     throw { status: 400, message: "date must be in YYYY-MM-DD format." };
+  }
+  const collectPayment = Number(paymentAmount) > 0;
+  if (collectPayment && REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !referenceNumber) {
+    throw { status: 400, message: "A reference/transaction number is required for this payment method." };
   }
   const now = hospitalNow();
   if (date < now.date) {
@@ -96,7 +112,11 @@ async function createAppointmentWithBilling({ patientId, doctorId, type, date, t
   let bill = null;
   if (schedule && schedule.consultationFee > 0) {
     try {
-      bill = await Bill.create({
+      if (collectPayment && Number(paymentAmount) > schedule.consultationFee) {
+        throw { status: 400, message: `Payment amount exceeds the consultation fee of ${schedule.consultationFee}.` };
+      }
+
+      bill = new Bill({
         patientId,
         appointmentId: appointment._id,
         items: [
@@ -107,10 +127,14 @@ async function createAppointmentWithBilling({ patientId, doctorId, type, date, t
           },
         ],
         totalAmount: schedule.consultationFee,
-        amountPaid: 0,
-        paymentStatus: "unpaid",
+        payments: collectPayment
+          ? [{ method: paymentMethod || "cash", amount: Number(paymentAmount), referenceNumber, paidBy: bookedByUserId }]
+          : [],
+        paymentMethod: collectPayment ? paymentMethod : undefined,
         createdBy: bookedByUserId,
       });
+      recalcBillTotals(bill);
+      await bill.save();
     } catch (err) {
       // Don't leave a booked slot behind with no fee attached to it.
       await Appointment.findByIdAndDelete(appointment._id).catch(() => {});
@@ -131,7 +155,7 @@ function sendBookingError(res, err, fallbackMessage) {
 
 async function bookAppointment(req, res) {
   try {
-    const { patientId, doctorId, type, date, time, reason } = req.body;
+    const { patientId, doctorId, type, date, time, reason, paymentMethod, paymentAmount, referenceNumber } = req.body;
 
     if (!patientId || !doctorId || !date) {
       return res.status(400).json({ message: "patientId, doctorId and date are required." });
@@ -152,6 +176,9 @@ async function bookAppointment(req, res) {
       time,
       reason,
       bookedByUserId: req.user.userId,
+      paymentMethod,
+      paymentAmount,
+      referenceNumber,
     });
 
     res.status(201).json({ ...appointment.toObject(), bill });

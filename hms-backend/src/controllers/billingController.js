@@ -2,20 +2,7 @@ const Bill = require("../models/Bill");
 const Patient = require("../models/Patient");
 const LabOrder = require("../models/LabOrder");
 const PharmacySale = require("../models/PharmacySale");
-
-const REFERENCE_REQUIRED_METHODS = ["jazzcash", "easypaisa", "bank_transfer"];
-
-/** Recompute amountPaid + paymentStatus from the payments ledger so they never drift apart. */
-function recalcBillTotals(bill) {
-  bill.amountPaid = bill.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  if (bill.amountPaid >= bill.totalAmount && bill.totalAmount > 0) {
-    bill.paymentStatus = "paid";
-  } else if (bill.amountPaid > 0) {
-    bill.paymentStatus = "partial";
-  } else {
-    bill.paymentStatus = "unpaid";
-  }
-}
+const { REFERENCE_REQUIRED_METHODS, recalcBillTotals } = require("../utils/billTotals");
 
 async function createBill(req, res) {
   try {

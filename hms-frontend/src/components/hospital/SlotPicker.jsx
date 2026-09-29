@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Stethoscope, Clock, Loader2, Check, CalendarX2 } from 'lucide-react';
 import api from '@/lib/api';
@@ -11,7 +11,7 @@ import { formatCurrency, formatSlotTime, doctorName } from '@/lib/utils';
  * work on the chosen date are listed, and only their still-open slots can be
  * picked - no free-typed times. The backend re-validates the slot on submit.
  */
-export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange, disabled, errors = {} }) {
+export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange, onFeeChange, disabled, errors = {} }) {
   const [doctorSearch, setDoctorSearch] = useState('');
 
   const { data: doctors = [], isLoading: doctorsLoading } = useQuery({
@@ -33,6 +33,11 @@ export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange,
     enabled: !!doctorId && !!date,
     staleTime: 0, // slots change as others book - always refetch when opened
   });
+
+  // Let the booking form know the selected doctor's fee so it can offer to collect it on the spot.
+  useEffect(() => {
+    if (onFeeChange) onFeeChange(doctorId ? slotData?.consultationFee || 0 : 0);
+  }, [doctorId, slotData?.consultationFee]);
 
   const search = doctorSearch.trim().toLowerCase();
   const filteredDoctors = doctors.filter(
