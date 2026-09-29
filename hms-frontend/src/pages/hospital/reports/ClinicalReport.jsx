@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Loader2, RefreshCw, AlertCircle, Stethoscope, UserCheck, Calendar, Activity } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, Stethoscope, Activity } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';

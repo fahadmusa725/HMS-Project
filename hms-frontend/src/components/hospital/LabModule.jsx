@@ -9,18 +9,11 @@ import {
   TestTube2,
   Plus,
   Search,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
   Loader2,
   RefreshCw,
   FileText,
   ExternalLink,
-  Ban,
   User,
-  Check,
-  Stethoscope,
-  Filter
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -101,7 +94,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
   const {
     data: labTests = [],
     isLoading: isTestsLoading,
-    refetch: refetchTests,
   } = useQuery({
     queryKey: ['lab-tests-catalog'],
     queryFn: async () => {

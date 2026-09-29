@@ -5,7 +5,7 @@ const getInitialTheme = () => {
   try {
     const saved = localStorage.getItem('careflow-theme');
     if (saved === 'dark' || saved === 'light') return saved;
-  } catch (e) {
+  } catch {
     // fallback if localStorage not accessible
   }
   return 'light';
@@ -18,7 +18,7 @@ export const useThemeStore = create((set) => ({
       const nextTheme = state.theme === 'light' ? 'dark' : 'light';
       try {
         localStorage.setItem('careflow-theme', nextTheme);
-      } catch (e) {}
+      } catch {}
 
       if (nextTheme === 'dark') {
         document.documentElement.classList.add('dark');
@@ -30,7 +30,7 @@ export const useThemeStore = create((set) => ({
   setTheme: (theme) => {
     try {
       localStorage.setItem('careflow-theme', theme);
-    } catch (e) {}
+    } catch {}
 
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');

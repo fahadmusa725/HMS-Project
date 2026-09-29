@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
@@ -12,7 +12,6 @@ import {
   UserCheck,
   Calendar,
   Bed,
-  Stethoscope,
   LayoutDashboard,
   FlaskConical,
   Pill,
@@ -24,7 +23,6 @@ import {
 export default function HospitalDashboardLayout() {
   const { user, logout } = useAuthStore();
   const role = user?.role || 'hospital_admin';
-  const navigate = useNavigate();
 
   // Navigation items configuration per role with real router paths
   const getNavItemsForRole = (userRole) => {

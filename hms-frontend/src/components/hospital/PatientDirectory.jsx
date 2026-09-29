@@ -24,10 +24,7 @@ import {
   User,
   FlaskConical,
   KeyRound,
-  Mail,
-  CreditCard,
   ShieldCheck,
-  Info
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
@@ -99,7 +96,7 @@ function PatientEMRTimeline({ patientId }) {
 
   return (
     <div className="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
-      {consultations.map((c, idx) => (
+      {consultations.map((c) => (
         <div
           key={c._id}
           className="relative pl-4 border-l-2 border-primary/30 space-y-2.5"

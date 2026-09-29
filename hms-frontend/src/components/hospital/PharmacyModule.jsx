@@ -17,9 +17,6 @@ import {
   PackagePlus,
   User,
   History,
-  Package,
-  Calendar,
-  DollarSign,
   AlertCircle
 } from 'lucide-react';
 
@@ -28,7 +25,6 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { formatCurrency } from '@/lib/utils';
 
@@ -65,7 +61,6 @@ export default function PharmacyModule() {
   const [restockMedTarget, setRestockMedTarget] = useState(null);
   const [restockQty, setRestockQty] = useState(50);
   const [isDispenseOpen, setIsDispenseOpen] = useState(false);
-  const [selectedSaleDetail, setSelectedSaleDetail] = useState(null);
 
   // Dispense Form State
   const [dispensePatientSearch, setDispensePatientSearch] = useState('');

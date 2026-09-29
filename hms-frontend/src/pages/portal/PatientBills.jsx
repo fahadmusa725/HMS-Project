@@ -6,11 +6,7 @@ import {
   ChevronUp,
   AlertCircle,
   RefreshCw,
-  CreditCard,
   Calendar,
-  DollarSign,
-  Wallet,
-  CheckCircle2,
   FileText
 } from 'lucide-react';
 import api from '@/lib/api';

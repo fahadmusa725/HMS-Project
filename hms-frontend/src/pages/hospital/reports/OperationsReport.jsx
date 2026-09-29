@@ -20,7 +20,6 @@ import {
   Bed,
   Users,
   AlertTriangle,
-  TrendingUp,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';

@@ -6,9 +6,6 @@ import {
   User,
   Shield,
   Building2,
-  CalendarDays,
-  ClipboardList,
-  Receipt,
   ArrowRight,
   AlertCircle,
   Loader2,
@@ -18,10 +15,8 @@ import {
   CreditCard,
   MapPin,
   Calendar,
-  HeartPulse,
   Pencil,
   X,
-  Plus,
   ChevronDown,
   Save,
 } from 'lucide-react';
@@ -91,7 +86,7 @@ function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/1
 }
 
 // ─── Edit Profile Modal ───────────────────────────────────────────────────────
-function EditProfileModal({ patient, onClose, onSuccess }) {
+function EditProfileModal({ patient, onClose }) {
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
@@ -611,7 +606,6 @@ export default function PatientOverview() {
         <EditProfileModal
           patient={patient}
           onClose={() => setShowEditModal(false)}
-          onSuccess={() => setShowEditModal(false)}
         />
       )}
     </div>

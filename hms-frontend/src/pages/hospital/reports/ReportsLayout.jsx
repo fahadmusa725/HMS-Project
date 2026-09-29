@@ -1,12 +1,11 @@
 import React from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { BarChart3, TrendingUp, Stethoscope, Activity, LayoutDashboard } from 'lucide-react';
 
 export default function ReportsLayout() {
   const { user } = useAuthStore();
   const role = user?.role || 'hospital_admin';
-  const location = useLocation();
 
   const isHospitalAdmin = role === 'hospital_admin';
 
