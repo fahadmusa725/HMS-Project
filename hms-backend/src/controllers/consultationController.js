@@ -3,6 +3,7 @@ const Appointment = require("../models/Appointment");
 const Patient = require("../models/Patient");
 const Hospital = require("../models/Hospital");
 const PDFDocument = require("pdfkit");
+const doctorName = require("../utils/doctorName");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 
 async function createConsultation(req, res) {
@@ -146,7 +147,7 @@ async function getPrescriptionPdf(req, res) {
       );
     }
     doc.fillColor("#000").fontSize(11).font("Helvetica-Bold").text("Doctor: ", { continued: true });
-    doc.font("Helvetica").text(`Dr. ${consultation.doctorId.name}${consultation.doctorId.department ? " — " + consultation.doctorId.department : ""}`);
+    doc.font("Helvetica").text(`${doctorName(consultation.doctorId.name)}${consultation.doctorId.department ? " — " + consultation.doctorId.department : ""}`);
     doc.font("Helvetica-Bold").text("Date: ", { continued: true });
     doc.font("Helvetica").text(new Date(consultation.createdAt).toDateString());
     doc.moveDown();

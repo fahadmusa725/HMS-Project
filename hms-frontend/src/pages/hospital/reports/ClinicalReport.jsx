@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
+import { doctorName } from '@/lib/utils';
 
 // Capitalize helper for diagnoses
 function formatDiagnosis(str) {
@@ -243,7 +244,7 @@ export default function ClinicalReport() {
                         {idx + 1}
                       </span>
                       <span className="font-semibold text-xs text-foreground truncate max-w-[150px]">
-                        Dr. {doc.name || 'Unknown'}
+                        {doctorName(doc.name, 'Unknown doctor')}
                       </span>
                     </div>
                     <Badge variant="secondary">

@@ -8,6 +8,7 @@ const Bill = require("../models/Bill");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { slotsForDate } = require("../utils/scheduleSlots");
+const doctorName = require("../utils/doctorName");
 
 /**
  * Who may move an appointment INTO each status. The front desk runs arrival
@@ -93,7 +94,7 @@ async function createAppointmentWithBilling({ patientId, doctorId, type, date, t
         appointmentId: appointment._id,
         items: [
           {
-            description: `OPD Consultation Fee - Dr. ${doctor.name}`,
+            description: `OPD Consultation Fee - ${doctorName(doctor.name)}`,
             category: "OPD",
             amount: schedule.consultationFee,
           },
@@ -281,7 +282,7 @@ async function getAppointmentSlipPdf(req, res) {
     row(
       "Doctor",
       appointment.doctorId
-        ? `Dr. ${appointment.doctorId.name}${appointment.doctorId.department ? " - " + appointment.doctorId.department : ""}`
+        ? `${doctorName(appointment.doctorId.name)}${appointment.doctorId.department ? " - " + appointment.doctorId.department : ""}`
         : "-"
     );
     row("Date", new Date(appointment.date + "T00:00:00").toDateString());

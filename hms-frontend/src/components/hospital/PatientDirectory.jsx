@@ -26,7 +26,7 @@ import {
   KeyRound,
   ShieldCheck,
 } from 'lucide-react';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, doctorName } from '@/lib/utils';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
@@ -116,7 +116,7 @@ function PatientEMRTimeline({ patientId }) {
                 {c.doctorId?.name && (
                   <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                     <Stethoscope className="h-3 w-3" />
-                    Dr. {c.doctorId.name}
+                    {doctorName(c.doctorId.name)}
                     {c.doctorId.department && (
                       <span className="text-muted-foreground/60">· {c.doctorId.department}</span>
                     )}

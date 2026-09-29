@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import { DAY_NAMES } from '@/lib/utils';
+import { DAY_NAMES, doctorName } from '@/lib/utils';
 
 const SLOT_OPTIONS = [10, 15, 20, 30, 45, 60];
 const NEW_BLOCK = { dayOfWeek: 1, startTime: '09:00', endTime: '13:00' };
@@ -37,7 +37,7 @@ export default function DoctorScheduleModal({ doctor, onClose }) {
     <Modal
       isOpen
       onClose={onClose}
-      title={`Schedule — Dr. ${doctor.name}`}
+      title={`Schedule — ${doctorName(doctor.name)}`}
       description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
     >
       {isLoading ? (
@@ -72,7 +72,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['doctor-schedule', doctor._id] });
       queryClient.invalidateQueries({ queryKey: ['available-doctors'] });
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
-      toast.success(`Schedule saved for Dr. ${doctor.name}.`);
+      toast.success(`Schedule saved for ${doctorName(doctor.name)}.`);
       onClose();
     },
     onError: (err) => {

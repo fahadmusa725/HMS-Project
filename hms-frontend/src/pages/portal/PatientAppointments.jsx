@@ -23,7 +23,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
-import { formatCurrency, formatSlotTime } from '@/lib/utils';
+import { formatCurrency, formatSlotTime, doctorName } from '@/lib/utils';
 
 const bookingSchema = z.object({
   doctorId: z.string().min(1, 'Please select a doctor'),
@@ -315,7 +315,7 @@ export default function PatientAppointments() {
                       </div>
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-foreground truncate">
-                          Dr. {apt.doctorId?.name || 'Assigned Specialist'}
+                          {doctorName(apt.doctorId?.name, 'Assigned Specialist')}
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
                           {apt.doctorId?.department || 'General Medicine'}

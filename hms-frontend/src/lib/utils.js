@@ -18,5 +18,12 @@ export function formatSlotTime(time) {
   return `${h % 12 || 12}:${match[2]} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
+/** "Kamran Ahmed" -> "Dr. Kamran Ahmed", but leaves "Dr. Kamran Ahmed" alone (staff often enter the title themselves). */
+export function doctorName(name, fallback = '—') {
+  const n = (name || '').trim();
+  if (!n) return fallback;
+  return /^dr\.?\s/i.test(n) ? n : `Dr. ${n}`;
+}
+
 export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

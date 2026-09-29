@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, doctorName } from '@/lib/utils';
 
 // Schema for adding a lab test to catalog
 const labTestSchema = z.object({
@@ -480,7 +480,7 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
 
                           {/* Doctor */}
                           <td className="py-4 px-4 text-xs font-medium text-foreground">
-                            {order.doctorId?.name ? `Dr. ${order.doctorId.name}` : '—'}
+                            {doctorName(order.doctorId?.name)}
                           </td>
 
                           {/* Date */}

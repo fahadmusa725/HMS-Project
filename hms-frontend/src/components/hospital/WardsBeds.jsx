@@ -29,7 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { RunningBillCard, FinalBillModal } from '@/components/hospital/IpdBilling';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, doctorName } from '@/lib/utils';
 
 // ─── Bed status — CSS variable token colours ONLY (no raw Tailwind colour classes) ───
 const BED_STYLES = {
@@ -650,7 +650,7 @@ export default function WardsBeds() {
                           </div>
                         </td>
                         <td className="py-4 px-4 text-xs text-foreground">
-                          {adm.doctorId?.name ? `Dr. ${adm.doctorId.name}` : '—'}
+                          {doctorName(adm.doctorId?.name)}
                         </td>
                         <td className="py-4 px-4 text-xs">
                           <div className="text-foreground">
@@ -736,7 +736,7 @@ export default function WardsBeds() {
                 {
                   label: 'Doctor',
                   value: selectedAdmission.doctorId?.name
-                    ? `Dr. ${selectedAdmission.doctorId.name}`
+                    ? doctorName(selectedAdmission.doctorId.name)
                     : '—',
                   Icon: Stethoscope,
                 },
@@ -1222,7 +1222,7 @@ export default function WardsBeds() {
             {role === 'doctor' ? (
               <div className="h-10 flex items-center gap-2 px-3.5 rounded-lg border border-input bg-muted/40 text-sm text-foreground">
                 <Stethoscope className="h-3.5 w-3.5 text-muted-foreground" />
-                Dr. {user?.name}
+                {doctorName(user?.name)}
                 <span className="text-muted-foreground ml-1">(you)</span>
               </div>
             ) : (
@@ -1241,7 +1241,7 @@ export default function WardsBeds() {
                 </option>
                 {doctorsList.map((d) => (
                   <option key={d._id} value={d._id}>
-                    Dr. {d.name}{d.department ? ` (${d.department})` : ''}
+                    {doctorName(d.name)}{d.department ? ` (${d.department})` : ''}
                   </option>
                 ))}
               </select>

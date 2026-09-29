@@ -1,5 +1,6 @@
 const Appointment = require("../models/Appointment");
 const { sendEmail } = require("../utils/mailer");
+const doctorName = require("../utils/doctorName");
 
 /**
  * Finds all appointments scheduled for TOMORROW (across every hospital)
@@ -32,7 +33,7 @@ async function sendAppointmentReminders() {
       html: `
         <p>Hello ${appt.patient.name},</p>
         <p>This is a reminder of your appointment <strong>tomorrow (${tomorrow})</strong>
-        ${appt.time ? `at <strong>${appt.time}</strong>` : ""} with Dr. ${appt.doctor.name}.</p>
+        ${appt.time ? `at <strong>${appt.time}</strong>` : ""} with ${doctorName(appt.doctor.name)}.</p>
         <p>Your token number will be: <strong>#${appt.tokenNumber}</strong></p>
         <p>Please arrive a little early. If you need to reschedule, please contact the hospital.</p>
       `,

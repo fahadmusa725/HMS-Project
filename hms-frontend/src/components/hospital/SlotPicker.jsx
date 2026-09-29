@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Stethoscope, Clock, Loader2, Check, CalendarX2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Input } from '@/components/ui/input';
-import { formatCurrency, formatSlotTime } from '@/lib/utils';
+import { formatCurrency, formatSlotTime, doctorName } from '@/lib/utils';
 
 /**
  * Real-availability booking picker, shared by staff booking (AppointmentsQueue)
@@ -88,7 +88,7 @@ export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange,
                   <span className="flex items-center gap-2 min-w-0">
                     <Stethoscope className="h-3.5 w-3.5 text-primary shrink-0" />
                     <span className="min-w-0">
-                      <span className="font-semibold text-foreground block truncate">Dr. {d.name}</span>
+                      <span className="font-semibold text-foreground block truncate">{doctorName(d.name)}</span>
                       {d.department && <span className="text-muted-foreground block truncate">{d.department}</span>}
                     </span>
                   </span>

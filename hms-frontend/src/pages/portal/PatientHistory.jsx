@@ -12,6 +12,7 @@ import {
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { doctorName } from '@/lib/utils';
 
 export default function PatientHistory() {
   const {
@@ -130,7 +131,7 @@ export default function PatientHistory() {
                         {c.doctorId?.name && (
                           <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 font-medium">
                             <Stethoscope className="h-3.5 w-3.5 text-primary" />
-                            Dr. {c.doctorId.name}
+                            {doctorName(c.doctorId.name)}
                             {c.doctorId.department && (
                               <span className="text-muted-foreground/70">· {c.doctorId.department}</span>
                             )}
