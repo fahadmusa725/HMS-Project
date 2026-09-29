@@ -20,7 +20,7 @@ import {
   Stethoscope,
   CalendarDays,
   FileText,
-  Check,
+  Pencil,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -28,6 +28,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
+import { RunningBillCard, FinalBillModal } from '@/components/hospital/IpdBilling';
+import { formatCurrency } from '@/lib/utils';
 
 // ─── Bed status — CSS variable token colours ONLY (no raw Tailwind colour classes) ───
 const BED_STYLES = {
@@ -48,12 +50,15 @@ export default function WardsBeds() {
   const role = user?.role;
 
   const isAdmin   = role === 'hospital_admin';
-  const canAdmit  = ['hospital_admin', 'doctor', 'nurse'].includes(role);
+  const canAdmit  = ['hospital_admin', 'doctor', 'nurse', 'receptionist'].includes(role);
   // Receptionist can VIEW detail but NOT add notes or discharge
   const canActOnIPD = ['hospital_admin', 'doctor', 'nurse'].includes(role);
+  // Deposits are taken at the front desk, not by clinical staff
+  const canAddAdvance = ['hospital_admin', 'receptionist'].includes(role);
 
   // ── View state ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('beds');
+  const [ipdStatus, setIpdStatus] = useState('admitted');
 
   // ── Bed grid filters ──────────────────────────────────────────────────────
   const [wardFilter, setWardFilter] = useState('all');
@@ -65,6 +70,8 @@ export default function WardsBeds() {
   const [isAddBedsOpen, setIsAddBedsOpen] = useState(false);
   const [addWardName, setAddWardName] = useState('');
   const [addWardDept, setAddWardDept] = useState('');
+  const [addWardRate, setAddWardRate] = useState('');
+  const [editWard, setEditWard] = useState(null); // { name, department, dailyRate } while the edit modal is open
   const [addBedsInput, setAddBedsInput] = useState('');
   const [wardFormError, setWardFormError] = useState(null);
   const [bedsFormError, setBedsFormError] = useState(null);
@@ -86,6 +93,7 @@ export default function WardsBeds() {
   const [selectedAdmission, setSelectedAdmission] = useState(null);
   const [isDischargeOpen, setIsDischargeOpen] = useState(false);
   const [dischargeNotes, setDischargeNotes] = useState('');
+  const [finalBillResult, setFinalBillResult] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [noteVitals, setNoteVitals] = useState({
     bloodPressure: '',
@@ -158,30 +166,26 @@ export default function WardsBeds() {
     enabled: isAdmitOpen && admitPatientSearch.trim().length > 0,
   });
 
-  // Doctor list for admit form (hospital_admin only; others get empty → fallback logic)
-  const { data: doctorsList = [] } = useQuery({
+  // Doctor list for the admit form (the admitting doctor picks themselves automatically)
+  const { data: doctorsList = [], isLoading: doctorsLoading } = useQuery({
     queryKey: ['doctors-list'],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/hospital-admin/staff');
-        return res.data.filter((s) => s.role === 'doctor');
-      } catch {
-        return [];
-      }
+      const res = await api.get('/api/appointments/doctors');
+      return res.data;
     },
-    enabled: isAdmitOpen,
+    enabled: isAdmitOpen && role !== 'doctor',
   });
 
-  // Active admissions list
+  // Admissions list - currently admitted by default, or discharged history
   const {
     data: admissions = [],
     isLoading: admissionsLoading,
     isRefetching: admissionsRefetching,
     refetch: refetchAdmissions,
   } = useQuery({
-    queryKey: ['admissions'],
+    queryKey: ['admissions', ipdStatus],
     queryFn: async () => {
-      const res = await api.get('/api/admissions');
+      const res = await api.get('/api/admissions', { params: { status: ipdStatus } });
       return res.data;
     },
   });
@@ -207,6 +211,7 @@ export default function WardsBeds() {
       const res = await api.post('/api/wards', {
         name: addWardName.trim(),
         department: addWardDept.trim(),
+        dailyRate: Number(addWardRate) || 0,
       });
       return res.data;
     },
@@ -215,6 +220,7 @@ export default function WardsBeds() {
       setIsAddWardOpen(false);
       setAddWardName('');
       setAddWardDept('');
+      setAddWardRate('');
       setWardFormError(null);
       toast.success('Ward created successfully!');
     },
@@ -223,6 +229,26 @@ export default function WardsBeds() {
       setWardFormError(msg);
       toast.error(msg);
     },
+  });
+
+  const updateWardMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.patch(`/api/wards/${selectedWardForManage._id}`, {
+        name: editWard.name.trim(),
+        department: editWard.department.trim(),
+        dailyRate: Number(editWard.dailyRate) || 0,
+      });
+      return res.data;
+    },
+    onSuccess: (ward) => {
+      queryClient.invalidateQueries({ queryKey: ['wards'] });
+      queryClient.invalidateQueries({ queryKey: ['admissions'] });
+      queryClient.invalidateQueries({ queryKey: ['running-bill'] });
+      setSelectedWardForManage(ward);
+      setEditWard(null);
+      toast.success('Ward updated.');
+    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to update ward.'),
   });
 
   const addBedsMutation = useMutation({
@@ -266,6 +292,7 @@ export default function WardsBeds() {
       queryClient.invalidateQueries({ queryKey: ['admissions'] });
       queryClient.invalidateQueries({ queryKey: ['beds-grid'] });
       queryClient.invalidateQueries({ queryKey: ['beds-vacant'] });
+      setIpdStatus('admitted');
       setIsAdmitOpen(false);
       resetAdmitForm();
       toast.success('Patient admitted successfully!', {
@@ -288,15 +315,17 @@ export default function WardsBeds() {
       );
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] });
       queryClient.invalidateQueries({ queryKey: ['beds-grid'] });
       queryClient.invalidateQueries({ queryKey: ['beds-vacant'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setIsDischargeOpen(false);
       setSelectedAdmission(null);
       setDischargeNotes('');
+      setFinalBillResult(data);
       toast.success('Patient discharged. Bed is now vacant.', {
-        description: 'The bed has been freed for the next patient.',
+        description: data.bill ? 'The final itemized bill has been raised.' : 'No charges were recorded for this stay.',
       });
     },
     onError: (err) => {
@@ -534,6 +563,25 @@ export default function WardsBeds() {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'ipd' && !selectedAdmission && (
         <div className="space-y-4">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-lg border border-border/60 w-fit">
+            {[
+              { id: 'admitted', label: 'Currently Admitted' },
+              { id: 'discharged', label: 'Discharged' },
+            ].map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => setIpdStatus(id)}
+                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                  ipdStatus === id
+                    ? 'bg-card text-foreground shadow-sm border border-border/60'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {admissionsLoading ? (
             <Card className="border-border shadow-soft overflow-hidden">
               <div className="p-6 space-y-4">
@@ -554,9 +602,13 @@ export default function WardsBeds() {
               <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-3">
                 <ClipboardList className="h-6 w-6" />
               </div>
-              <p className="text-sm font-semibold text-foreground">No active admissions</p>
+              <p className="text-sm font-semibold text-foreground">
+                {ipdStatus === 'admitted' ? 'No active admissions' : 'No discharged admissions yet'}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Admitted patients will appear here.
+                {ipdStatus === 'admitted'
+                  ? 'Admitted patients will appear here.'
+                  : 'Discharged stays and their final bills will appear here.'}
               </p>
             </Card>
           ) : (
@@ -568,7 +620,9 @@ export default function WardsBeds() {
                       <th className="py-3.5 px-6">Patient</th>
                       <th className="py-3.5 px-4">Ward / Bed</th>
                       <th className="py-3.5 px-4">Doctor</th>
-                      <th className="py-3.5 px-4">Admit Date</th>
+                      <th className="py-3.5 px-4">Admitted</th>
+                      <th className="py-3.5 px-4">Bed Charges</th>
+                      <th className="py-3.5 px-4">Advance</th>
                       <th className="py-3.5 px-6">Reason</th>
                     </tr>
                   </thead>
@@ -598,12 +652,23 @@ export default function WardsBeds() {
                         <td className="py-4 px-4 text-xs text-foreground">
                           {adm.doctorId?.name ? `Dr. ${adm.doctorId.name}` : '—'}
                         </td>
-                        <td className="py-4 px-4 text-xs text-muted-foreground">
-                          {adm.createdAt
-                            ? new Date(adm.createdAt).toLocaleDateString(undefined, {
-                                year: 'numeric', month: 'short', day: 'numeric',
-                              })
-                            : '—'}
+                        <td className="py-4 px-4 text-xs">
+                          <div className="text-foreground">
+                            {adm.admitDate
+                              ? new Date(adm.admitDate).toLocaleDateString(undefined, {
+                                  year: 'numeric', month: 'short', day: 'numeric',
+                                })
+                              : '—'}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {adm.daysAdmitted} day{adm.daysAdmitted !== 1 ? 's' : ''}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-xs font-semibold text-foreground">
+                          {formatCurrency(adm.roomChargesSoFar)}
+                        </td>
+                        <td className="py-4 px-4 text-xs text-foreground">
+                          {adm.advancePaid > 0 ? formatCurrency(adm.advancePaid) : <span className="text-muted-foreground">—</span>}
                         </td>
                         <td className="py-4 px-6 text-xs text-foreground max-w-[180px]">
                           <span className="line-clamp-1">{adm.reason || '—'}</span>
@@ -643,8 +708,8 @@ export default function WardsBeds() {
                   MRN: {selectedAdmission.patientId?.mrn || '—'}
                 </p>
               </div>
-              {/* Discharge button — clinical staff only */}
-              {canActOnIPD && (
+              {/* Discharge button — clinical staff only, active stays only */}
+              {canActOnIPD && selectedAdmission.status === 'admitted' && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -677,8 +742,8 @@ export default function WardsBeds() {
                 },
                 {
                   label: 'Admitted',
-                  value: selectedAdmission.createdAt
-                    ? new Date(selectedAdmission.createdAt).toLocaleDateString(undefined, {
+                  value: selectedAdmission.admitDate
+                    ? new Date(selectedAdmission.admitDate).toLocaleDateString(undefined, {
                         day: 'numeric', month: 'short', year: 'numeric',
                       })
                     : '—',
@@ -708,7 +773,25 @@ export default function WardsBeds() {
                 <p className="text-sm text-foreground mt-0.5">{selectedAdmission.reason}</p>
               </div>
             )}
+
+            {selectedAdmission.status === 'discharged' && (
+              <div className="mt-3 p-3 bg-muted/40 rounded-xl border border-border/50">
+                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider block">
+                  Discharged{' '}
+                  {selectedAdmission.dischargeDate &&
+                    new Date(selectedAdmission.dischargeDate).toLocaleDateString(undefined, {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                    })}
+                </span>
+                <p className="text-sm text-foreground mt-0.5">
+                  {selectedAdmission.dischargeNotes || 'No discharge notes recorded.'}
+                </p>
+              </div>
+            )}
           </Card>
+
+          {/* Live running bill (or final bill once discharged) */}
+          <RunningBillCard admission={selectedAdmission} canAddAdvance={canAddAdvance} />
 
           {/* Rounds Notes + Add Note */}
           <Card className="border-border shadow-soft overflow-hidden">
@@ -778,8 +861,8 @@ export default function WardsBeds() {
               )}
             </div>
 
-            {/* Add Note form — clinical staff only, NOT receptionist */}
-            {canActOnIPD && (
+            {/* Add Note form — clinical staff only, NOT receptionist; closed once discharged */}
+            {canActOnIPD && selectedAdmission.status === 'admitted' && (
               <div className="p-4 sm:p-5 border-t border-border bg-muted/10 space-y-3">
                 <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
                   Add Rounds Note
@@ -864,10 +947,28 @@ export default function WardsBeds() {
                     · {selectedWardForManage.department}
                   </span>
                 )}
+                <span className="text-xs text-muted-foreground">
+                  · {formatCurrency(selectedWardForManage.dailyRate)} / day
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setEditWard({
+                      name: selectedWardForManage.name || '',
+                      department: selectedWardForManage.department || '',
+                      dailyRate: selectedWardForManage.dailyRate ?? 0,
+                    })
+                  }
+                  className="ml-auto h-8 text-xs font-semibold"
+                >
+                  <Pencil className="h-3.5 w-3.5 mr-1" />
+                  Edit Ward
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => { setBedsFormError(null); setIsAddBedsOpen(true); }}
-                  className="ml-auto h-8 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold"
+                  className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Beds
@@ -970,6 +1071,13 @@ export default function WardsBeds() {
                             {ward.department}
                           </p>
                         )}
+                        <p className="text-xs font-semibold text-foreground mt-2">
+                          {ward.dailyRate > 0 ? (
+                            `${formatCurrency(ward.dailyRate)} / day`
+                          ) : (
+                            <span className="text-warning-foreground">Daily rate not set</span>
+                          )}
+                        </p>
                       </div>
                     </Card>
                   ))}
@@ -1117,28 +1225,26 @@ export default function WardsBeds() {
                 Dr. {user?.name}
                 <span className="text-muted-foreground ml-1">(you)</span>
               </div>
-            ) : doctorsList.length > 0 ? (
+            ) : (
               <select
                 value={admitDoctorId}
                 onChange={(e) => setAdmitDoctorId(e.target.value)}
-                disabled={admitMutation.isPending}
-                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                disabled={admitMutation.isPending || doctorsLoading || doctorsList.length === 0}
+                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50"
               >
-                <option value="">— Select Doctor —</option>
+                <option value="">
+                  {doctorsLoading
+                    ? 'Loading doctors...'
+                    : doctorsList.length === 0
+                    ? 'No active doctors on staff'
+                    : '— Select Doctor —'}
+                </option>
                 {doctorsList.map((d) => (
                   <option key={d._id} value={d._id}>
                     Dr. {d.name}{d.department ? ` (${d.department})` : ''}
                   </option>
                 ))}
               </select>
-            ) : (
-              <Input
-                placeholder="Enter doctor staff ID"
-                value={admitDoctorId}
-                onChange={(e) => setAdmitDoctorId(e.target.value)}
-                disabled={admitMutation.isPending}
-                className="h-10"
-              />
             )}
           </div>
 
@@ -1214,7 +1320,8 @@ export default function WardsBeds() {
         <div className="space-y-4">
           <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground font-medium">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            This will discharge the patient and immediately free the bed. This action cannot be undone.
+            This will discharge the patient, free the bed, and raise the final itemized bill (bed charges,
+            lab and pharmacy during the stay, less any advance paid). This action cannot be undone.
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -1266,6 +1373,7 @@ export default function WardsBeds() {
             setIsAddWardOpen(false);
             setAddWardName('');
             setAddWardDept('');
+            setAddWardRate('');
             setWardFormError(null);
           }
         }}
@@ -1302,6 +1410,22 @@ export default function WardsBeds() {
               disabled={createWardMutation.isPending}
             />
           </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+              Bed Charge per Day (PKR)
+            </label>
+            <Input
+              type="number"
+              min="0"
+              placeholder="e.g. 3500"
+              value={addWardRate}
+              onChange={(e) => setAddWardRate(e.target.value)}
+              disabled={createWardMutation.isPending}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Used for the IPD running bill: days admitted × this rate.
+            </p>
+          </div>
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
             <Button
               variant="outline"
@@ -1309,6 +1433,7 @@ export default function WardsBeds() {
                 setIsAddWardOpen(false);
                 setAddWardName('');
                 setAddWardDept('');
+                setAddWardRate('');
                 setWardFormError(null);
               }}
               disabled={createWardMutation.isPending}
@@ -1417,6 +1542,75 @@ export default function WardsBeds() {
           </div>
         </div>
       </Modal>
+
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: Edit Ward (name / department / daily rate)                   */}
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      <Modal
+        isOpen={!!editWard}
+        onClose={() => {
+          if (!updateWardMutation.isPending) setEditWard(null);
+        }}
+        title={`Edit Ward — ${selectedWardForManage?.name || ''}`}
+        description="A new daily rate applies to the whole stay of patients currently in this ward."
+      >
+        {editWard && (
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground uppercase tracking-wider block">Ward Name *</label>
+              <Input
+                value={editWard.name}
+                onChange={(e) => setEditWard((w) => ({ ...w, name: e.target.value }))}
+                disabled={updateWardMutation.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground uppercase tracking-wider block">Department</label>
+              <Input
+                value={editWard.department}
+                onChange={(e) => setEditWard((w) => ({ ...w, department: e.target.value }))}
+                disabled={updateWardMutation.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                Bed Charge per Day (PKR)
+              </label>
+              <Input
+                type="number"
+                min="0"
+                value={editWard.dailyRate}
+                onChange={(e) => setEditWard((w) => ({ ...w, dailyRate: e.target.value }))}
+                disabled={updateWardMutation.isPending}
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
+              <Button variant="outline" onClick={() => setEditWard(null)} disabled={updateWardMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => updateWardMutation.mutate()}
+                disabled={
+                  updateWardMutation.isPending || !editWard.name.trim() || !(Number(editWard.dailyRate) >= 0)
+                }
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {updateWardMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Final itemized bill, shown right after a discharge */}
+      {finalBillResult && <FinalBillModal result={finalBillResult} onClose={() => setFinalBillResult(null)} />}
     </div>
   );
 }
