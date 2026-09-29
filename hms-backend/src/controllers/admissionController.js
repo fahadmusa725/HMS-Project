@@ -235,7 +235,7 @@ async function dischargePatient(req, res) {
     const items = [];
     if (running.room.amount > 0) {
       items.push({
-        description: `Bed charges - ${admission.wardId.name}, Bed ${admission.bedId.bedNumber} (${running.room.days} day(s) x Rs. ${running.room.dailyRate})`,
+        description: `Bed charges - ${admission.wardId.name}, Bed ${admission.bedId.bedNumber} (${running.room.days} day${running.room.days === 1 ? "" : "s"} x Rs. ${running.room.dailyRate.toLocaleString("en-US")}/day)`,
         category: "IPD",
         amount: running.room.amount,
       });
