@@ -2,11 +2,16 @@ const User = require("../models/User");
 const Hospital = require("../models/Hospital");
 const generateToken = require("../utils/generateToken");
 
-/** Looks up the hospital's display name for a hospital-scoped user (null for super admin). */
-async function resolveHospitalName(hospitalId) {
-  if (!hospitalId) return null;
+/**
+ * The user's hospital name plus its subscription state (trial/active/suspended and trial end),
+ * so the hospital admin's dashboard can warn about an ending trial. All null for super admin.
+ */
+async function resolveHospital(hospitalId) {
+  const none = { hospitalName: null, hospitalStatus: null, trialEndDate: null };
+  if (!hospitalId) return none;
   const hospital = await Hospital.findById(hospitalId);
-  return hospital ? hospital.name : null;
+  if (!hospital) return none;
+  return { hospitalName: hospital.name, hospitalStatus: hospital.status, trialEndDate: hospital.trialEndDate || null };
 }
 
 /**
@@ -39,7 +44,7 @@ async function login(req, res) {
     }
 
     const token = generateToken(user);
-    const hospitalName = await resolveHospitalName(user.hospitalId);
+    const hospitalInfo = await resolveHospital(user.hospitalId);
 
     res.json({
       token,
@@ -49,7 +54,7 @@ async function login(req, res) {
         email: user.email,
         role: user.role,
         hospitalId: user.hospitalId,
-        hospitalName, // e.g. "City Hospital" - null for platform_super_admin
+        ...hospitalInfo, // hospitalName ("City Hospital"), hospitalStatus, trialEndDate - null for platform_super_admin
       },
     });
   } catch (err) {
@@ -68,7 +73,7 @@ async function getMe(req, res) {
     const user = await User.findById(req.user.userId).setOptions({ skipTenantScope: true });
     if (!user) return res.status(404).json({ message: "User not found." });
 
-    const hospitalName = await resolveHospitalName(user.hospitalId);
+    const hospitalInfo = await resolveHospital(user.hospitalId);
 
     res.json({
       id: user._id,
@@ -76,7 +81,7 @@ async function getMe(req, res) {
       email: user.email,
       role: user.role,
       hospitalId: user.hospitalId,
-      hospitalName,
+      ...hospitalInfo,
     });
   } catch (err) {
     console.error(err);
