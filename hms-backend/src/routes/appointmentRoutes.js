@@ -8,7 +8,7 @@ const {
   updateAppointmentStatus,
   getPatientAppointments,
   getMyAppointments,
-  listDoctorsForBooking,
+  listDoctors,
   bookMyAppointment,
 } = require("../controllers/appointmentController");
 
@@ -23,8 +23,9 @@ const canUpdateStatus = allowRoles("hospital_admin", "receptionist", "doctor", "
 // Patient self-service - must come before "/patient/:patientId" so it's
 // never confused with a param route.
 router.get("/mine", allowRoles("patient"), getMyAppointments);
-router.get("/doctors", allowRoles("patient"), listDoctorsForBooking);
 router.post("/book-mine", allowRoles("patient"), bookMyAppointment);
+
+router.get("/doctors", allowRoles("hospital_admin", "receptionist", "doctor", "nurse", "patient"), listDoctors);
 
 router.post("/", canBook, bookAppointment);
 router.get("/queue", canViewQueue, getQueue);

@@ -17,6 +17,7 @@ const billingRoutes = require("./routes/billingRoutes");
 const reportsRoutes = require("./routes/reportsRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const publicRoutes = require("./routes/publicRoutes");
+const doctorScheduleRoutes = require("./routes/doctorScheduleRoutes");
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/billing", billingRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/public", publicRoutes);
+app.use("/api/doctor-schedules", doctorScheduleRoutes);
 
 // Fallback 404
 app.use((req, res) => {

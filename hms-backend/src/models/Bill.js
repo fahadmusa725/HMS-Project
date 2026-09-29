@@ -28,6 +28,7 @@ const billSchema = new mongoose.Schema(
     paymentMethod: { type: String, enum: ["cash", "card", "insurance", "other"] },
     // Optional links back to the source records this bill covers
     labOrderId: { type: mongoose.Schema.Types.ObjectId, ref: "LabOrder" },
+    appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment" }, // auto-created OPD fee bill
     pharmacySaleId: { type: mongoose.Schema.Types.ObjectId, ref: "PharmacySale" },
     admissionId: { type: mongoose.Schema.Types.ObjectId, ref: "Admission" },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
