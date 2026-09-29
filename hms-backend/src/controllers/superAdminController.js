@@ -10,6 +10,7 @@ const NurseNote = require("../models/NurseNote");
 const { Counter } = require("../models/Counter");
 const { runWithTenantContext } = require("../utils/tenantContext");
 const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
+const { sendAppointmentReminders } = require("../jobs/appointmentReminderJob");
 
 /**
  * Create a new hospital (tenant) + its first Hospital Admin account.
@@ -169,4 +170,22 @@ async function triggerTrialCheck(req, res) {
   }
 }
 
-module.exports = { createHospital, listHospitals, updateHospitalStatus, deleteHospital, triggerTrialCheck };
+/** Manually trigger the appointment-reminder check (normally runs on a daily cron) - useful for testing. */
+async function triggerAppointmentReminders(req, res) {
+  try {
+    const result = await sendAppointmentReminders();
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while checking appointment reminders." });
+  }
+}
+
+module.exports = {
+  createHospital,
+  listHospitals,
+  updateHospitalStatus,
+  deleteHospital,
+  triggerTrialCheck,
+  triggerAppointmentReminders,
+};

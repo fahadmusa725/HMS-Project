@@ -2,6 +2,7 @@ require("dotenv").config();
 const cron = require("node-cron");
 const app = require("./src/app");
 const { checkTrialsEndingSoon } = require("./src/jobs/trialReminderJob");
+const { sendAppointmentReminders } = require("./src/jobs/appointmentReminderJob");
 
 const PORT = process.env.PORT || 5000;
 
@@ -18,4 +19,13 @@ cron.schedule("0 9 * * *", () => {
   checkTrialsEndingSoon()
     .then((result) => console.log("[Cron] Trial check result:", result))
     .catch((err) => console.error("[Cron] Trial check failed:", err.message));
+});
+
+// Daily appointment-reminder check, 6:00 PM server time (reminds patients
+// about tomorrow's appointments). Same Vercel Cron note as above applies.
+cron.schedule("0 18 * * *", () => {
+  console.log("[Cron] Running daily appointment-reminder check...");
+  sendAppointmentReminders()
+    .then((result) => console.log("[Cron] Appointment reminder result:", result))
+    .catch((err) => console.error("[Cron] Appointment reminder failed:", err.message));
 });
