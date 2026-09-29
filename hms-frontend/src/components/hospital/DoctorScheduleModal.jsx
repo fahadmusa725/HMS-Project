@@ -9,7 +9,23 @@ import { Modal } from '@/components/ui/modal';
 import { DAY_NAMES, doctorName, formatSlotTime } from '@/lib/utils';
 
 const SLOT_OPTIONS = [10, 15, 20, 30, 45, 60];
-const NEW_BLOCK = { dayOfWeek: 1, startTime: '09:00', endTime: '13:00' };
+
+/**
+ * Every new block used to default to Monday no matter what, which was easy to miss - an admin
+ * would edit the start/end time, never touch the day dropdown, and end up with several blocks
+ * that all silently say "Monday". Instead, default each new block to the next day of the week
+ * not already covered (starting from today), so building out a normal Mon-Sat roster naturally
+ * lands on a different day each time you click "Add Hours".
+ */
+function nextDefaultDay(existingBlocks) {
+  const used = new Set(existingBlocks.map((b) => Number(b.dayOfWeek)));
+  const todayDow = new Date().getDay();
+  for (let i = 0; i < 7; i++) {
+    const day = (todayDow + i) % 7;
+    if (!used.has(day)) return day;
+  }
+  return todayDow; // every day already has a block - just default to today, admin can adjust
+}
 
 const selectClass =
   'flex h-9 w-full rounded-lg border border-input bg-card px-2.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
@@ -132,7 +148,9 @@ function ScheduleForm({ doctor, schedule, onClose }) {
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => setBlocks((prev) => [...prev, { ...NEW_BLOCK }])}
+            onClick={() =>
+              setBlocks((prev) => [...prev, { dayOfWeek: nextDefaultDay(prev), startTime: '09:00', endTime: '13:00' }])
+            }
             disabled={busy}
             className="h-7 text-xs"
           >
