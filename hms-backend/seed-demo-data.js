@@ -72,6 +72,30 @@ async function main() {
   const drSana = staff["Dr. Sana Yousuf"];
   console.log("");
 
+  // ---------------- DOCTOR SCHEDULES ----------------
+  // Mon-Sat OPD hours + fee, so booking has real slots and auto-bills the fee.
+  console.log("🗓️  Setting doctor schedules...");
+  const everyWorkday = (startTime, endTime) => [1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({ dayOfWeek, startTime, endTime }));
+  const schedules = [
+    { name: "Dr. Kamran Ahmed", consultationFee: 2500, weeklyAvailability: everyWorkday("09:00", "13:00") },
+    { name: "Dr. Sana Yousuf", consultationFee: 1500, weeklyAvailability: [...everyWorkday("10:00", "14:00"), { dayOfWeek: 0, startTime: "10:00", endTime: "12:00" }] },
+    { name: "Dr. Imran Qureshi", consultationFee: 1800, weeklyAvailability: everyWorkday("16:00", "20:00") },
+  ];
+  for (const s of schedules) {
+    if (!staff[s.name]) continue;
+    const res = await api(`/api/doctor-schedules/${staff[s.name].id}`, {
+      method: "PUT", token, body: { consultationFee: s.consultationFee, slotDurationMinutes: 20, weeklyAvailability: s.weeklyAvailability },
+    });
+    console.log(res.ok ? `   ✓ ${s.name} - Rs. ${s.consultationFee}, 20-min slots` : `   – skipped ${s.name} (${res.data.message})`);
+  }
+  console.log("");
+
+  /** First still-open slot for a doctor on a date, or null if they're off / fully booked. */
+  async function firstOpenSlot(doctorId, date) {
+    const res = await api(`/api/doctor-schedules/available-slots?doctorId=${doctorId}&date=${date}`, { token });
+    return res.ok && res.data.slots.length > 0 ? res.data.slots[0] : null;
+  }
+
   // ---------------- PATIENTS ----------------
   console.log("🧑‍🤝‍🧑 Registering patients...");
   const patientsToCreate = [
@@ -126,12 +150,22 @@ async function main() {
       { patientId: patients["Ahmed Hassan"]._id, doctorId: drKamran.id, date: daysFromNow(0), reason: "Follow-up: blood pressure check" },
       { patientId: patients["Fatima Sheikh"]?._id, doctorId: drSana?.id, date: daysFromNow(0), reason: "Diabetes follow-up" },
       { patientId: patients["Ayesha Malik"]?._id, doctorId: drSana?.id, date: daysFromNow(1), reason: "General checkup" },
-      { patientId: patients["Usman Tariq"]?._id, doctorId: drSana?.id, date: daysFromNow(-2), reason: "Persistent cough" },
+      { patientId: patients["Usman Tariq"]?._id, doctorId: drSana?.id, date: daysFromNow(1), reason: "Persistent cough" },
     ].filter((a) => a.patientId && a.doctorId);
 
     for (const a of appts) {
-      const res = await api("/api/appointments", { method: "POST", token, body: a });
-      if (res.ok) console.log(`   ✓ Token #${res.data.tokenNumber} on ${a.date}`);
+      const time = await firstOpenSlot(a.doctorId, a.date);
+      if (!time) {
+        console.log(`   – skipped ${a.date} (doctor has no open slot that day)`);
+        continue;
+      }
+      const res = await api("/api/appointments", { method: "POST", token, body: { ...a, time } });
+      if (res.ok) {
+        const fee = res.data.bill ? `, fee Rs. ${res.data.bill.totalAmount} billed` : "";
+        console.log(`   ✓ Token #${res.data.tokenNumber} on ${a.date} at ${time}${fee}`);
+      } else {
+        console.log(`   – skipped ${a.date} (${res.data.message})`);
+      }
     }
     console.log("");
   }
@@ -199,7 +233,7 @@ async function main() {
 
   // ---------------- WARDS & ADMISSION ----------------
   console.log("🛏️  Setting up wards and an admission...");
-  const wardRes = await api("/api/wards", { method: "POST", token, body: { name: "General Ward", department: "Internal Medicine" } });
+  const wardRes = await api("/api/wards", { method: "POST", token, body: { name: "General Ward", department: "Internal Medicine", dailyRate: 3500 } });
   if (wardRes.ok) {
     const bedsRes = await api(`/api/wards/${wardRes.data._id}/beds`, {
       method: "POST", token, body: { bedNumbers: ["101", "102", "103", "104"] },
@@ -286,6 +320,8 @@ async function main() {
   console.log("");
 
   // ---------------- BILLING ----------------
+  // OPD consultation fees were already billed automatically when the appointments
+  // were booked above, so these manual invoices only cover lab and pharmacy charges.
   console.log("💰 Creating bills...");
   if (patients["Ahmed Hassan"]) {
     await api("/api/billing", {
@@ -293,13 +329,12 @@ async function main() {
       body: {
         patientId: patients["Ahmed Hassan"]._id,
         items: [
-          { description: "OPD Consultation Fee", category: "OPD", amount: 1500 },
           { description: "Lipid Profile Test", category: "Lab", amount: 1500 },
         ],
-        amountPaid: 3000, paymentMethod: "cash",
+        amountPaid: 1500, paymentMethod: "cash",
       },
     });
-    console.log("   ✓ Ahmed Hassan - Rs. 3,000 (paid in full)");
+    console.log("   ✓ Ahmed Hassan - Rs. 1,500 lab (paid in full)");
   }
   if (patients["Fatima Sheikh"]) {
     await api("/api/billing", {
@@ -307,13 +342,12 @@ async function main() {
       body: {
         patientId: patients["Fatima Sheikh"]._id,
         items: [
-          { description: "OPD Consultation Fee", category: "OPD", amount: 1000 },
           { description: "Blood Sugar Fasting Test", category: "Lab", amount: 300 },
         ],
-        amountPaid: 500, paymentMethod: "card",
+        amountPaid: 100, paymentMethod: "card",
       },
     });
-    console.log("   ✓ Fatima Sheikh - Rs. 1,300 total, Rs. 500 paid (partial)");
+    console.log("   ✓ Fatima Sheikh - Rs. 300 lab, Rs. 100 paid (partial)");
   }
   if (patients["Usman Tariq"]) {
     await api("/api/billing", {
@@ -321,12 +355,11 @@ async function main() {
       body: {
         patientId: patients["Usman Tariq"]._id,
         items: [
-          { description: "OPD Consultation Fee", category: "OPD", amount: 1000 },
           { description: "Pharmacy - Augmentin x21", category: "Pharmacy", amount: 735 },
         ],
       },
     });
-    console.log("   ✓ Usman Tariq - Rs. 1,735 (unpaid)");
+    console.log("   ✓ Usman Tariq - Rs. 735 pharmacy (unpaid)");
   }
 
   console.log("\n🎉 Seeding complete! Refresh your browser and every module should now have real data to look at.");
