@@ -104,7 +104,7 @@ async function createAppointmentWithBilling({
     if (date === now.date && time <= now.time) {
       throw { status: 400, message: "That time slot has already passed today. Please pick a later slot." };
     }
-    const clash = await Appointment.findOne({ doctorId, date, time, status: { $ne: "cancelled" } });
+    const clash = await Appointment.findOne({ doctorId, date, time, status: { $nin: ["cancelled", "no_show"] } });
     if (clash) {
       throw { status: 409, message: "This slot was just booked by someone else. Please pick another time." };
     }
