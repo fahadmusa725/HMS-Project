@@ -7,7 +7,7 @@ const DoctorSchedule = require("../models/DoctorSchedule");
 const Bill = require("../models/Bill");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
-const { slotsForDate, hospitalNow, APP_TIMEZONE } = require("../utils/scheduleSlots");
+const { slotsForDate, hospitalNow, APP_TIMEZONE, HHMM_REGEX, toMinutes, toHHMM } = require("../utils/scheduleSlots");
 const doctorName = require("../utils/doctorName");
 
 /**
@@ -25,6 +25,9 @@ const STATUS_TRANSITION_ROLES = {
 
 // Once an appointment reaches one of these, it's closed and can't be moved again.
 const TERMINAL_STATUSES = ["completed", "cancelled", "no_show"];
+
+// How early front desk can check a patient in before their scheduled slot.
+const CHECK_IN_GRACE_MINUTES = 30;
 
 /** "14:30" -> "2:30 PM" for printed output. Legacy free-text times pass through unchanged. */
 function formatSlotTime(time) {
@@ -219,6 +222,22 @@ async function updateAppointmentStatus(req, res) {
     // A doctor may only close out or cancel their own patients, not a colleague's.
     if (req.user.role === "doctor" && String(appointment.doctorId) !== String(req.user.userId)) {
       return res.status(403).json({ message: "You can only update your own appointments." });
+    }
+
+    if (status === "checked_in") {
+      const now = hospitalNow();
+      if (appointment.date > now.date) {
+        return res.status(400).json({ message: "This appointment is for a future date and cannot be checked in yet." });
+      }
+      if (appointment.date === now.date && appointment.time && HHMM_REGEX.test(appointment.time)) {
+        const checkInOpensAt = toMinutes(appointment.time) - CHECK_IN_GRACE_MINUTES;
+        if (toMinutes(now.time) < checkInOpensAt) {
+          const opensAtTime = toHHMM(Math.max(checkInOpensAt, 0));
+          return res.status(400).json({
+            message: `This appointment is at ${formatSlotTime(appointment.time)} — check-in opens at ${formatSlotTime(opensAtTime)}.`,
+          });
+        }
+      }
     }
 
     appointment.status = status;

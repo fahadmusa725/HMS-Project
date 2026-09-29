@@ -102,4 +102,14 @@ function hospitalDate(days = 0) {
   return d.toISOString().slice(0, 10);
 }
 
-module.exports = { HHMM_REGEX, isOvernight, dayOfWeekFor, slotsForDate, hospitalNow, hospitalDate, APP_TIMEZONE };
+module.exports = {
+  HHMM_REGEX,
+  isOvernight,
+  dayOfWeekFor,
+  slotsForDate,
+  hospitalNow,
+  hospitalDate,
+  APP_TIMEZONE,
+  toMinutes,
+  toHHMM,
+};
