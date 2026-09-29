@@ -27,6 +27,17 @@ const STATUS_TRANSITION_ROLES = {
 // Once an appointment reaches one of these, it's closed and can't be moved again.
 const TERMINAL_STATUSES = ["completed", "cancelled", "no_show"];
 
+/**
+ * Forward-only state machine: scheduled -> checked_in -> in_consultation -> completed, one step
+ * at a time, plus cancelled/no_show as valid exits while an appointment is still waiting to be
+ * seen. Nothing moves backward or sideways (e.g. in_consultation can't go back to scheduled).
+ */
+const VALID_TRANSITIONS = {
+  scheduled: ["checked_in", "cancelled", "no_show"],
+  checked_in: ["in_consultation", "cancelled", "no_show"],
+  in_consultation: ["completed"],
+};
+
 // How early front desk can check a patient in before their scheduled slot.
 const CHECK_IN_GRACE_MINUTES = 30;
 
@@ -260,6 +271,11 @@ async function updateAppointmentStatus(req, res) {
 
     if (TERMINAL_STATUSES.includes(appointment.status)) {
       return res.status(409).json({ message: `This appointment is already ${appointment.status.replace("_", " ")}.` });
+    }
+    if (!VALID_TRANSITIONS[appointment.status]?.includes(status)) {
+      return res.status(409).json({
+        message: `Cannot move an appointment from "${appointment.status.replace("_", " ")}" to "${status.replace("_", " ")}".`,
+      });
     }
     // A doctor may only close out or cancel their own patients, not a colleague's.
     if (req.user.role === "doctor" && String(appointment.doctorId) !== String(req.user.userId)) {
