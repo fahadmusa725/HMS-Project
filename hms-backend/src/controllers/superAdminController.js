@@ -7,6 +7,13 @@ const Ward = require("../models/Ward");
 const Bed = require("../models/Bed");
 const Admission = require("../models/Admission");
 const NurseNote = require("../models/NurseNote");
+const Bill = require("../models/Bill");
+const LabTest = require("../models/LabTest");
+const LabOrder = require("../models/LabOrder");
+const Medicine = require("../models/Medicine");
+const PharmacySale = require("../models/PharmacySale");
+const AuditLog = require("../models/AuditLog");
+const DoctorSchedule = require("../models/DoctorSchedule");
 const { Counter } = require("../models/Counter");
 const { runWithTenantContext } = require("../utils/tenantContext");
 const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
@@ -121,7 +128,8 @@ async function updateHospitalStatus(req, res) {
 /**
  * Permanently deletes a hospital AND every piece of data belonging to it
  * (staff, patients, appointments, consultations, wards, beds, admissions,
- * nurse notes, counters). This is a genuine cross-tenant admin operation,
+ * nurse notes, bills, lab, pharmacy, audit logs, doctor schedules, counters).
+ * This is a genuine cross-tenant admin operation,
  * so tenant scoping is explicitly bypassed (skipTenantScope) and the
  * target hospitalId is supplied directly in each filter - nothing is left
  * orphaned behind after a delete.
@@ -147,6 +155,13 @@ async function deleteHospital(req, res) {
       Bed.deleteMany(filter).setOptions(opts),
       Admission.deleteMany(filter).setOptions(opts),
       NurseNote.deleteMany(filter).setOptions(opts),
+      Bill.deleteMany(filter).setOptions(opts),
+      LabTest.deleteMany(filter).setOptions(opts),
+      LabOrder.deleteMany(filter).setOptions(opts),
+      Medicine.deleteMany(filter).setOptions(opts),
+      PharmacySale.deleteMany(filter).setOptions(opts),
+      AuditLog.deleteMany(filter).setOptions(opts),
+      DoctorSchedule.deleteMany(filter).setOptions(opts),
       Counter.deleteMany({ hospitalId }), // not tenant-plugin-scoped, plain filter
     ]);
 
