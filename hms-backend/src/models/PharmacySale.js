@@ -19,6 +19,7 @@ const pharmacySaleSchema = new mongoose.Schema(
     items: { type: [saleItemSchema], required: true },
     totalAmount: { type: Number, required: true },
     dispensedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    billed: { type: Boolean, default: false }, // true once settled at the counter or rolled into an IPD discharge bill
   },
   { timestamps: true }
 );

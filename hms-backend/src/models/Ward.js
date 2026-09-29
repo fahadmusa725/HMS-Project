@@ -5,6 +5,7 @@ const wardSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true }, // e.g. "General Ward", "ICU", "Maternity"
     department: { type: String, trim: true },
+    dailyRate: { type: Number, default: 0, min: 0 }, // bed charge per day, used to compute a running IPD bill
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }

@@ -4,14 +4,43 @@ const { getCurrentHospitalId } = require("../utils/tenantContext");
 
 async function createWard(req, res) {
   try {
-    const { name, department } = req.body;
+    const { name, department, dailyRate } = req.body;
     if (!name) return res.status(400).json({ message: "Ward name is required." });
+    if (dailyRate !== undefined && !(Number(dailyRate) >= 0)) {
+      return res.status(400).json({ message: "dailyRate must be zero or a positive number." });
+    }
 
-    const ward = await Ward.create({ name, department, createdBy: req.user.userId });
+    const ward = await Ward.create({ name, department, dailyRate: Number(dailyRate) || 0, createdBy: req.user.userId });
     res.status(201).json(ward);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while creating ward." });
+  }
+}
+
+/** Rename a ward, change its department, or change its per-day bed charge. */
+async function updateWard(req, res) {
+  try {
+    const { wardId } = req.params;
+    const updates = {};
+    if (req.body.name !== undefined) {
+      if (!String(req.body.name).trim()) return res.status(400).json({ message: "Ward name cannot be empty." });
+      updates.name = req.body.name;
+    }
+    if (req.body.department !== undefined) updates.department = req.body.department;
+    if (req.body.dailyRate !== undefined) {
+      if (!(Number(req.body.dailyRate) >= 0)) {
+        return res.status(400).json({ message: "dailyRate must be zero or a positive number." });
+      }
+      updates.dailyRate = Number(req.body.dailyRate);
+    }
+
+    const ward = await Ward.findByIdAndUpdate(wardId, updates, { new: true, runValidators: true });
+    if (!ward) return res.status(404).json({ message: "Ward not found." });
+    res.json(ward);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while updating ward." });
   }
 }
 
@@ -72,4 +101,4 @@ async function listBeds(req, res) {
   }
 }
 
-module.exports = { createWard, listWards, addBeds, listBeds };
+module.exports = { createWard, updateWard, listWards, addBeds, listBeds };

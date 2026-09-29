@@ -17,6 +17,16 @@ const admissionSchema = new mongoose.Schema(
       default: "admitted",
     },
     admittedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    // Deposits collected during the stay - netted against the final bill at discharge.
+    advancePayments: [
+      {
+        amount: { type: Number, required: true, min: 1 },
+        method: { type: String, enum: ["cash", "card", "insurance", "other"], default: "cash" },
+        receivedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        receivedAt: { type: Date, default: Date.now },
+        _id: false,
+      },
+    ],
   },
   { timestamps: true }
 );

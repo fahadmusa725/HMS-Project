@@ -1,5 +1,7 @@
 const Bill = require("../models/Bill");
 const Patient = require("../models/Patient");
+const LabOrder = require("../models/LabOrder");
+const PharmacySale = require("../models/PharmacySale");
 
 async function createBill(req, res) {
   try {
@@ -31,6 +33,12 @@ async function createBill(req, res) {
       admissionId,
       createdBy: req.user.userId,
     });
+
+    // Charged here, so an IPD discharge bill must not pick these up again.
+    await Promise.all([
+      labOrderId && LabOrder.findByIdAndUpdate(labOrderId, { billed: true }),
+      pharmacySaleId && PharmacySale.findByIdAndUpdate(pharmacySaleId, { billed: true }),
+    ]);
 
     res.status(201).json(bill);
   } catch (err) {

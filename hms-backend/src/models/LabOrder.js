@@ -22,7 +22,8 @@ const labOrderSchema = new mongoose.Schema(
       default: "ordered",
     },
     resultNotes: { type: String, trim: true },
-    resultFileUrl: { type: String }, // Cloudinary URL, wired up when file uploads are added
+    resultFileUrl: { type: String }, // Cloudinary URL
+    billed: { type: Boolean, default: false }, // true once charged on a bill (OPD) or rolled into an IPD discharge bill
     orderedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     completedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     completedAt: { type: Date },
