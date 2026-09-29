@@ -18,12 +18,20 @@ const reportsRoutes = require("./routes/reportsRoutes");
 const auditRoutes = require("./routes/auditRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const doctorScheduleRoutes = require("./routes/doctorScheduleRoutes");
+const cronRoutes = require("./routes/cronRoutes");
 
 const app = express();
 
+// CLIENT_URL may list several origins separated by commas (e.g. local dev + the Vercel URL).
+// Trailing slashes are ignored so "https://x.vercel.app/" and "https://x.vercel.app" both match.
+const allowedOrigins = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((o) => o.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "*",
+    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
     credentials: true,
   })
 );
@@ -60,6 +68,7 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/audit-logs", auditRoutes);
 app.use("/api/public", publicRoutes);
 app.use("/api/doctor-schedules", doctorScheduleRoutes);
+app.use("/api/cron", cronRoutes);
 
 // Fallback 404
 app.use((req, res) => {

@@ -1,9 +1,17 @@
 {
   "version": 2,
   "builds": [
-    { "src": "api/index.js", "use": "@vercel/node" }
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node",
+      "config": { "includeFiles": ["node_modules/pdfkit/js/data/**"] }
+    }
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index.js" }
+  ],
+  "crons": [
+    { "path": "/api/cron/trial-check", "schedule": "0 4 * * *" },
+    { "path": "/api/cron/appointment-reminders", "schedule": "0 13 * * *" }
   ]
 }
