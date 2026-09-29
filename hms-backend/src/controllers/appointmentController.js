@@ -1,11 +1,37 @@
+const PDFDocument = require("pdfkit");
 const Appointment = require("../models/Appointment");
 const Patient = require("../models/Patient");
 const User = require("../models/User");
+const Hospital = require("../models/Hospital");
 const DoctorSchedule = require("../models/DoctorSchedule");
 const Bill = require("../models/Bill");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { slotsForDate } = require("../utils/scheduleSlots");
+
+/**
+ * Who may move an appointment INTO each status. The front desk runs arrival
+ * (check-in / no-show), anyone clinical can start the consult, but only the
+ * doctor can close it out - completion means a doctor actually saw the patient.
+ */
+const STATUS_TRANSITION_ROLES = {
+  checked_in: ["receptionist", "hospital_admin"],
+  cancelled: ["receptionist", "hospital_admin", "doctor"],
+  no_show: ["receptionist", "hospital_admin"],
+  in_consultation: ["nurse", "doctor", "hospital_admin", "receptionist"],
+  completed: ["doctor"],
+};
+
+// Once an appointment reaches one of these, it's closed and can't be moved again.
+const TERMINAL_STATUSES = ["completed", "cancelled", "no_show"];
+
+/** "14:30" -> "2:30 PM" for printed output. Legacy free-text times pass through unchanged. */
+function formatSlotTime(time) {
+  const match = /^(\d{2}):(\d{2})$/.exec(time || "");
+  if (!match) return time || "-";
+  const h = Number(match[1]);
+  return `${h % 12 || 12}:${match[2]} ${h < 12 ? "AM" : "PM"}`;
+}
 
 /**
  * Shared booking path for staff (bookAppointment) and patient self-service
@@ -169,23 +195,33 @@ async function getQueue(req, res) {
 async function updateAppointmentStatus(req, res) {
   try {
     const { status } = req.body;
-    const allowed = ["scheduled", "checked_in", "in_consultation", "completed", "cancelled", "no_show"];
-
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ message: `status must be one of: ${allowed.join(", ")}` });
+    const allowedRoles = STATUS_TRANSITION_ROLES[status];
+    if (!allowedRoles) {
+      return res.status(400).json({
+        message: `status must be one of: ${Object.keys(STATUS_TRANSITION_ROLES).join(", ")}`,
+      });
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: `Your role (${req.user.role}) cannot set an appointment to "${status}".` });
     }
 
-    const appointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true }
-    );
-
+    const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ message: "Appointment not found." });
+
+    if (TERMINAL_STATUSES.includes(appointment.status)) {
+      return res.status(409).json({ message: `This appointment is already ${appointment.status.replace("_", " ")}.` });
+    }
+    // A doctor may only close out or cancel their own patients, not a colleague's.
+    if (req.user.role === "doctor" && String(appointment.doctorId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: "You can only update your own appointments." });
+    }
+
+    appointment.status = status;
+    await appointment.save();
     res.json(appointment);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Server error while updating appointment." });
+    res.status(500).json({ message: "Server error while updating appointment status." });
   }
 }
 
@@ -199,6 +235,77 @@ async function getPatientAppointments(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while fetching patient appointments." });
+  }
+}
+
+/**
+ * Printable OPD token slip (small receipt-sized PDF) the receptionist hands
+ * over at booking/check-in. Patients may download their OWN slip only.
+ */
+async function getAppointmentSlipPdf(req, res) {
+  try {
+    const appointment = await Appointment.findById(req.params.id)
+      .populate("patientId", "name mrn userId")
+      .populate("doctorId", "name department");
+    if (!appointment) return res.status(404).json({ message: "Appointment not found." });
+
+    if (req.user.role === "patient" && String(appointment.patientId?.userId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: "You don't have permission to view this slip." });
+    }
+
+    const [hospital, bill] = await Promise.all([
+      Hospital.findById(getCurrentHospitalId()).select("name"),
+      Bill.findOne({ appointmentId: appointment._id }),
+    ]);
+
+    const doc = new PDFDocument({ size: [283, 420], margin: 18 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="token-slip-${appointment.date}-${appointment.tokenNumber}.pdf"`);
+    doc.pipe(res);
+
+    doc.font("Helvetica-Bold").fontSize(13).fillColor("#000").text(hospital ? hospital.name : "Hospital", { align: "center" });
+    doc.font("Helvetica").fontSize(9).fillColor("#555").text("OPD Token Slip", { align: "center" });
+    doc.moveDown(0.6);
+    doc.strokeColor("#0F766E").lineWidth(1).moveTo(18, doc.y).lineTo(265, doc.y).stroke();
+    doc.moveDown(0.6);
+
+    doc.font("Helvetica").fontSize(8).fillColor("#555").text("TOKEN NO.", { align: "center" });
+    doc.font("Helvetica-Bold").fontSize(40).fillColor("#0F766E").text(String(appointment.tokenNumber), { align: "center" });
+    doc.moveDown(0.4);
+
+    const row = (label, value) => {
+      doc.font("Helvetica-Bold").fontSize(9).fillColor("#000").text(`${label}: `, { continued: true });
+      doc.font("Helvetica").text(value || "-");
+    };
+    row("Patient", appointment.patientId ? `${appointment.patientId.name} (${appointment.patientId.mrn})` : "-");
+    row(
+      "Doctor",
+      appointment.doctorId
+        ? `Dr. ${appointment.doctorId.name}${appointment.doctorId.department ? " - " + appointment.doctorId.department : ""}`
+        : "-"
+    );
+    row("Date", new Date(appointment.date + "T00:00:00").toDateString());
+    row("Time", formatSlotTime(appointment.time));
+    if (appointment.reason) row("Reason", appointment.reason);
+
+    if (bill) {
+      doc.moveDown(0.5);
+      doc.strokeColor("#DDDDDD").lineWidth(0.5).moveTo(18, doc.y).lineTo(265, doc.y).stroke();
+      doc.moveDown(0.5);
+      row("Consultation Fee", `Rs. ${bill.totalAmount.toLocaleString("en-US")}`);
+      row("Paid", `Rs. ${bill.amountPaid.toLocaleString("en-US")} (${bill.paymentStatus.toUpperCase()})`);
+    }
+
+    doc.moveDown(1);
+    doc.font("Helvetica").fontSize(7).fillColor("#888").text(`Printed ${new Date().toLocaleString("en-GB")}`, { align: "center" });
+    doc.text("Please wait for your token number to be called.", { align: "center" });
+
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Server error while generating the slip." });
+    }
   }
 }
 
@@ -263,6 +370,7 @@ module.exports = {
   getQueue,
   updateAppointmentStatus,
   getPatientAppointments,
+  getAppointmentSlipPdf,
   getMyAppointments,
   listDoctors,
   bookMyAppointment,
