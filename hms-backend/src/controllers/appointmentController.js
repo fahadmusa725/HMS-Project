@@ -38,8 +38,12 @@ const VALID_TRANSITIONS = {
   in_consultation: ["completed"],
 };
 
-// How early front desk can check a patient in before their scheduled slot.
+// How early front desk (or the patient themself) can check in before their scheduled slot.
 const CHECK_IN_GRACE_MINUTES = 30;
+
+// How long a "scheduled" appointment can sit untouched past its slot before it's lazily
+// auto-flagged as a no-show - see autoFlagNoShows() below.
+const NO_SHOW_GRACE_MINUTES = 45;
 
 /** "14:30" -> "2:30 PM" for printed output. Legacy free-text times pass through unchanged. */
 function formatSlotTime(time) {
@@ -47,6 +51,26 @@ function formatSlotTime(time) {
   if (!match) return time || "-";
   const h = Number(match[1]);
   return `${h % 12 || 12}:${match[2]} ${h < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * Lazily sweeps up appointments that were left "scheduled" long past their slot - there's no
+ * cron job for this (the Vercel Hobby plan is already at its 2-job limit), so it runs inline
+ * whenever the queue is read or a new booking checks for a slot clash, which is often enough to
+ * keep the queue from looking stale. Past-date appointments are flagged regardless of time (token
+ * bookings included); today's are only flagged once NO_SHOW_GRACE_MINUTES has passed their slot.
+ * Never touches anything already checked_in or beyond.
+ */
+async function autoFlagNoShows() {
+  const now = hospitalNow();
+  const cutoffTime = toHHMM(Math.max(toMinutes(now.time) - NO_SHOW_GRACE_MINUTES, 0));
+  await Appointment.updateMany(
+    {
+      status: "scheduled",
+      $or: [{ date: { $lt: now.date } }, { date: now.date, time: { $regex: HHMM_REGEX, $lte: cutoffTime } }],
+    },
+    { $set: { status: "no_show" } }
+  );
 }
 
 /**
@@ -117,6 +141,8 @@ async function createAppointmentWithBilling({
     if (date === now.date && time <= now.time) {
       throw { status: 400, message: "That time slot has already passed today. Please pick a later slot." };
     }
+    // A stale "scheduled" appointment sitting on this exact slot should free it up, not block it.
+    await autoFlagNoShows();
     const clash = await Appointment.findOne({ doctorId, date, time, status: { $nin: ["cancelled", "no_show"] } });
     if (clash) {
       throw { status: 409, message: "This slot was just booked by someone else. Please pick another time." };
@@ -222,6 +248,8 @@ async function bookAppointment(req, res) {
  */
 async function getQueue(req, res) {
   try {
+    await autoFlagNoShows();
+
     const { date, doctorId } = req.query;
     const targetDate = date || hospitalNow().date;
 
