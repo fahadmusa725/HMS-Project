@@ -11,6 +11,7 @@ import {
   Trash2,
   User,
   FileText,
+  Bed,
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -20,11 +21,57 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { RunningBillCard } from '@/components/hospital/IpdBilling';
 import { formatCurrency } from '@/lib/utils';
 
 // OPD consultation fees are billed automatically at booking, so manual invoices start blank
 // (pre-filling a consultation fee here would double-charge the patient).
 const EMPTY_LINE_ITEM = { description: '', category: 'Other', amount: 0 };
+
+/**
+ * Same query key RunningBillCard itself uses for this admission, so the two rows/cells below
+ * share one request (React Query dedupes it), and opening the detail modal for a row is instant
+ * since the data it needs is already cached.
+ */
+function useRunningBillTotal(admissionId) {
+  return useQuery({
+    queryKey: ['running-bill', admissionId],
+    queryFn: async () => {
+      const res = await api.get(`/api/admissions/${admissionId}/running-bill`);
+      return res.data;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+function IpdRunningTotalCell({ admissionId }) {
+  const { data, isLoading } = useRunningBillTotal(admissionId);
+  return (
+    <td className="py-3.5 px-4 font-bold text-foreground text-xs">
+      {isLoading ? (
+        <span className="text-muted-foreground font-normal">…</span>
+      ) : (
+        formatCurrency(data?.totals?.grandTotal ?? 0)
+      )}
+    </td>
+  );
+}
+
+function IpdBalanceCell({ admission }) {
+  const { data, isLoading } = useRunningBillTotal(admission._id);
+  const balance = isLoading || !data ? null : Math.max(0, (data.totals?.grandTotal ?? 0) - (admission.advancePaid || 0));
+  return (
+    <td className="py-3.5 px-4 font-bold text-xs">
+      {balance === null ? (
+        <span className="text-muted-foreground font-normal">…</span>
+      ) : balance > 0 ? (
+        <span className="text-warning-foreground">{formatCurrency(balance)}</span>
+      ) : (
+        <span className="text-muted-foreground font-normal">PKR 0</span>
+      )}
+    </td>
+  );
+}
 
 export default function BillingModule({ initialPatient = null }) {
   const { user } = useAuthStore();
@@ -33,6 +80,8 @@ export default function BillingModule({ initialPatient = null }) {
   const role = user?.role;
   const canCreateBill = ['accountant', 'hospital_admin', 'receptionist'].includes(role);
   const canRecordPayment = ['accountant', 'hospital_admin'].includes(role);
+  // Matches the backend's advance-payment role list exactly (hospital_admin, receptionist, accountant).
+  const canAddAdvance = ['hospital_admin', 'receptionist', 'accountant'].includes(role);
 
   // Filters
   const [statusFilter, setStatusFilter] = useState('all');
@@ -42,6 +91,7 @@ export default function BillingModule({ initialPatient = null }) {
   const [isCreateOpen, setIsCreateOpen] = useState(!!initialPatient);
   const [selectedBillForDetails, setSelectedBillForDetails] = useState(null);
   const [paymentBillTarget, setPaymentBillTarget] = useState(null);
+  const [selectedIpdAdmission, setSelectedIpdAdmission] = useState(null);
 
   // Create Bill Form State
   const [billPatientSearch, setBillPatientSearch] = useState('');
@@ -67,6 +117,21 @@ export default function BillingModule({ initialPatient = null }) {
     queryFn: async () => {
       const params = statusFilter !== 'all' ? { paymentStatus: statusFilter } : {};
       const res = await api.get('/api/billing', { params });
+      return res.data;
+    },
+  });
+
+  // Query: Currently-admitted patients with charges still accruing (no Bill exists for these yet -
+  // same endpoint and query key Wards & Beds uses for its own Active IPD list).
+  const {
+    data: activeAdmissions = [],
+    isLoading: isAdmissionsLoading,
+    refetch: refetchAdmissions,
+    isRefetching: isAdmissionsRefetching,
+  } = useQuery({
+    queryKey: ['admissions', 'admitted'],
+    queryFn: async () => {
+      const res = await api.get('/api/admissions', { params: { status: 'admitted' } });
       return res.data;
     },
   });
@@ -234,6 +299,109 @@ export default function BillingModule({ initialPatient = null }) {
           </div>
         </div>
       </div>
+
+      {/* Active IPD Stays - charges accruing for currently-admitted patients that haven't
+          become a real Bill yet (that only happens at discharge). Without this, billing staff
+          had no way to see a long-staying patient's running balance short of checking Wards & Beds. */}
+      <Card className="bg-card border-border shadow-soft overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-border flex items-center justify-between gap-4 bg-muted/20">
+          <div>
+            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Bed className="h-4 w-4 text-primary" />
+              Active IPD Stays
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Currently-admitted patients with charges still accruing — not yet a finalized invoice.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchAdmissions()}
+            disabled={isAdmissionsRefetching}
+            className="h-8 px-2.5 text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isAdmissionsRefetching ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+
+        <div className="overflow-x-auto">
+          {isAdmissionsLoading ? (
+            <div className="p-8 text-center text-muted-foreground flex flex-col items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+              <span className="text-xs font-medium">Loading active IPD stays...</span>
+            </div>
+          ) : activeAdmissions.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-xs text-muted-foreground">No patients are currently admitted.</p>
+            </div>
+          ) : (
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30 text-xs font-semibold text-muted-foreground">
+                  <th className="py-3 px-6">Patient</th>
+                  <th className="py-3 px-4">Ward / Bed</th>
+                  <th className="py-3 px-4">Days Admitted</th>
+                  <th className="py-3 px-4">Running Total</th>
+                  <th className="py-3 px-4">Advance Paid</th>
+                  <th className="py-3 px-4">Balance So Far</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-6 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {activeAdmissions.map((adm) => (
+                  <tr key={adm._id} className="hover:bg-accent/40 transition-colors">
+                    <td className="py-3.5 px-6">
+                      <div className="font-semibold text-foreground text-xs">
+                        {adm.patientId?.name || 'Unknown Patient'}
+                      </div>
+                      <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                        MRN: {adm.patientId?.mrn || '—'}
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-xs text-foreground">
+                      {adm.wardId?.name || '—'}
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        Bed {adm.bedId?.bedNumber || '—'}
+                      </div>
+                    </td>
+
+                    <td className="py-3.5 px-4 text-xs font-semibold text-foreground">
+                      {adm.daysAdmitted} day{adm.daysAdmitted !== 1 ? 's' : ''}
+                    </td>
+
+                    <IpdRunningTotalCell admissionId={adm._id} />
+
+                    <td className="py-3.5 px-4 font-semibold text-primary text-xs">
+                      {formatCurrency(adm.advancePaid)}
+                    </td>
+
+                    <IpdBalanceCell admission={adm} />
+
+                    <td className="py-3.5 px-4">
+                      <Badge variant="in_progress">In Progress</Badge>
+                    </td>
+
+                    <td className="py-3.5 px-6 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedIpdAdmission(adm)}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Receipt className="h-3.5 w-3.5 mr-1" />
+                        View Running Bill
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </Card>
 
       {/* Bills Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
@@ -774,6 +942,25 @@ export default function BillingModule({ initialPatient = null }) {
                 Close
               </Button>
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* MODAL 4: ACTIVE IPD RUNNING BILL - reuses the exact same card built for Wards & Beds,
+          so there's one running-bill UI in the app, not two. */}
+      <Modal
+        isOpen={!!selectedIpdAdmission}
+        onClose={() => setSelectedIpdAdmission(null)}
+        title={selectedIpdAdmission?.patientId?.name || 'Active IPD Stay'}
+        description={
+          selectedIpdAdmission
+            ? `${selectedIpdAdmission.wardId?.name || 'Ward'} · Bed ${selectedIpdAdmission.bedId?.bedNumber || '—'} · MRN: ${selectedIpdAdmission.patientId?.mrn || '—'}`
+            : ''
+        }
+      >
+        {selectedIpdAdmission && (
+          <div className="max-h-[65vh] overflow-y-auto">
+            <RunningBillCard admission={selectedIpdAdmission} canAddAdvance={canAddAdvance} />
           </div>
         )}
       </Modal>

@@ -18,15 +18,18 @@ router.use(protect, auditLogger);
 
 const canAdmit = allowRoles("hospital_admin", "doctor", "nurse", "receptionist");
 const canView = allowRoles("hospital_admin", "doctor", "nurse", "receptionist");
+// Accountants need admission list/detail to see active IPD stays from Billing, but not the
+// clinical rounds notes below - kept as a separate list so notes access doesn't widen with it.
+const canViewForBilling = allowRoles("hospital_admin", "doctor", "nurse", "receptionist", "accountant");
 
 // Admit a patient (claims a bed atomically).
 router.post("/", canAdmit, admitPatient);
 
 // List admissions. ?status=admitted (default) | discharged | all, optional ?patientId=
-router.get("/", canView, listAdmissions);
+router.get("/", canViewForBilling, listAdmissions);
 
 // Single admission detail (includes daysAdmitted + advancePaid).
-router.get("/:id", canView, getAdmissionById);
+router.get("/:id", canViewForBilling, getAdmissionById);
 
 // Live running bill - viewable any time before discharge, and the final breakdown after.
 router.get(
