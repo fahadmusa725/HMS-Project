@@ -1,6 +1,7 @@
 const LabTest = require("../models/LabTest");
 const LabOrder = require("../models/LabOrder");
 const Patient = require("../models/Patient");
+const { uploadBufferToCloudinary } = require("../utils/uploadBufferToCloudinary");
 
 // --- Catalog management (hospital_admin) ---
 
@@ -105,7 +106,7 @@ async function updateLabOrderStatus(req, res) {
   }
 }
 
-/** Attach results (notes and/or a report file URL) to an order. */
+/** Attach results (notes and/or a manually-pasted report URL) to an order. */
 async function addLabResult(req, res) {
   try {
     const { resultNotes, resultFileUrl } = req.body;
@@ -130,6 +131,43 @@ async function addLabResult(req, res) {
   }
 }
 
+/**
+ * Attach a REAL uploaded file (scanned report, X-ray image, etc.) as the
+ * result - uploads it to Cloudinary and stores the resulting URL. Expects
+ * multipart/form-data with a "file" field (handled by the upload
+ * middleware) plus an optional "resultNotes" text field alongside it.
+ */
+async function uploadLabResultFile(req, res) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file was uploaded (expected a 'file' field)." });
+    }
+
+    const uploadResult = await uploadBufferToCloudinary(req.file.buffer, { folder: "hms-lab-results" });
+
+    const order = await LabOrder.findByIdAndUpdate(
+      req.params.id,
+      {
+        resultFileUrl: uploadResult.secure_url,
+        resultNotes: req.body.resultNotes,
+        status: "completed",
+        completedBy: req.user.userId,
+        completedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!order) return res.status(404).json({ message: "Lab order not found." });
+    res.json(order);
+  } catch (err) {
+    console.error(err);
+    if (err.message && err.message.includes("Cloudinary is not configured")) {
+      return res.status(503).json({ message: err.message });
+    }
+    res.status(500).json({ message: "Server error while uploading lab result file." });
+  }
+}
+
 async function getPatientLabOrders(req, res) {
   try {
     const orders = await LabOrder.find({ patientId: req.params.patientId })
@@ -149,5 +187,6 @@ module.exports = {
   listLabOrders,
   updateLabOrderStatus,
   addLabResult,
+  uploadLabResultFile,
   getPatientLabOrders,
 };

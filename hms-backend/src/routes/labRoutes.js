@@ -2,6 +2,7 @@ const express = require("express");
 const protect = require("../middleware/auth");
 const auditLogger = require("../middleware/auditLogger");
 const allowRoles = require("../middleware/rbac");
+const upload = require("../middleware/upload");
 const {
   createLabTest,
   listLabTests,
@@ -9,6 +10,7 @@ const {
   listLabOrders,
   updateLabOrderStatus,
   addLabResult,
+  uploadLabResultFile,
   getPatientLabOrders,
 } = require("../controllers/labController");
 
@@ -29,6 +31,7 @@ router.post("/orders", canOrder, createLabOrder);
 router.get("/orders", canView, listLabOrders);
 router.patch("/orders/:id/status", canManageOrders, updateLabOrderStatus);
 router.patch("/orders/:id/result", canManageOrders, addLabResult);
+router.post("/orders/:id/upload-result", canManageOrders, upload.single("file"), uploadLabResultFile);
 router.get("/orders/patient/:patientId", canView, getPatientLabOrders);
 
 module.exports = router;
