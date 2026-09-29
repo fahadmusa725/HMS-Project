@@ -84,13 +84,15 @@ async function createAppointmentWithBilling({
   const doctor = await User.findOne({ _id: doctorId, role: "doctor", status: "active" }).select("name");
   if (!doctor) throw { status: 404, message: "Doctor not found." };
 
-  // Same patient, same doctor, same day, still active - almost always a duplicate booking rather
-  // than an intentional same-day follow-up, so this is blocked outright rather than just warned.
+  // Same patient, same doctor, same day, not cancelled/no-show - almost always a duplicate
+  // booking rather than an intentional same-day follow-up, so this is blocked outright rather
+  // than just warned. Matches the ACTIVE_STATUSES partial unique index on Appointment, which is
+  // the real guarantee against this - this check only exists to give a friendlier error first.
   const duplicate = await Appointment.findOne({
     patientId,
     doctorId,
     date,
-    status: { $nin: TERMINAL_STATUSES },
+    status: { $nin: ["cancelled", "no_show"] },
   });
   if (duplicate) {
     throw {
