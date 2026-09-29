@@ -20,7 +20,8 @@ router.use(protect, auditLogger);
 const canBook = allowRoles("hospital_admin", "receptionist");
 const canViewQueue = allowRoles("hospital_admin", "receptionist", "doctor", "nurse");
 // Coarse gate only - the per-status role rules live in the controller (STATUS_TRANSITION_ROLES).
-const canUpdateStatus = allowRoles("hospital_admin", "receptionist", "doctor", "nurse");
+// "patient" is included so they can check themselves in - ownership is enforced in the controller.
+const canUpdateStatus = allowRoles("hospital_admin", "receptionist", "doctor", "nurse", "patient");
 
 // Patient self-service - must come before "/patient/:patientId" so it's
 // never confused with a param route.

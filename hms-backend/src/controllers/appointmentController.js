@@ -17,7 +17,7 @@ const { REFERENCE_REQUIRED_METHODS, recalcBillTotals } = require("../utils/billT
  * doctor can close it out - completion means a doctor actually saw the patient.
  */
 const STATUS_TRANSITION_ROLES = {
-  checked_in: ["receptionist", "hospital_admin"],
+  checked_in: ["receptionist", "hospital_admin", "patient"],
   cancelled: ["receptionist", "hospital_admin", "doctor"],
   no_show: ["receptionist", "hospital_admin"],
   in_consultation: ["nurse", "doctor", "hospital_admin", "receptionist"],
@@ -310,6 +310,14 @@ async function updateAppointmentStatus(req, res) {
     // A doctor may only close out or cancel their own patients, not a colleague's.
     if (req.user.role === "doctor" && String(appointment.doctorId) !== String(req.user.userId)) {
       return res.status(403).json({ message: "You can only update your own appointments." });
+    }
+    // A patient may only check themselves in - never anyone else's appointment - and only ever
+    // into "checked_in" (the role list above already keeps them from setting anything else).
+    if (req.user.role === "patient") {
+      const ownPatient = await Patient.findOne({ userId: req.user.userId }).select("_id");
+      if (!ownPatient || String(appointment.patientId) !== String(ownPatient._id)) {
+        return res.status(403).json({ message: "You can only check in your own appointment." });
+      }
     }
 
     if (status === "checked_in") {

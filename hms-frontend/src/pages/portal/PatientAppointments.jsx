@@ -14,7 +14,8 @@ import {
   Loader2,
   RefreshCw,
   CheckCircle2,
-  Printer
+  Printer,
+  LogIn
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,23 @@ const bookingSchema = z.object({
 
 const printSlip = (appointmentId) =>
   openPdf(`/api/appointments/${appointmentId}/slip-pdf`).catch(() => toast.error('Could not open the token slip.'));
+
+// Mirrors CHECK_IN_GRACE_MINUTES in appointmentController.js - the backend is the real gate,
+// this just decides when to show the button so patients aren't tapping it hours too early.
+const CHECK_IN_GRACE_MINUTES = 30;
+
+function canCheckInNow(apt) {
+  if (apt.status !== 'scheduled') return false;
+  const now = new Date();
+  const nowDateStr = localDateStr(now);
+  if (apt.date !== nowDateStr) return false;
+  if (!apt.time) return true;
+  const match = /^(\d{2}):(\d{2})$/.exec(apt.time);
+  if (!match) return true;
+  const apptMinutes = Number(match[1]) * 60 + Number(match[2]);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return nowMinutes >= apptMinutes - CHECK_IN_GRACE_MINUTES;
+}
 
 export default function PatientAppointments() {
   const queryClient = useQueryClient();
@@ -108,6 +126,21 @@ export default function PatientAppointments() {
   const onSubmitBooking = (data) => {
     bookMutation.mutate(data);
   };
+
+  // Mutation: Self check-in
+  const checkInMutation = useMutation({
+    mutationFn: async (appointmentId) => {
+      const res = await api.patch(`/api/appointments/${appointmentId}/status`, { status: 'checked_in' });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-appointments-mine'] });
+      toast.success('Checked in! Please wait to be called.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to check in.');
+    },
+  });
 
   // Filter appointments
   const todayStr = localDateStr();
@@ -375,6 +408,19 @@ export default function PatientAppointments() {
                     <div className="text-xs text-muted-foreground bg-card/60 p-2.5 rounded-lg border border-border/40">
                       <span className="font-semibold text-foreground/80">Reason:</span> {apt.reason}
                     </div>
+                  )}
+
+                  {/* Self Check-In */}
+                  {canCheckInNow(apt) && (
+                    <Button
+                      size="sm"
+                      onClick={() => checkInMutation.mutate(apt._id)}
+                      disabled={checkInMutation.isPending}
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8"
+                    >
+                      <LogIn className="h-3.5 w-3.5 mr-1.5" />
+                      {checkInMutation.isPending ? 'Checking In...' : 'Check In Now'}
+                    </Button>
                   )}
                 </div>
               ))}
