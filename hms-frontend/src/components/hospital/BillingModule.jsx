@@ -6,18 +6,11 @@ import {
   Plus,
   Search,
   CreditCard,
-  DollarSign,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
   RefreshCw,
   Trash2,
   User,
   FileText,
-  Clock,
-  Printer,
-  Calendar,
-  Wallet
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -28,6 +21,10 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { formatCurrency } from '@/lib/utils';
+
+// OPD consultation fees are billed automatically at booking, so manual invoices start blank
+// (pre-filling a consultation fee here would double-charge the patient).
+const EMPTY_LINE_ITEM = { description: '', category: 'Other', amount: 0 };
 
 export default function BillingModule({ initialPatient = null }) {
   const { user } = useAuthStore();
@@ -50,7 +47,7 @@ export default function BillingModule({ initialPatient = null }) {
   const [billPatientSearch, setBillPatientSearch] = useState('');
   const [billPatient, setBillPatient] = useState(initialPatient);
   const [billItems, setBillItems] = useState([
-    { description: 'OPD Consultation Fee', category: 'OPD', amount: 1500 },
+    EMPTY_LINE_ITEM,
   ]);
   const [initialPaymentAmount, setInitialPaymentAmount] = useState(0);
   const [initialPaymentMethod, setInitialPaymentMethod] = useState('cash');
@@ -94,7 +91,7 @@ export default function BillingModule({ initialPatient = null }) {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setIsCreateOpen(false);
-      setBillItems([{ description: 'OPD Consultation Fee', category: 'OPD', amount: 1500 }]);
+      setBillItems([EMPTY_LINE_ITEM]);
       if (!initialPatient) setBillPatient(null);
       setInitialPaymentAmount(0);
       toast.success(`Invoice generated successfully. Total: ${formatCurrency(data.totalAmount)}`);

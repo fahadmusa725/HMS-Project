@@ -16,9 +16,12 @@ import {
   UserCheck,
   Stethoscope,
   Ticket,
-  FileText
+  FileText,
+  Printer,
+  XCircle,
+  UserX
 } from 'lucide-react';
-import api from '@/lib/api';
+import api, { openPdf } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,28 +29,35 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import ConsultationForm from '@/components/hospital/ConsultationForm';
-
-const timeRegex = /^((0?[1-9]|1[0-2]):[0-5][0-9]\s*(AM|PM|am|pm)|([01]?[0-9]|2[0-3]):[0-5][0-9])$/;
+import { SlotPicker } from '@/components/hospital/SlotPicker';
+import { formatCurrency, formatSlotTime } from '@/lib/utils';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
   doctorId: z.string().min(1, 'Please select a doctor'),
   date: z.string().min(1, 'Date is required'),
-  time: z
-    .string()
-    .min(1, 'Time is required')
-    .refine((val) => timeRegex.test(val.trim()), {
-      message: 'Please enter a valid time (e.g. 09:00 AM, 2:30 PM, or 14:30)',
-    }),
+  time: z.string().min(1, 'Please pick one of the available time slots'),
   reason: z.string().optional(),
 });
+
+// Mirrors STATUS_TRANSITION_ROLES in the backend's appointmentController - the
+// server enforces it, this just hides buttons a role would get a 403 for.
+const STATUS_TRANSITION_ROLES = {
+  checked_in: ['receptionist', 'hospital_admin'],
+  cancelled: ['receptionist', 'hospital_admin', 'doctor'],
+  no_show: ['receptionist', 'hospital_admin'],
+  in_consultation: ['nurse', 'doctor', 'hospital_admin', 'receptionist'],
+  completed: ['doctor'],
+};
 
 export default function AppointmentsQueue() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
 
-  const isDoctor = user?.role === 'doctor';
-  const canBook = user?.role === 'hospital_admin' || user?.role === 'receptionist';
+  const role = user?.role;
+  const isDoctor = role === 'doctor';
+  const canBook = role === 'hospital_admin' || role === 'receptionist';
+  const can = (status) => STATUS_TRANSITION_ROLES[status]?.includes(role);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(todayStr);
@@ -70,23 +80,24 @@ export default function AppointmentsQueue() {
       patientId: '',
       doctorId: '',
       date: todayStr,
-      time: '09:00 AM',
+      time: '',
       reason: '',
     },
   });
 
   const selectedPatientId = watch('patientId');
+  const bookingDate = watch('date');
+  const bookingDoctorId = watch('doctorId');
+  const bookingTime = watch('time');
 
-  // Query: Doctors list for booking & filtering
+  // Query: Doctors list for the queue filter (booking uses SlotPicker's real availability instead)
   const { data: staffList = [] } = useQuery({
-    queryKey: ['hospital-doctors-list'],
+    queryKey: ['doctors-list'],
     queryFn: async () => {
-      if (user?.role === 'hospital_admin') {
-        const response = await api.get('/api/hospital-admin/staff');
-        return response.data.filter((s) => s.role === 'doctor');
-      }
-      return [];
+      const response = await api.get('/api/appointments/doctors');
+      return response.data;
     },
+    enabled: !isDoctor,
   });
 
   // Query: Search patients for booking modal
@@ -131,20 +142,34 @@ export default function AppointmentsQueue() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['opd-queue'] });
+      queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setIsBookOpen(false);
       reset();
       setPatientSearch('');
       setFormError(null);
+      const feeText = data.bill ? ` Consultation fee ${formatCurrency(data.bill.totalAmount)} billed (unpaid).` : '';
       toast.success(`Token #${data.tokenNumber} assigned successfully!`, {
-        description: `Appointment booked for ${data.date} at ${data.time || 'scheduled slot'}.`,
+        description: `Appointment booked for ${data.date} at ${formatSlotTime(data.time)}.${feeText}`,
+        action: { label: 'Print slip', onClick: () => printSlip(data._id) },
+        duration: 8000,
       });
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to book appointment.';
       setFormError(message);
       toast.error(message);
+      // A 409 means the slot was taken in the meantime - refresh the grid so it disappears.
+      if (err.response?.status === 409) {
+        setValue('time', '');
+        queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      }
     },
   });
+
+  const printSlip = (appointmentId) => {
+    openPdf(`/api/appointments/${appointmentId}/slip-pdf`).catch(() => toast.error('Could not open the token slip.'));
+  };
 
   // Mutation: Update Appointment Status
   const statusMutation = useMutation({
@@ -172,76 +197,152 @@ export default function AppointmentsQueue() {
     statusMutation.mutate({ id, status: newStatus, tokenNumber });
   };
 
-  // Helper for quick-action buttons
+  // Helper for quick-action buttons - each one only renders for roles the backend allows
   const renderActionButtons = (appointment) => {
     const { _id, status, tokenNumber } = appointment;
+    const isOwnPatient = String(appointment.doctorId?._id) === String(user?.id);
+    const busy = statusMutation.isPending;
+    const buttons = [];
+
+    const cancelButton = can('cancelled') && (!isDoctor || isOwnPatient) && (
+      <Button
+        key="cancel"
+        size="sm"
+        variant="ghost"
+        title="Cancel appointment"
+        onClick={() => handleStatusChange(_id, 'cancelled', tokenNumber)}
+        disabled={busy}
+        className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+      >
+        <XCircle className="h-3.5 w-3.5" />
+      </Button>
+    );
 
     switch (status) {
       case 'scheduled':
-        return (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => handleStatusChange(_id, 'checked_in', tokenNumber)}
-            disabled={statusMutation.isPending}
-            className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40 flex items-center gap-1"
-          >
-            <UserCheck className="h-3.5 w-3.5" />
-            Check In
-          </Button>
-        );
-      case 'checked_in':
-        return (
-          <Button
-            size="sm"
-            onClick={() => handleStatusChange(_id, 'in_consultation', tokenNumber)}
-            disabled={statusMutation.isPending}
-            className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 shadow-sm"
-          >
-            <Play className="h-3 w-3 fill-current" />
-            Start Consult
-          </Button>
-        );
-      case 'in_consultation':
-        if (isDoctor) {
-          return (
+        if (can('checked_in')) {
+          buttons.push(
             <Button
+              key="checkin"
+              size="sm"
+              variant="outline"
+              onClick={() => handleStatusChange(_id, 'checked_in', tokenNumber)}
+              disabled={busy}
+              className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40 flex items-center gap-1"
+            >
+              <UserCheck className="h-3.5 w-3.5" />
+              Check In
+            </Button>
+          );
+        }
+        if (can('no_show')) {
+          buttons.push(
+            <Button
+              key="noshow"
+              size="sm"
+              variant="ghost"
+              title="Mark as no-show"
+              onClick={() => handleStatusChange(_id, 'no_show', tokenNumber)}
+              disabled={busy}
+              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <UserX className="h-3.5 w-3.5" />
+            </Button>
+          );
+        }
+        buttons.push(cancelButton);
+        break;
+      case 'checked_in':
+        if (can('in_consultation')) {
+          buttons.push(
+            <Button
+              key="start"
+              size="sm"
+              onClick={() => handleStatusChange(_id, 'in_consultation', tokenNumber)}
+              disabled={busy}
+              className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 shadow-sm"
+            >
+              <Play className="h-3 w-3 fill-current" />
+              {isDoctor ? 'Call In' : 'Send In'}
+            </Button>
+          );
+        }
+        buttons.push(cancelButton);
+        break;
+      case 'in_consultation':
+        // Only the doctor closes a consultation - everyone else just sees where the patient is.
+        if (can('completed') && isOwnPatient) {
+          buttons.push(
+            <Button
+              key="record"
               size="sm"
               onClick={() => setConsultationAppointment(appointment)}
-              disabled={statusMutation.isPending}
+              disabled={busy}
               className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1.5 shadow-sm"
             >
               <FileText className="h-3.5 w-3.5" />
               Record Consultation
+            </Button>,
+            <Button
+              key="complete"
+              size="sm"
+              variant="outline"
+              title="Mark complete without recording notes"
+              onClick={() => handleStatusChange(_id, 'completed', tokenNumber)}
+              disabled={busy}
+              className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 flex items-center gap-1"
+            >
+              <Check className="h-3.5 w-3.5" />
+              Complete
             </Button>
           );
+        } else {
+          buttons.push(
+            <span key="with-doctor" className="text-xs font-medium text-muted-foreground">
+              With doctor
+            </span>
+          );
         }
-        return (
-          <Button
-            size="sm"
-            onClick={() => handleStatusChange(_id, 'completed', tokenNumber)}
-            disabled={statusMutation.isPending}
-            className="h-8 text-xs font-semibold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1"
-          >
-            <Check className="h-3.5 w-3.5" />
-            Complete
-          </Button>
-        );
+        break;
       case 'completed':
-        return (
-          <span className="text-xs font-medium text-muted-foreground">
+        buttons.push(
+          <span key="done" className="text-xs font-medium text-muted-foreground">
             Consultation done
           </span>
         );
+        break;
       case 'cancelled':
-        return (
-          <span className="text-xs font-medium text-destructive">
+        buttons.push(
+          <span key="cancelled" className="text-xs font-medium text-destructive">
             Cancelled
           </span>
         );
+        break;
+      case 'no_show':
+        buttons.push(
+          <span key="noshow-label" className="text-xs font-medium text-muted-foreground">
+            Did not arrive
+          </span>
+        );
+        break;
       default:
-        return null;
+        break;
     }
+
+    return (
+      <div className="flex items-center justify-end gap-1.5">
+        {buttons}
+        <Button
+          size="sm"
+          variant="ghost"
+          title="Print token slip"
+          onClick={() => printSlip(_id)}
+          className="h-8 px-2 text-muted-foreground hover:text-foreground"
+        >
+          <Printer className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
   };
 
   return (
@@ -389,6 +490,7 @@ export default function AppointmentsQueue() {
                   <th className="py-3.5 px-6">Patient</th>
                   <th className="py-3.5 px-4">Doctor</th>
                   <th className="py-3.5 px-4">Time / Reason</th>
+                  <th className="py-3.5 px-4">OPD Fee</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-6 text-right">Quick Action</th>
                 </tr>
@@ -421,12 +523,23 @@ export default function AppointmentsQueue() {
                     <td className="py-4 px-4 text-xs">
                       <div className="font-medium text-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3 text-muted-foreground" />
-                        {item.time || '—'}
+                        {formatSlotTime(item.time)}
                       </div>
                       {item.reason && (
                         <div className="text-muted-foreground truncate max-w-[160px] mt-0.5">
                           {item.reason}
                         </div>
+                      )}
+                    </td>
+
+                    <td className="py-4 px-4 text-xs">
+                      {item.bill ? (
+                        <div className="space-y-1">
+                          <div className="font-semibold text-foreground">{formatCurrency(item.bill.totalAmount)}</div>
+                          <Badge variant={item.bill.paymentStatus}>{item.bill.paymentStatus}</Badge>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
 
@@ -456,7 +569,7 @@ export default function AppointmentsQueue() {
         title="Book OPD Appointment"
         description="Assign a daily token number and schedule a patient consultation."
       >
-        <form onSubmit={handleSubmit(onSubmitBook)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmitBook)} className="space-y-4 max-h-[72vh] overflow-y-auto pr-1">
           {formError && (
             <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -509,54 +622,33 @@ export default function AppointmentsQueue() {
             )}
           </div>
 
-          {/* Doctor Select */}
+          {/* Date first - it decides which doctors are on duty */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-              Select Doctor *
+              Appointment Date *
             </label>
-            <select
-              {...register('doctorId')}
+            <Input
+              type="date"
+              min={todayStr}
+              value={bookingDate}
+              onChange={(e) => {
+                setValue('date', e.target.value, { shouldValidate: true });
+                setValue('doctorId', '');
+                setValue('time', '');
+              }}
               disabled={bookMutation.isPending}
-              className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <option value="">-- Choose Doctor --</option>
-              {staffList.map((doc) => (
-                <option key={doc._id} value={doc._id}>
-                  {doc.name} {doc.department ? `(${doc.department})` : ''}
-                </option>
-              ))}
-            </select>
-            {errors.doctorId && (
-              <p className="text-xs text-destructive">{errors.doctorId.message}</p>
-            )}
+            />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Date
-              </label>
-              <Input
-                type="date"
-                {...register('date')}
-                disabled={bookMutation.isPending}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Time Slot *
-              </label>
-              <Input
-                placeholder="e.g. 09:00 AM"
-                {...register('time')}
-                disabled={bookMutation.isPending}
-                className={errors.time ? 'border-destructive focus-visible:ring-destructive' : ''}
-              />
-              {errors.time && (
-                <p className="text-xs text-destructive font-medium mt-1">{errors.time.message}</p>
-              )}
-            </div>
-          </div>
+          <SlotPicker
+            date={bookingDate}
+            doctorId={bookingDoctorId}
+            time={bookingTime}
+            onDoctorChange={(id) => setValue('doctorId', id, { shouldValidate: true })}
+            onTimeChange={(t) => setValue('time', t, { shouldValidate: !!t })}
+            disabled={bookMutation.isPending}
+            errors={errors}
+          />
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">

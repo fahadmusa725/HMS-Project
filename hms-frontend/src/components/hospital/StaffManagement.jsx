@@ -12,7 +12,8 @@ import {
   Loader2,
   RefreshCw,
   Mail,
-  Building
+  Building,
+  CalendarClock
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import DoctorScheduleModal from '@/components/hospital/DoctorScheduleModal';
 
 const staffSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -46,6 +48,7 @@ export default function StaffManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [formError, setFormError] = useState(null);
+  const [scheduleDoctor, setScheduleDoctor] = useState(null);
 
   const {
     register,
@@ -243,7 +246,8 @@ export default function StaffManagement() {
                   <th className="py-3.5 px-4">Role</th>
                   <th className="py-3.5 px-4">Department</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-6 text-right">Joined</th>
+                  <th className="py-3.5 px-4">Joined</th>
+                  <th className="py-3.5 px-6 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -276,7 +280,7 @@ export default function StaffManagement() {
                         Active
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-right text-xs text-muted-foreground">
+                    <td className="py-4 px-4 text-xs text-muted-foreground">
                       {staff.createdAt
                         ? new Date(staff.createdAt).toLocaleDateString(undefined, {
                             year: 'numeric',
@@ -284,6 +288,19 @@ export default function StaffManagement() {
                             day: 'numeric',
                           })
                         : '—'}
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      {staff.role === 'doctor' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setScheduleDoctor(staff)}
+                          className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40"
+                        >
+                          <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
+                          Schedule &amp; Fee
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -409,6 +426,10 @@ export default function StaffManagement() {
           </div>
         </form>
       </Modal>
+
+      {scheduleDoctor && (
+        <DoctorScheduleModal doctor={scheduleDoctor} onClose={() => setScheduleDoctor(null)} />
+      )}
     </div>
   );
 }

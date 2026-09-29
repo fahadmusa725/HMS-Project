@@ -13,46 +13,54 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Hash,
-  FileText,
-  User,
-  CheckCircle2
+  CheckCircle2,
+  Printer
 } from 'lucide-react';
-import api from '@/lib/api';
+import api, { openPdf } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
+import { SlotPicker } from '@/components/hospital/SlotPicker';
+import { formatCurrency, formatSlotTime } from '@/lib/utils';
 
 const bookingSchema = z.object({
   doctorId: z.string().min(1, 'Please select a doctor'),
   date: z.string().min(1, 'Please select a valid date'),
-  time: z.string().optional(),
+  time: z.string().min(1, 'Please pick one of the available time slots'),
   reason: z.string().optional(),
 });
+
+const printSlip = (appointmentId) =>
+  openPdf(`/api/appointments/${appointmentId}/slip-pdf`).catch(() => toast.error('Could not open the token slip.'));
 
 export default function PatientAppointments() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('upcoming'); // 'upcoming' | 'past' | 'all'
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
-  const [lastBookedToken, setLastBookedToken] = useState(null);
+  const [lastBooked, setLastBooked] = useState(null);
 
   // Form for booking
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(bookingSchema),
     defaultValues: {
       doctorId: '',
       date: new Date().toISOString().slice(0, 10),
-      time: '10:00',
+      time: '',
       reason: '',
     },
   });
+  const bookingDate = watch('date');
+  const bookingDoctorId = watch('doctorId');
+  const bookingTime = watch('time');
 
   // Query: My appointments
   const {
@@ -70,15 +78,6 @@ export default function PatientAppointments() {
     },
   });
 
-  // Query: Active doctors available for booking
-  const { data: doctors = [], isLoading: isDoctorsLoading } = useQuery({
-    queryKey: ['patient-booking-doctors'],
-    queryFn: async () => {
-      const res = await api.get('/api/appointments/doctors');
-      return res.data;
-    },
-  });
-
   // Mutation: Book appointment
   const bookMutation = useMutation({
     mutationFn: async (payload) => {
@@ -87,17 +86,22 @@ export default function PatientAppointments() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['patient-appointments-mine'] });
+      queryClient.invalidateQueries({ queryKey: ['available-slots'] });
       setIsBookModalOpen(false);
       reset();
-      setLastBookedToken(data.tokenNumber);
+      setLastBooked(data);
       toast.success(`Appointment confirmed! Your token number is #${data.tokenNumber}`, {
-        description: `Date: ${data.date} · Dr. ${data.doctorId?.name || 'Selected Doctor'}`,
+        description: `Date: ${data.date} at ${formatSlotTime(data.time)}`,
         duration: 6000,
       });
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to schedule appointment.';
       toast.error(message);
+      if (err.response?.status === 409) {
+        setValue('time', '');
+        queryClient.invalidateQueries({ queryKey: ['available-slots'] });
+      }
     },
   });
 
@@ -167,7 +171,7 @@ export default function PatientAppointments() {
       </div>
 
       {/* Success banner if just booked */}
-      {lastBookedToken && (
+      {lastBooked && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between gap-3 animate-slide-up">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
@@ -175,21 +179,35 @@ export default function PatientAppointments() {
             </div>
             <div>
               <div className="text-sm font-bold text-foreground">
-                Your latest appointment token is <span className="text-primary font-mono text-base">#{lastBookedToken}</span>
+                Your latest appointment token is <span className="text-primary font-mono text-base">#{lastBooked.tokenNumber}</span>
               </div>
               <div className="text-xs text-muted-foreground">
-                Please arrive at the hospital reception 15 minutes before your scheduled slot.
+                {lastBooked.bill
+                  ? `Consultation fee of ${formatCurrency(lastBooked.bill.totalAmount)} is payable at reception. `
+                  : ''}
+                Please arrive 15 minutes before your {formatSlotTime(lastBooked.time)} slot.
               </div>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLastBookedToken(null)}
-            className="text-xs text-muted-foreground hover:text-foreground h-8"
-          >
-            Dismiss
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => printSlip(lastBooked._id)}
+              className="text-xs h-8"
+            >
+              <Printer className="h-3.5 w-3.5 mr-1.5" />
+              Slip
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setLastBooked(null)}
+              className="text-xs text-muted-foreground hover:text-foreground h-8"
+            >
+              Dismiss
+            </Button>
+          </div>
         </div>
       )}
 
@@ -329,14 +347,27 @@ export default function PatientAppointments() {
                       {apt.time && (
                         <span className="flex items-center gap-1">
                           <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                          {apt.time}
+                          {formatSlotTime(apt.time)}
                         </span>
                       )}
                     </div>
 
-                    <Badge variant={apt.status}>
-                      {getStatusDisplay(apt.status)}
-                    </Badge>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant={apt.status}>
+                        {getStatusDisplay(apt.status)}
+                      </Badge>
+                      {apt.status !== 'cancelled' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Download token slip"
+                          onClick={() => printSlip(apt._id)}
+                          className="h-7 px-2 text-muted-foreground hover:text-foreground"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Reason for Visit */}
@@ -359,73 +390,42 @@ export default function PatientAppointments() {
           if (!bookMutation.isPending) setIsBookModalOpen(false);
         }}
         title="Book Doctor Appointment"
-        description="Select an active doctor and your preferred date. An OPD queue token number will be issued immediately."
+        description="Pick a date, a doctor on duty that day, and one of their open slots. An OPD token number is issued immediately."
       >
-        <form onSubmit={handleSubmit(onSubmitBooking)} className="space-y-4">
-          {/* Doctor Selector */}
+        <form onSubmit={handleSubmit(onSubmitBooking)} className="space-y-4 max-h-[72vh] overflow-y-auto pr-1">
+          {/* Date first - it decides which doctors are on duty */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-              Choose Doctor *
+              Appointment Date *
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
-                <Stethoscope className="h-4 w-4" />
-              </div>
-              <select
-                {...register('doctorId')}
-                disabled={bookMutation.isPending || isDoctorsLoading}
-                className={`pl-10 h-11 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                  errors.doctorId ? 'border-destructive focus-visible:ring-destructive' : ''
-                }`}
-              >
-                <option value="">
-                  {isDoctorsLoading ? 'Loading available doctors...' : '-- Select Doctor / Specialist --'}
-                </option>
-                {doctors.map((doc) => (
-                  <option key={doc._id} value={doc._id}>
-                    Dr. {doc.name} {doc.department ? `(${doc.department})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {errors.doctorId && (
+            <Input
+              type="date"
+              min={todayStr}
+              value={bookingDate}
+              onChange={(e) => {
+                setValue('date', e.target.value, { shouldValidate: true });
+                setValue('doctorId', '');
+                setValue('time', '');
+              }}
+              disabled={bookMutation.isPending}
+              className={errors.date ? 'border-destructive' : ''}
+            />
+            {errors.date && (
               <p className="text-xs text-destructive font-medium mt-1">
-                {errors.doctorId.message}
+                {errors.date.message}
               </p>
             )}
           </div>
 
-          {/* Date & Time */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Appointment Date *
-              </label>
-              <Input
-                type="date"
-                min={todayStr}
-                {...register('date')}
-                disabled={bookMutation.isPending}
-                className={errors.date ? 'border-destructive' : ''}
-              />
-              {errors.date && (
-                <p className="text-xs text-destructive font-medium mt-1">
-                  {errors.date.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Preferred Time <span className="text-muted-foreground font-normal lowercase">(optional)</span>
-              </label>
-              <Input
-                type="time"
-                {...register('time')}
-                disabled={bookMutation.isPending}
-              />
-            </div>
-          </div>
+          <SlotPicker
+            date={bookingDate}
+            doctorId={bookingDoctorId}
+            time={bookingTime}
+            onDoctorChange={(id) => setValue('doctorId', id, { shouldValidate: true })}
+            onTimeChange={(t) => setValue('time', t, { shouldValidate: !!t })}
+            disabled={bookMutation.isPending}
+            errors={errors}
+          />
 
           {/* Reason */}
           <div className="space-y-1.5">
