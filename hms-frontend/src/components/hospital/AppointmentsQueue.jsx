@@ -602,8 +602,35 @@ export default function AppointmentsQueue() {
         }}
         title="Book OPD Appointment"
         description="Assign a daily token number and schedule a patient consultation."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeBookModal}
+              disabled={bookMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="book-appointment-form"
+              disabled={bookMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {bookMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Booking...
+                </>
+              ) : (
+                'Confirm & Assign Token'
+              )}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmit(onSubmitBook)} className="space-y-4 max-h-[72vh] overflow-y-auto pr-1">
+        <form id="book-appointment-form" onSubmit={handleSubmit(onSubmitBook)} className="space-y-4">
           {formError && (
             <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -708,7 +735,7 @@ export default function AppointmentsQueue() {
               </label>
 
               {collectPaymentNow && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-[11px] font-semibold text-muted-foreground block">Amount Paid Now (PKR)</label>
                     <Input
@@ -770,30 +797,6 @@ export default function AppointmentsQueue() {
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeBookModal}
-              disabled={bookMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={bookMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {bookMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Booking...
-                </>
-              ) : (
-                'Confirm & Assign Token'
-              )}
-            </Button>
-          </div>
         </form>
       </Modal>
 

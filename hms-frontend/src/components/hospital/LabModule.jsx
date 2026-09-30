@@ -673,6 +673,45 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         }}
         title="Order Diagnostic Lab Tests"
         description="Select patient and choose tests from the hospital diagnostic catalog."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOrderModalOpen(false)}
+              disabled={createOrderMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedPatient) {
+                  toast.error('Please select a patient.');
+                  return;
+                }
+                if (selectedTestIds.length === 0) {
+                  toast.error('Please choose at least one lab test.');
+                  return;
+                }
+                createOrderMutation.mutate({
+                  patientId: selectedPatient._id,
+                  testIds: selectedTestIds,
+                });
+              }}
+              disabled={createOrderMutation.isPending || !selectedPatient || selectedTestIds.length === 0}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createOrderMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Placing Order...
+                </>
+              ) : (
+                `Confirm Order (${formatCurrency(orderModalTotal)})`
+              )}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4">
           {/* Patient Selection / Display */}
@@ -800,44 +839,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsOrderModalOpen(false)}
-              disabled={createOrderMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!selectedPatient) {
-                  toast.error('Please select a patient.');
-                  return;
-                }
-                if (selectedTestIds.length === 0) {
-                  toast.error('Please choose at least one lab test.');
-                  return;
-                }
-                createOrderMutation.mutate({
-                  patientId: selectedPatient._id,
-                  testIds: selectedTestIds,
-                });
-              }}
-              disabled={createOrderMutation.isPending || !selectedPatient || selectedTestIds.length === 0}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createOrderMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Placing Order...
-                </>
-              ) : (
-                `Confirm Order (${formatCurrency(orderModalTotal)})`
-              )}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -847,8 +848,28 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         onClose={() => setIsAddTestOpen(false)}
         title="Add Test to Lab Catalog"
         description="Configure diagnostic test pricing and standard turnaround times."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddTestOpen(false)}
+              disabled={createTestMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="add-lab-test-form"
+              disabled={createTestMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createTestMutation.isPending ? 'Saving...' : 'Add Test to Catalog'}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmitTest((data) => createTestMutation.mutate(data))} className="space-y-4">
+        <form id="add-lab-test-form" onSubmit={handleSubmitTest((data) => createTestMutation.mutate(data))} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Test Name *
@@ -862,7 +883,7 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             {testErrors.name && <p className="text-xs text-destructive">{testErrors.name.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Department
@@ -899,24 +920,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
               disabled={createTestMutation.isPending}
             />
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddTestOpen(false)}
-              disabled={createTestMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createTestMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createTestMutation.isPending ? 'Saving...' : 'Add Test to Catalog'}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -930,9 +933,32 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             ? `Patient: ${resultOrderTarget.patientId?.name || 'Patient'} (MRN: ${resultOrderTarget.patientId?.mrn || '—'})`
             : ''
         }
+        footer={
+          resultOrderTarget && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResultOrderTarget(null)}
+                disabled={addResultMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="lab-result-form"
+                disabled={addResultMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {addResultMutation.isPending ? 'Completing Order...' : 'Complete & Publish Result'}
+              </Button>
+            </>
+          )
+        }
       >
         {resultOrderTarget && (
           <form
+            id="lab-result-form"
             onSubmit={handleSubmitResult((data) =>
               addResultMutation.mutate({
                 orderId: resultOrderTarget._id,
@@ -983,23 +1009,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
               </span>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setResultOrderTarget(null)}
-                disabled={addResultMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={addResultMutation.isPending}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              >
-                {addResultMutation.isPending ? 'Completing Order...' : 'Complete & Publish Result'}
-              </Button>
-            </div>
           </form>
         )}
       </Modal>
@@ -1013,6 +1022,18 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
           viewResultTarget
             ? `Patient: ${viewResultTarget.patientId?.name || '—'} (MRN: ${viewResultTarget.patientId?.mrn || '—'})`
             : ''
+        }
+        footer={
+          viewResultTarget && (
+            <div className="w-full flex items-center justify-between">
+              <span className="text-muted-foreground text-[11px]">
+                Completed at: {viewResultTarget.completedAt ? new Date(viewResultTarget.completedAt).toLocaleString() : '—'}
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => setViewResultTarget(null)}>
+                Close
+              </Button>
+            </div>
+          )
         }
       >
         {viewResultTarget && (
@@ -1053,12 +1074,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-border text-muted-foreground text-[11px]">
-              <span>Completed at: {viewResultTarget.completedAt ? new Date(viewResultTarget.completedAt).toLocaleString() : '—'}</span>
-              <Button type="button" variant="outline" size="sm" onClick={() => setViewResultTarget(null)}>
-                Close
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
@@ -1069,12 +1084,8 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         onClose={() => setCancelOrderTarget(null)}
         title="Cancel Lab Order"
         description="Are you sure you want to cancel this diagnostic order?"
-      >
-        <div className="space-y-4 text-xs">
-          <p className="text-foreground">
-            Cancelling this order for patient <strong>{cancelOrderTarget?.patientId?.name}</strong> will stop specimen collection and processing.
-          </p>
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        footer={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -1097,7 +1108,13 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             >
               {updateStatusMutation.isPending ? 'Cancelling...' : 'Confirm Cancellation'}
             </Button>
-          </div>
+          </>
+        }
+      >
+        <div className="space-y-4 text-xs">
+          <p className="text-foreground">
+            Cancelling this order for patient <strong>{cancelOrderTarget?.patientId?.name}</strong> will stop specimen collection and processing.
+          </p>
         </div>
       </Modal>
     </div>

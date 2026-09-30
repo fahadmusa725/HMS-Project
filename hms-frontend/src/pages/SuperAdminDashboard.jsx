@@ -255,8 +255,8 @@ export default function SuperAdminDashboard() {
 
       {/* Main Body Shell Layout */}
       <div className="flex-1 overflow-hidden flex flex-row">
-        {/* Left Sidebar */}
-        <aside className="w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex flex-col">
+        {/* Left Sidebar - hidden below lg since there's currently only one section to navigate to */}
+        <aside className="hidden lg:flex w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex-col">
           <div className="space-y-1">
             <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Platform Administration
@@ -547,6 +547,33 @@ export default function SuperAdminDashboard() {
         }}
         title="Add New Hospital Tenant"
         description="Provision a new isolated hospital environment and assign its root Hospital Administrator."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddModalOpen(false)}
+              disabled={createHospitalMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="add-hospital-form"
+              disabled={createHospitalMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createHospitalMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Provisioning...
+                </>
+              ) : (
+                'Create Hospital'
+              )}
+            </Button>
+          </>
+        }
       >
         {formError && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
@@ -555,7 +582,7 @@ export default function SuperAdminDashboard() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmitAdd)} className="space-y-4">
+        <form id="add-hospital-form" onSubmit={handleSubmit(onSubmitAdd)} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Hospital Name
@@ -637,30 +664,6 @@ export default function SuperAdminDashboard() {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
-              disabled={createHospitalMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createHospitalMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createHospitalMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Provisioning...
-                </>
-              ) : (
-                'Create Hospital'
-              )}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -670,8 +673,28 @@ export default function SuperAdminDashboard() {
         onClose={() => setExtendTrialHospital(null)}
         title="Extend Trial Period"
         description={`Set a new trial period duration for "${extendTrialHospital?.name}".`}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExtendTrialHospital(null)}
+              disabled={updateStatusMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="extend-trial-form"
+              disabled={updateStatusMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {updateStatusMutation.isPending ? 'Updating...' : 'Save Trial Extension'}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleExtendTrialSubmit} className="space-y-4">
+        <form id="extend-trial-form" onSubmit={handleExtendTrialSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Additional / New Trial Days
@@ -684,24 +707,6 @@ export default function SuperAdminDashboard() {
               disabled={updateStatusMutation.isPending}
               required
             />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setExtendTrialHospital(null)}
-              disabled={updateStatusMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={updateStatusMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {updateStatusMutation.isPending ? 'Updating...' : 'Save Trial Extension'}
-            </Button>
           </div>
         </form>
       </Modal>
@@ -716,20 +721,8 @@ export default function SuperAdminDashboard() {
         }}
         title={confirmStatusAction?.targetStatus === 'active' ? 'Activate Hospital Tenant' : 'Suspend Hospital Tenant'}
         description="Please confirm this operational tenant status update."
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-foreground">
-            Are you sure you want to{' '}
-            <strong className="font-semibold lowercase">{confirmStatusAction?.targetStatus}</strong>{' '}
-            hospital <span className="font-bold text-primary">"{confirmStatusAction?.hospital?.name}"</span>?
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {confirmStatusAction?.targetStatus === 'active'
-              ? 'This will activate the hospital tenant and grant full operational system access to all its users.'
-              : 'This will suspend the hospital tenant. Associated staff and users will temporarily lose operational access.'}
-          </p>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        footer={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -754,7 +747,20 @@ export default function SuperAdminDashboard() {
               {updateStatusMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               <span>{confirmStatusAction?.targetStatus === 'active' ? 'Confirm Activation' : 'Confirm Suspension'}</span>
             </Button>
-          </div>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">
+            Are you sure you want to{' '}
+            <strong className="font-semibold lowercase">{confirmStatusAction?.targetStatus}</strong>{' '}
+            hospital <span className="font-bold text-primary">"{confirmStatusAction?.hospital?.name}"</span>?
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {confirmStatusAction?.targetStatus === 'active'
+              ? 'This will activate the hospital tenant and grant full operational system access to all its users.'
+              : 'This will suspend the hospital tenant. Associated staff and users will temporarily lose operational access.'}
+          </p>
         </div>
       </Modal>
 
@@ -769,38 +775,8 @@ export default function SuperAdminDashboard() {
         }}
         title="Delete Hospital Permanently"
         description="Irreversible destructive action - all hospital data will be permanently removed."
-      >
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive leading-relaxed font-medium">
-            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
-            <div className="space-y-1.5">
-              <p className="font-bold text-sm text-destructive">
-                Warning: Irreversible Tenant Data Destruction
-              </p>
-              <p>
-                Deleting <strong>{deleteHospitalTarget?.name}</strong> will permanently erase all of that hospital's data (staff, patients, appointments, consultations, wards, beds, admissions, nurse notes, and counters) with no way to recover it.
-              </p>
-              <p className="font-bold underline">
-                This action cannot be undone.
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-foreground/90 block">
-              To confirm deletion, please type the exact hospital name <span className="font-mono font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20 select-all">{deleteHospitalTarget?.name}</span> below:
-            </label>
-            <Input
-              placeholder={deleteHospitalTarget?.name}
-              value={deleteConfirmName}
-              onChange={(e) => setDeleteConfirmName(e.target.value)}
-              disabled={deleteHospitalMutation.isPending}
-              className="border-destructive/40 focus-visible:ring-destructive font-medium"
-              autoFocus
-            />
-          </div>
-
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+        footer={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -838,7 +814,39 @@ export default function SuperAdminDashboard() {
                 </>
               )}
             </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive leading-relaxed font-medium">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
+            <div className="space-y-1.5">
+              <p className="font-bold text-sm text-destructive">
+                Warning: Irreversible Tenant Data Destruction
+              </p>
+              <p>
+                Deleting <strong>{deleteHospitalTarget?.name}</strong> will permanently erase all of that hospital's data (staff, patients, appointments, consultations, wards, beds, admissions, nurse notes, and counters) with no way to recover it.
+              </p>
+              <p className="font-bold underline">
+                This action cannot be undone.
+              </p>
+            </div>
           </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground/90 block">
+              To confirm deletion, please type the exact hospital name <span className="font-mono font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded border border-destructive/20 select-all">{deleteHospitalTarget?.name}</span> below:
+            </label>
+            <Input
+              placeholder={deleteHospitalTarget?.name}
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              disabled={deleteHospitalMutation.isPending}
+              className="border-destructive/40 focus-visible:ring-destructive font-medium"
+              autoFocus
+            />
+          </div>
+
         </div>
       </Modal>
     </div>

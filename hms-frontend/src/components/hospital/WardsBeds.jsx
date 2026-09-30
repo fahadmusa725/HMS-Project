@@ -875,7 +875,7 @@ export default function WardsBeds() {
                   rows={3}
                   className="flex w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none disabled:opacity-60"
                 />
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {[
                     { key: 'bloodPressure', label: 'BP', ph: '120/80' },
                     { key: 'temperature', label: 'Temp', ph: '98.6 F' },
@@ -1101,8 +1101,43 @@ export default function WardsBeds() {
         }}
         title="Admit Patient"
         description="Select a patient, ward, and bed for IPD admission."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => { setIsAdmitOpen(false); resetAdmitForm(); }}
+              disabled={admitMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => admitMutation.mutate()}
+              disabled={
+                admitMutation.isPending ||
+                !admitPatientId ||
+                !admitWardId ||
+                !admitBedId ||
+                !admitDoctorId ||
+                !admitReason.trim()
+              }
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {admitMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Admitting...
+                </>
+              ) : (
+                <>
+                  <UserPlus className="mr-1.5 h-4 w-4" />
+                  Confirm Admission
+                </>
+              )}
+            </Button>
+          </>
+        }
       >
-        <div className="space-y-4 max-h-[62vh] overflow-y-auto pr-1">
+        <div className="space-y-4">
           {admitError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive font-medium animate-slide-up">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -1264,39 +1299,6 @@ export default function WardsBeds() {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border mt-4">
-          <Button
-            variant="outline"
-            onClick={() => { setIsAdmitOpen(false); resetAdmitForm(); }}
-            disabled={admitMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => admitMutation.mutate()}
-            disabled={
-              admitMutation.isPending ||
-              !admitPatientId ||
-              !admitWardId ||
-              !admitBedId ||
-              !admitDoctorId ||
-              !admitReason.trim()
-            }
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-          >
-            {admitMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Admitting...
-              </>
-            ) : (
-              <>
-                <UserPlus className="mr-1.5 h-4 w-4" />
-                Confirm Admission
-              </>
-            )}
-          </Button>
-        </div>
       </Modal>
 
       {/* ════════════════════════════════════════════════════════════════════ */}
@@ -1315,6 +1317,31 @@ export default function WardsBeds() {
           selectedAdmission
             ? `Discharging ${selectedAdmission.patientId?.name} from Bed ${selectedAdmission.bedId?.bedNumber || '—'}`
             : ''
+        }
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => { setIsDischargeOpen(false); setDischargeNotes(''); }}
+              disabled={dischargeMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => dischargeMutation.mutate()}
+              disabled={dischargeMutation.isPending}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+            >
+              {dischargeMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Discharging...
+                </>
+              ) : (
+                'Confirm Discharge'
+              )}
+            </Button>
+          </>
         }
       >
         <div className="space-y-4">
@@ -1337,29 +1364,6 @@ export default function WardsBeds() {
               className="flex w-full rounded-lg border border-input bg-background px-3.5 py-2.5 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none disabled:opacity-60"
             />
           </div>
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => { setIsDischargeOpen(false); setDischargeNotes(''); }}
-              disabled={dischargeMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => dischargeMutation.mutate()}
-              disabled={dischargeMutation.isPending}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
-            >
-              {dischargeMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Discharging...
-                </>
-              ) : (
-                'Confirm Discharge'
-              )}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1379,6 +1383,37 @@ export default function WardsBeds() {
         }}
         title="Add New Ward"
         description="Create a ward to house beds and patients."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddWardOpen(false);
+                setAddWardName('');
+                setAddWardDept('');
+                setAddWardRate('');
+                setWardFormError(null);
+              }}
+              disabled={createWardMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createWardMutation.mutate()}
+              disabled={createWardMutation.isPending || !addWardName.trim()}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createWardMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Ward'
+              )}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4">
           {wardFormError && (
@@ -1426,35 +1461,6 @@ export default function WardsBeds() {
               Used for the IPD running bill: days admitted × this rate.
             </p>
           </div>
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddWardOpen(false);
-                setAddWardName('');
-                setAddWardDept('');
-                setAddWardRate('');
-                setWardFormError(null);
-              }}
-              disabled={createWardMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => createWardMutation.mutate()}
-              disabled={createWardMutation.isPending || !addWardName.trim()}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createWardMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Ward'
-              )}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1472,6 +1478,39 @@ export default function WardsBeds() {
         }}
         title={`Add Beds — ${selectedWardForManage?.name || ''}`}
         description="Enter comma-separated bed numbers to bulk-create."
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddBedsOpen(false);
+                setAddBedsInput('');
+                setBedsFormError(null);
+              }}
+              disabled={addBedsMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => addBedsMutation.mutate()}
+              disabled={addBedsMutation.isPending || parsedBedNumbers.length === 0}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {addBedsMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Add {parsedBedNumbers.length} Bed
+                  {parsedBedNumbers.length !== 1 ? 's' : ''}
+                </>
+              )}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4">
           {bedsFormError && (
@@ -1509,37 +1548,6 @@ export default function WardsBeds() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddBedsOpen(false);
-                setAddBedsInput('');
-                setBedsFormError(null);
-              }}
-              disabled={addBedsMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => addBedsMutation.mutate()}
-              disabled={addBedsMutation.isPending || parsedBedNumbers.length === 0}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {addBedsMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Add {parsedBedNumbers.length} Bed
-                  {parsedBedNumbers.length !== 1 ? 's' : ''}
-                </>
-              )}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -1553,6 +1561,31 @@ export default function WardsBeds() {
         }}
         title={`Edit Ward — ${selectedWardForManage?.name || ''}`}
         description="A new daily rate applies to the whole stay of patients currently in this ward."
+        footer={
+          editWard && (
+            <>
+              <Button variant="outline" onClick={() => setEditWard(null)} disabled={updateWardMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => updateWardMutation.mutate()}
+                disabled={
+                  updateWardMutation.isPending || !editWard.name.trim() || !(Number(editWard.dailyRate) >= 0)
+                }
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {updateWardMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
+              </Button>
+            </>
+          )
+        }
       >
         {editWard && (
           <div className="space-y-4">
@@ -1583,27 +1616,6 @@ export default function WardsBeds() {
                 onChange={(e) => setEditWard((w) => ({ ...w, dailyRate: e.target.value }))}
                 disabled={updateWardMutation.isPending}
               />
-            </div>
-            <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-              <Button variant="outline" onClick={() => setEditWard(null)} disabled={updateWardMutation.isPending}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => updateWardMutation.mutate()}
-                disabled={
-                  updateWardMutation.isPending || !editWard.name.trim() || !(Number(editWard.dailyRate) >= 0)
-                }
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              >
-                {updateWardMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  'Save Changes'
-                )}
-              </Button>
             </div>
           </div>
         )}

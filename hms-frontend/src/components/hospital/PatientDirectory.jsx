@@ -95,7 +95,7 @@ function PatientEMRTimeline({ patientId }) {
   }
 
   return (
-    <div className="space-y-3 max-h-[52vh] overflow-y-auto pr-1">
+    <div className="space-y-3">
       {consultations.map((c) => (
         <div
           key={c._id}
@@ -682,6 +682,33 @@ export default function PatientDirectory() {
         }}
         title="Register New Patient"
         description="Create patient demographic record and auto-assign unique hospital MRN."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsRegisterOpen(false)}
+              disabled={registerMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="register-patient-form"
+              disabled={registerMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {registerMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                'Save & Generate MRN'
+              )}
+            </Button>
+          </>
+        }
       >
         {formError && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
@@ -690,7 +717,7 @@ export default function PatientDirectory() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmitRegister)} className="space-y-4">
+        <form id="register-patient-form" onSubmit={handleSubmit(onSubmitRegister)} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Patient Full Name *
@@ -852,30 +879,6 @@ export default function PatientDirectory() {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsRegisterOpen(false)}
-              disabled={registerMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={registerMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {registerMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registering...
-                </>
-              ) : (
-                'Save & Generate MRN'
-              )}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -885,6 +888,98 @@ export default function PatientDirectory() {
         onClose={() => setIsDetailOpen(false)}
         title={selectedPatient ? `Patient: ${selectedPatient.name}` : 'Patient Details'}
         description={selectedPatient ? `MRN: ${selectedPatient.mrn}` : ''}
+        footer={
+          selectedPatient &&
+          (isEditingDetail ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsEditingDetail(false)}
+                disabled={updateMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="edit-patient-form"
+                disabled={updateMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </>
+          ) : detailTab === 'profile' ? (
+            <div className="w-full flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Registered: {new Date(selectedPatient.createdAt).toLocaleDateString()}
+                </span>
+                {selectedPatient.userId && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
+                    <ShieldCheck className="h-3 w-3" /> Portal Active
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {canEnablePortal && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (!selectedPatient.email) {
+                        toast.error('This patient has no email on file. Please edit their profile to add an email first.');
+                        return;
+                      }
+                      enablePortalMutation.mutate(selectedPatient._id);
+                    }}
+                    disabled={enablePortalMutation.isPending || !!selectedPatient.userId}
+                    className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
+                  >
+                    {enablePortalMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Enrolling...
+                      </>
+                    ) : selectedPatient.userId ? (
+                      <>
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Portal Active
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="h-3.5 w-3.5" />
+                        Enable Portal Access
+                      </>
+                    )}
+                  </Button>
+                )}
+                {canOrderLab && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedLabTestIds([]);
+                      setIsOrderLabOpen(true);
+                    }}
+                    className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
+                  >
+                    <FlaskConical className="h-3.5 w-3.5" />
+                    Order Lab Test
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  onClick={() => setIsEditingDetail(true)}
+                  className="h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5"
+                >
+                  <Edit2 className="h-3.5 w-3.5" />
+                  Edit Profile
+                </Button>
+              </div>
+            </div>
+          ) : null)
+        }
       >
         {selectedPatient && (
           <div className="space-y-4">
@@ -920,7 +1015,7 @@ export default function PatientDirectory() {
             {detailTab === 'profile' && !isEditingDetail && (
               /* View Mode */
               <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                   <div className="p-3 bg-muted/40 rounded-lg border border-border/50">
                     <span className="text-xs text-muted-foreground block font-medium">MRN Number</span>
                     <span className="font-mono text-xs font-bold text-primary">{selectedPatient.mrn}</span>
@@ -996,74 +1091,6 @@ export default function PatientDirectory() {
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-border gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      Registered: {new Date(selectedPatient.createdAt).toLocaleDateString()}
-                    </span>
-                    {selectedPatient.userId && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded-full">
-                        <ShieldCheck className="h-3 w-3" /> Portal Active
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {canEnablePortal && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          if (!selectedPatient.email) {
-                            toast.error('This patient has no email on file. Please edit their profile to add an email first.');
-                            return;
-                          }
-                          enablePortalMutation.mutate(selectedPatient._id);
-                        }}
-                        disabled={enablePortalMutation.isPending || !!selectedPatient.userId}
-                        className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
-                      >
-                        {enablePortalMutation.isPending ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                            Enrolling...
-                          </>
-                        ) : selectedPatient.userId ? (
-                          <>
-                            <ShieldCheck className="h-3.5 w-3.5" />
-                            Portal Active
-                          </>
-                        ) : (
-                          <>
-                            <KeyRound className="h-3.5 w-3.5" />
-                            Enable Portal Access
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    {canOrderLab && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedLabTestIds([]);
-                          setIsOrderLabOpen(true);
-                        }}
-                        className="h-9 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 flex items-center gap-1.5"
-                      >
-                        <FlaskConical className="h-3.5 w-3.5" />
-                        Order Lab Test
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      onClick={() => setIsEditingDetail(true)}
-                      className="h-9 text-xs bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5"
-                    >
-                      <Edit2 className="h-3.5 w-3.5" />
-                      Edit Profile
-                    </Button>
-                  </div>
-                </div>
               </div>
             )}
 
@@ -1074,7 +1101,7 @@ export default function PatientDirectory() {
 
             {/* Edit Mode (only when isEditingDetail) */}
             {isEditingDetail && (
-              <form onSubmit={handleSubmitEdit(onSubmitEdit)} className="space-y-4">
+              <form id="edit-patient-form" onSubmit={handleSubmitEdit(onSubmitEdit)} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Patient Name
@@ -1087,7 +1114,7 @@ export default function PatientDirectory() {
                   {editErrors.name && <p className="text-xs text-destructive">{editErrors.name.message}</p>}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                       Date of Birth
@@ -1110,7 +1137,7 @@ export default function PatientDirectory() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                       Phone Number
@@ -1131,7 +1158,7 @@ export default function PatientDirectory() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                       CNIC / ID <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -1209,23 +1236,6 @@ export default function PatientDirectory() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsEditingDetail(false)}
-                    disabled={updateMutation.isPending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={updateMutation.isPending}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                  >
-                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </div>
               </form>
             )}
           </div>
@@ -1238,6 +1248,34 @@ export default function PatientDirectory() {
         onClose={() => setIsOrderLabOpen(false)}
         title="Order Diagnostic Lab Tests"
         description={selectedPatient ? `Patient: ${selectedPatient.name} (MRN: ${selectedPatient.mrn})` : ''}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOrderLabOpen(false)}
+              disabled={createLabOrderMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedLabTestIds.length === 0) {
+                  toast.error('Please select at least one test.');
+                  return;
+                }
+                createLabOrderMutation.mutate({
+                  patientId: selectedPatient._id,
+                  testIds: selectedLabTestIds,
+                });
+              }}
+              disabled={createLabOrderMutation.isPending || selectedLabTestIds.length === 0}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createLabOrderMutation.isPending ? 'Placing Order...' : `Order Tests (${formatCurrency(labOrderModalTotal)})`}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 text-xs">
           <div className="flex items-center justify-between">
@@ -1304,32 +1342,6 @@ export default function PatientDirectory() {
             )}
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsOrderLabOpen(false)}
-              disabled={createLabOrderMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (selectedLabTestIds.length === 0) {
-                  toast.error('Please select at least one test.');
-                  return;
-                }
-                createLabOrderMutation.mutate({
-                  patientId: selectedPatient._id,
-                  testIds: selectedLabTestIds,
-                });
-              }}
-              disabled={createLabOrderMutation.isPending || selectedLabTestIds.length === 0}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createLabOrderMutation.isPending ? 'Placing Order...' : `Order Tests (${formatCurrency(labOrderModalTotal)})`}
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

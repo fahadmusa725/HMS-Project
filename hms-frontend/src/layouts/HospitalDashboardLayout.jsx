@@ -1,5 +1,5 @@
-import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import React, { useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
@@ -17,12 +17,21 @@ import {
   Pill,
   Receipt,
   BarChart3,
-  ClipboardList
+  ClipboardList,
+  Menu,
+  X,
 } from 'lucide-react';
 
 export default function HospitalDashboardLayout() {
   const { user, logout } = useAuthStore();
   const role = user?.role || 'hospital_admin';
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  // Close the mobile drawer automatically whenever the route changes.
+  React.useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
 
   // Navigation items configuration per role with real router paths
   const getNavItemsForRole = (userRole) => {
@@ -88,7 +97,15 @@ export default function HospitalDashboardLayout() {
       {/* Top Header */}
       <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden -ml-1 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 shrink-0"
+              aria-label="Open navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm shrink-0">
               <HeartPulse className="h-5 w-5" />
             </div>
@@ -128,9 +145,30 @@ export default function HospitalDashboardLayout() {
       </header>
 
       {/* Main Body Shell Layout */}
-      <div className="flex-1 overflow-hidden flex flex-row">
-        {/* Left Sidebar */}
-        <aside className="w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-row relative">
+        {/* Backdrop for the mobile drawer */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Left Sidebar - a fixed off-canvas drawer below lg, a static column at lg and up */}
+        <aside
+          className={`fixed lg:static top-16 lg:top-auto bottom-0 lg:bottom-auto left-0 z-40 lg:z-auto w-64 h-[calc(100%-4rem)] lg:h-full border-r border-border bg-card p-4 shrink-0 flex flex-col overflow-y-auto transition-transform duration-200 lg:translate-x-0 ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden self-end mb-2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60"
+            aria-label="Close navigation menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
           {/* Hospital Tenant Display in Sidebar */}
           {user?.hospitalName && (
             <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15">

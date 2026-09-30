@@ -611,6 +611,51 @@ export default function BillingModule({ initialPatient = null }) {
         }}
         title="Create Patient Invoice"
         description="Add line items for consultations, procedures, lab tests, or pharmacy charges."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsCreateOpen(false)}
+              disabled={createBillMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!billPatient) {
+                  toast.error('Please select a patient.');
+                  return;
+                }
+                const invalid = billItems.some((i) => !i.description.trim() || i.amount <= 0);
+                if (invalid) {
+                  toast.error('Please ensure all line items have descriptions and valid amounts.');
+                  return;
+                }
+                if (
+                  initialPaymentAmount > 0 &&
+                  REFERENCE_REQUIRED_METHODS.includes(initialPaymentMethod) &&
+                  !initialPaymentReference.trim()
+                ) {
+                  toast.error('A transaction/reference number is required for this payment method.');
+                  return;
+                }
+                createBillMutation.mutate({
+                  patientId: billPatient._id,
+                  items: billItems,
+                  amountPaid: initialPaymentAmount,
+                  paymentMethod: initialPaymentAmount > 0 ? initialPaymentMethod : undefined,
+                  referenceNumber: initialPaymentAmount > 0 ? initialPaymentReference : undefined,
+                  sponsors: billSponsors,
+                });
+              }}
+              disabled={createBillMutation.isPending || !billPatient}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createBillMutation.isPending ? 'Generating...' : `Create Invoice (${formatCurrency(createBillTotal)})`}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 text-xs">
           {/* Patient Selection */}
@@ -750,7 +795,7 @@ export default function BillingModule({ initialPatient = null }) {
           {/* Initial Payment options */}
           <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
             <span className="font-bold text-foreground block">Initial Payment (Optional)</span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-muted-foreground block">Amount Paid Now (PKR)</label>
                 <Input
@@ -805,7 +850,7 @@ export default function BillingModule({ initialPatient = null }) {
               </Button>
             </div>
             {billSponsors.map((sponsor, idx) => (
-              <div key={idx} className="grid grid-cols-4 gap-2 items-center">
+              <div key={idx} className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-center">
                 <select
                   value={sponsor.payerType}
                   onChange={(e) => handleUpdateSponsor(idx, 'payerType', e.target.value)}
@@ -840,50 +885,6 @@ export default function BillingModule({ initialPatient = null }) {
             ))}
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsCreateOpen(false)}
-              disabled={createBillMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!billPatient) {
-                  toast.error('Please select a patient.');
-                  return;
-                }
-                const invalid = billItems.some((i) => !i.description.trim() || i.amount <= 0);
-                if (invalid) {
-                  toast.error('Please ensure all line items have descriptions and valid amounts.');
-                  return;
-                }
-                if (
-                  initialPaymentAmount > 0 &&
-                  REFERENCE_REQUIRED_METHODS.includes(initialPaymentMethod) &&
-                  !initialPaymentReference.trim()
-                ) {
-                  toast.error('A transaction/reference number is required for this payment method.');
-                  return;
-                }
-                createBillMutation.mutate({
-                  patientId: billPatient._id,
-                  items: billItems,
-                  amountPaid: initialPaymentAmount,
-                  paymentMethod: initialPaymentAmount > 0 ? initialPaymentMethod : undefined,
-                  referenceNumber: initialPaymentAmount > 0 ? initialPaymentReference : undefined,
-                  sponsors: billSponsors,
-                });
-              }}
-              disabled={createBillMutation.isPending || !billPatient}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createBillMutation.isPending ? 'Generating...' : `Create Invoice (${formatCurrency(createBillTotal)})`}
-            </Button>
-          </div>
         </div>
       </Modal>
 
@@ -896,6 +897,43 @@ export default function BillingModule({ initialPatient = null }) {
           paymentBillTarget
             ? `Invoice #${paymentBillTarget._id.slice(-6)} • Patient: ${paymentBillTarget.patientId?.name}`
             : ''
+        }
+        footer={
+          paymentBillTarget && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPaymentBillTarget(null)}
+                disabled={recordPaymentMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (paymentAmount <= 0) {
+                    toast.error('Payment amount must be greater than zero.');
+                    return;
+                  }
+                  if (REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !paymentReference.trim()) {
+                    toast.error('A transaction/reference number is required for this payment method.');
+                    return;
+                  }
+                  recordPaymentMutation.mutate({
+                    billId: paymentBillTarget._id,
+                    amount: paymentAmount,
+                    paymentMethod,
+                    referenceNumber: paymentReference,
+                    sponsorIndex: paymentSponsorIndex,
+                  });
+                }}
+                disabled={recordPaymentMutation.isPending || paymentAmount <= 0}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {recordPaymentMutation.isPending ? 'Processing...' : `Confirm Payment (${formatCurrency(paymentAmount)})`}
+              </Button>
+            </>
+          )
         }
       >
         {paymentBillTarget && (
@@ -986,40 +1024,6 @@ export default function BillingModule({ initialPatient = null }) {
                 </div>
               )}
             </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPaymentBillTarget(null)}
-                disabled={recordPaymentMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (paymentAmount <= 0) {
-                    toast.error('Payment amount must be greater than zero.');
-                    return;
-                  }
-                  if (REFERENCE_REQUIRED_METHODS.includes(paymentMethod) && !paymentReference.trim()) {
-                    toast.error('A transaction/reference number is required for this payment method.');
-                    return;
-                  }
-                  recordPaymentMutation.mutate({
-                    billId: paymentBillTarget._id,
-                    amount: paymentAmount,
-                    paymentMethod,
-                    referenceNumber: paymentReference,
-                    sponsorIndex: paymentSponsorIndex,
-                  });
-                }}
-                disabled={recordPaymentMutation.isPending || paymentAmount <= 0}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              >
-                {recordPaymentMutation.isPending ? 'Processing...' : `Confirm Payment (${formatCurrency(paymentAmount)})`}
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
@@ -1033,6 +1037,18 @@ export default function BillingModule({ initialPatient = null }) {
           selectedBillForDetails
             ? `Invoice #${selectedBillForDetails._id.slice(-6)} • ${selectedBillForDetails.patientId?.name}`
             : ''
+        }
+        footer={
+          selectedBillForDetails && (
+            <div className="w-full flex items-center justify-between">
+              <span className="text-muted-foreground text-xs">
+                Payment Method: <strong className="capitalize text-foreground">{selectedBillForDetails.paymentMethod?.replace('_', ' ') || 'Unspecified'}</strong>
+              </span>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedBillForDetails(null)}>
+                Close
+              </Button>
+            </div>
+          )
         }
       >
         {selectedBillForDetails && (
@@ -1121,14 +1137,6 @@ export default function BillingModule({ initialPatient = null }) {
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-border">
-              <span className="text-muted-foreground">
-                Payment Method: <strong className="capitalize text-foreground">{selectedBillForDetails.paymentMethod?.replace('_', ' ') || 'Unspecified'}</strong>
-              </span>
-              <Button type="button" variant="outline" size="sm" onClick={() => setSelectedBillForDetails(null)}>
-                Close
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
@@ -1146,9 +1154,7 @@ export default function BillingModule({ initialPatient = null }) {
         }
       >
         {selectedIpdAdmission && (
-          <div className="max-h-[65vh] overflow-y-auto">
-            <RunningBillCard admission={selectedIpdAdmission} canAddAdvance={canAddAdvance} />
-          </div>
+          <RunningBillCard admission={selectedIpdAdmission} canAddAdvance={canAddAdvance} />
         )}
       </Modal>
     </div>

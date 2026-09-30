@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 
 // ─── Tag Input Component ──────────────────────────────────────────────────────
 function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/10 text-primary border-primary/20' }) {
@@ -122,53 +123,56 @@ function EditProfileModal({ patient, onClose }) {
     mutation.mutate(payload);
   };
 
-  // Trap focus & close on Escape
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative z-10 w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl animate-fade-in overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Pencil className="h-4 w-4" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-foreground">Edit My Profile</h2>
-              <p className="text-xs text-muted-foreground">Update your personal health information</p>
-            </div>
-          </div>
-          <button
+    <Modal
+      isOpen
+      onClose={onClose}
+      title="Edit My Profile"
+      description="Update your personal health information"
+      footer={
+        <>
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            disabled={mutation.isPending}
+            className="h-9"
           >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="edit-my-profile-form"
+            size="sm"
+            disabled={mutation.isPending}
+            className="h-9 bg-primary hover:bg-primary/90 text-primary-foreground min-w-[100px]"
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-3.5 w-3.5" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </>
+      }
+    >
+      {/* Read-only notice */}
+      <div className="mb-4 flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+        <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+        <span>
+          <strong>Note:</strong> Name, MRN, and CNIC are staff-controlled for record integrity. Contact the hospital to update those fields.
+        </span>
+      </div>
 
-        {/* Read-only notice */}
-        <div className="mx-6 mt-4 flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
-          <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-          <span>
-            <strong>Note:</strong> Name, MRN, and CNIC are staff-controlled for record integrity. Contact the hospital to update those fields.
-          </span>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4 overflow-y-auto max-h-[60vh]">
+      {/* Form */}
+      <form id="edit-my-profile-form" onSubmit={handleSubmit} className="space-y-4">
           {/* DOB & Gender */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Date of Birth */}
@@ -285,42 +289,8 @@ function EditProfileModal({ patient, onClose }) {
               colorClass="bg-warning/15 text-warning-foreground border-warning/30"
             />
           </div>
-        </form>
-
-        {/* Modal Footer */}
-        <div className="flex items-center justify-end gap-2.5 px-6 py-4 border-t border-border bg-muted/10">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={mutation.isPending}
-            className="h-9"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            size="sm"
-            disabled={mutation.isPending}
-            className="h-9 bg-primary hover:bg-primary/90 text-primary-foreground min-w-[100px]"
-            onClick={handleSubmit}
-          >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-3.5 w-3.5" />
-                Save Changes
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }
 

@@ -761,8 +761,28 @@ export default function PharmacyModule() {
         onClose={() => setIsAddMedOpen(false)}
         title="Add New Medicine"
         description="Register a pharmaceutical item into hospital inventory."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsAddMedOpen(false)}
+              disabled={createMedMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="add-medicine-form"
+              disabled={createMedMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {createMedMutation.isPending ? 'Saving...' : 'Add Medicine'}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmitMed((data) => createMedMutation.mutate(data))} className="space-y-4">
+        <form id="add-medicine-form" onSubmit={handleSubmitMed((data) => createMedMutation.mutate(data))} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Medicine Name *
@@ -776,7 +796,7 @@ export default function PharmacyModule() {
             {medErrors.name && <p className="text-xs text-destructive">{medErrors.name.message}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Category
@@ -799,7 +819,7 @@ export default function PharmacyModule() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Unit Price (PKR) *
@@ -842,7 +862,7 @@ export default function PharmacyModule() {
             <span className="font-bold text-foreground block text-xs uppercase tracking-wider">
               Initial Batch (Optional)
             </span>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-muted-foreground block">Batch Number</label>
                 <Input
@@ -887,23 +907,6 @@ export default function PharmacyModule() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddMedOpen(false)}
-              disabled={createMedMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createMedMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {createMedMutation.isPending ? 'Saving...' : 'Add Medicine'}
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -913,9 +916,32 @@ export default function PharmacyModule() {
         onClose={() => setEditMedTarget(null)}
         title="Edit Medicine Details"
         description="Update pricing, supplier, or threshold information."
+        footer={
+          editMedTarget && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditMedTarget(null)}
+                disabled={updateMedMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="edit-medicine-form"
+                disabled={updateMedMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {updateMedMutation.isPending ? 'Updating...' : 'Save Changes'}
+              </Button>
+            </>
+          )
+        }
       >
         {editMedTarget && (
           <form
+            id="edit-medicine-form"
             onSubmit={handleSubmitMed((data) =>
               updateMedMutation.mutate({ id: editMedTarget._id, data })
             )}
@@ -933,7 +959,7 @@ export default function PharmacyModule() {
               {medErrors.name && <p className="text-xs text-destructive">{medErrors.name.message}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Category
@@ -954,7 +980,7 @@ export default function PharmacyModule() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Unit Price (PKR) *
@@ -989,23 +1015,6 @@ export default function PharmacyModule() {
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditMedTarget(null)}
-                disabled={updateMedMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateMedMutation.isPending}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              >
-                {updateMedMutation.isPending ? 'Updating...' : 'Save Changes'}
-              </Button>
-            </div>
           </form>
         )}
       </Modal>
@@ -1016,13 +1025,36 @@ export default function PharmacyModule() {
         onClose={() => setBatchMedTarget(null)}
         title={`Add Batch: ${batchMedTarget?.name}`}
         description={`Current stock: ${batchMedTarget?.stock} ${batchMedTarget?.unit || 'units'}`}
+        footer={
+          batchMedTarget && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBatchMedTarget(null)}
+                disabled={addBatchMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="add-batch-form"
+                disabled={addBatchMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                {addBatchMutation.isPending ? 'Adding...' : 'Add Batch'}
+              </Button>
+            </>
+          )
+        }
       >
         {batchMedTarget && (
           <form
+            id="add-batch-form"
             onSubmit={handleSubmitBatch((data) => addBatchMutation.mutate({ id: batchMedTarget._id, data }))}
             className="space-y-4"
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Batch Number
@@ -1049,7 +1081,7 @@ export default function PharmacyModule() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Expiry Date *
@@ -1087,23 +1119,6 @@ export default function PharmacyModule() {
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setBatchMedTarget(null)}
-                disabled={addBatchMutation.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={addBatchMutation.isPending}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-              >
-                {addBatchMutation.isPending ? 'Adding...' : 'Add Batch'}
-              </Button>
-            </div>
           </form>
         )}
       </Modal>
@@ -1116,6 +1131,44 @@ export default function PharmacyModule() {
         }}
         title="Dispense Medications"
         description="Select patient (or walk-in) and assemble medicine items for checkout."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsDispenseOpen(false)}
+              disabled={dispenseMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (cartItems.length === 0) {
+                  toast.error('Please add at least one medicine item to cart.');
+                  return;
+                }
+                dispenseMutation.mutate({
+                  patientId: dispensePatient?._id || undefined,
+                  items: cartItems.map((i) => ({
+                    medicineId: i.medicineId,
+                    quantity: i.quantity,
+                  })),
+                });
+              }}
+              disabled={dispenseMutation.isPending || cartItems.length === 0}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {dispenseMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing Checkout...
+                </>
+              ) : (
+                `Complete Dispense (${formatCurrency(cartTotal)})`
+              )}
+            </Button>
+          </>
+        }
       >
         <div className="space-y-4 text-xs">
           {/* Inline 409 / Error banner */}
@@ -1310,43 +1363,6 @@ export default function PharmacyModule() {
             </div>
           </div>
 
-          {/* Submit Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsDispenseOpen(false)}
-              disabled={dispenseMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (cartItems.length === 0) {
-                  toast.error('Please add at least one medicine item to cart.');
-                  return;
-                }
-                dispenseMutation.mutate({
-                  patientId: dispensePatient?._id || undefined,
-                  items: cartItems.map((i) => ({
-                    medicineId: i.medicineId,
-                    quantity: i.quantity,
-                  })),
-                });
-              }}
-              disabled={dispenseMutation.isPending || cartItems.length === 0}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {dispenseMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing Checkout...
-                </>
-              ) : (
-                `Complete Dispense (${formatCurrency(cartTotal)})`
-              )}
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

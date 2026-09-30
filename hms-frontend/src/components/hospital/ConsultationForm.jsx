@@ -118,11 +118,39 @@ export default function ConsultationForm({ appointment, onClose }) {
       }}
       title="Record Consultation"
       description={`${patientName}${patientMRN ? ` · MRN: ${patientMRN}` : ''} · Token #${appointment?.tokenNumber ?? ''}`}
+      footer={
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={consultationMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="consultation-form"
+            disabled={consultationMutation.isPending}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+          >
+            {consultationMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Recording...
+              </>
+            ) : (
+              <>
+                <Stethoscope className="mr-1.5 h-4 w-4" />
+                Record &amp; Complete
+              </>
+            )}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-0">
-        {/* Scrollable body */}
-        <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1 pb-2">
-          {formError && (
+      <form id="consultation-form" onSubmit={handleSubmit} className="space-y-5">
+        {formError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive font-medium animate-slide-up">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
               <span>{formError}</span>
@@ -238,7 +266,7 @@ export default function ConsultationForm({ appointment, onClose }) {
                       <X className="h-3 w-3" />
                     </button>
                   )}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="col-span-2">
                       <Input
                         placeholder="Medicine name *"
@@ -296,36 +324,6 @@ export default function ConsultationForm({ appointment, onClose }) {
               className="h-9 w-44 text-xs"
             />
           </div>
-        </div>
-
-        {/* ── Sticky Footer ── */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border mt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={consultationMutation.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={consultationMutation.isPending}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-          >
-            {consultationMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Recording...
-              </>
-            ) : (
-              <>
-                <Stethoscope className="mr-1.5 h-4 w-4" />
-                Record &amp; Complete
-              </>
-            )}
-          </Button>
-        </div>
       </form>
     </Modal>
   );

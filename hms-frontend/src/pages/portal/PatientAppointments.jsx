@@ -437,8 +437,35 @@ export default function PatientAppointments() {
         }}
         title="Book Doctor Appointment"
         description="Pick a date, a doctor on duty that day, and one of their open slots. An OPD token number is issued immediately."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsBookModalOpen(false)}
+              disabled={bookMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="patient-book-appointment-form"
+              disabled={bookMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {bookMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Token...
+                </>
+              ) : (
+                'Confirm & Issue Token'
+              )}
+            </Button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmit(onSubmitBooking)} className="space-y-4 max-h-[72vh] overflow-y-auto pr-1">
+        <form id="patient-book-appointment-form" onSubmit={handleSubmit(onSubmitBooking)} className="space-y-4">
           {/* Date first - it decides which doctors are on duty */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -485,31 +512,6 @@ export default function PatientAppointments() {
             />
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsBookModalOpen(false)}
-              disabled={bookMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={bookMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {bookMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Token...
-                </>
-              ) : (
-                'Confirm & Issue Token'
-              )}
-            </Button>
-          </div>
         </form>
       </Modal>
     </div>

@@ -318,6 +318,33 @@ export default function StaffManagement() {
         }}
         title="Invite New Staff Member"
         description="Create account credentials for a doctor, nurse, receptionist, or administrative staff member."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsInviteOpen(false)}
+              disabled={inviteMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="invite-staff-form"
+              disabled={inviteMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {inviteMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Create Staff Member'
+              )}
+            </Button>
+          </>
+        }
       >
         {formError && (
           <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
@@ -326,7 +353,7 @@ export default function StaffManagement() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form id="invite-staff-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Full Name
@@ -400,30 +427,6 @@ export default function StaffManagement() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsInviteOpen(false)}
-              disabled={inviteMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={inviteMutation.isPending}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-            >
-              {inviteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                'Create Staff Member'
-              )}
-            </Button>
-          </div>
         </form>
       </Modal>
 

@@ -118,9 +118,30 @@ function AdvancePaymentModal({ admission, onClose }) {
       onClose={() => !mutation.isPending && onClose()}
       title="Add Advance Payment"
       description={`Deposit against ${admission.patientId?.name || 'this patient'}'s admission — netted off the final bill at discharge.`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            disabled={mutation.isPending || !(Number(amount) > 0)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+          >
+            {mutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Record Advance'
+            )}
+          </Button>
+        </>
+      }
     >
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Amount (PKR) *</label>
             <Input
@@ -146,25 +167,6 @@ function AdvancePaymentModal({ admission, onClose }) {
               <option value="other">Other</option>
             </select>
           </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !(Number(amount) > 0)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-          >
-            {mutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              'Record Advance'
-            )}
-          </Button>
         </div>
       </div>
     </Modal>
@@ -252,7 +254,9 @@ export function RunningBillCard({ admission, canAddAdvance }) {
         </div>
       ) : (
         <>
-          <BillLines lines={lines} />
+          <div className="overflow-x-auto">
+            <BillLines lines={lines} />
+          </div>
           <BillTotals
             grandTotal={grandTotal}
             advancePaid={data.advancePaid}
@@ -296,9 +300,14 @@ export function FinalBillModal({ result, onClose }) {
       onClose={onClose}
       title="Discharge Complete — Final Bill"
       description={`${admission.patientId?.name || 'Patient'} · ${admission.wardId?.name || ''}, Bed ${admission.bedId?.bedNumber || '—'} · ${summary.daysAdmitted} day${summary.daysAdmitted !== 1 ? 's' : ''}`}
+      footer={
+        <Button onClick={onClose} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
+          Done
+        </Button>
+      }
     >
       <div className="space-y-4">
-        <div className="rounded-xl border border-border overflow-hidden max-h-[45vh] overflow-y-auto">
+        <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
           <BillLines lines={lines} />
           <BillTotals grandTotal={grandTotal} advancePaid={summary.advancePaid} amountPaid={bill?.amountPaid} />
         </div>
@@ -314,12 +323,6 @@ export function FinalBillModal({ result, onClose }) {
             {formatCurrency(bill.totalAmount - bill.amountPaid)} is still outstanding — collect it from Billing &amp; Invoices.
           </div>
         ) : null}
-
-        <div className="flex justify-end pt-2 border-t border-border">
-          <Button onClick={onClose} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-            Done
-          </Button>
-        </div>
       </div>
     </Modal>
   );

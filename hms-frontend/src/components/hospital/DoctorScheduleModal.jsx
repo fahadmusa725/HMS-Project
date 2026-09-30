@@ -49,22 +49,22 @@ export default function DoctorScheduleModal({ doctor, onClose }) {
     },
   });
 
-  return (
-    <Modal
-      isOpen
-      onClose={onClose}
-      title={`Schedule — ${doctorName(doctor.name)}`}
-      description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
-    >
-      {isLoading ? (
+  if (isLoading) {
+    return (
+      <Modal
+        isOpen
+        onClose={onClose}
+        title={`Schedule — ${doctorName(doctor.name)}`}
+        description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
+      >
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading schedule...
         </div>
-      ) : (
-        <ScheduleForm doctor={doctor} schedule={schedule} onClose={onClose} />
-      )}
-    </Modal>
-  );
+      </Modal>
+    );
+  }
+
+  return <ScheduleForm doctor={doctor} schedule={schedule} onClose={onClose} />;
 }
 
 /** Rendered only once the schedule has loaded, so its state is initialised straight from it. */
@@ -106,7 +106,37 @@ function ScheduleForm({ doctor, schedule, onClose }) {
   const busy = saveMutation.isPending;
 
   return (
-    <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+    <Modal
+      isOpen
+      onClose={onClose}
+      title={`Schedule — ${doctorName(doctor.name)}`}
+      description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setFormError(null);
+              saveMutation.mutate();
+            }}
+            disabled={busy || invalidBlock || !(Number(fee) >= 0)}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+          >
+            {busy ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              'Save Schedule'
+            )}
+          </Button>
+        </>
+      }
+    >
+    <div className="space-y-4">
       {formError && (
         <div className="flex items-start gap-2 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive font-medium">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -114,7 +144,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
             Consultation Fee (PKR)
@@ -221,28 +251,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
         )}
       </div>
 
-      <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-          Cancel
-        </Button>
-        <Button
-          onClick={() => {
-            setFormError(null);
-            saveMutation.mutate();
-          }}
-          disabled={busy || invalidBlock || !(Number(fee) >= 0)}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-        >
-          {busy ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            'Save Schedule'
-          )}
-        </Button>
-      </div>
     </div>
+    </Modal>
   );
 }
