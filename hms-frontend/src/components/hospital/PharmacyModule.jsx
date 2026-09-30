@@ -28,19 +28,65 @@ import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { formatCurrency } from '@/lib/utils';
 
-// Schema for adding a medicine (with an optional initial batch) / editing its non-batch details
-const medicineSchema = z.object({
-  name: z.string().min(2, 'Medicine name must be at least 2 characters'),
-  category: z.string().optional(),
-  unit: z.string().default('tablet'),
-  price: z.coerce.number().min(0, 'Price must be a positive number'),
-  supplier: z.string().optional(),
-  lowStockThreshold: z.coerce.number().min(0, 'Threshold cannot be negative').default(10),
-  batchNumber: z.string().optional(),
-  batchQuantity: z.coerce.number().min(0, 'Quantity cannot be negative').default(0),
-  batchExpiryDate: z.string().optional(),
-  batchPurchasePrice: z.coerce.number().min(0).optional(),
-});
+// Rejects a field that's either empty or nothing but whitespace, for optional text fields where
+// "   " shouldn't be treated as a real value.
+const notBlankIfFilled = (message) =>
+  z
+    .string()
+    .optional()
+    .refine((v) => !v || v.trim().length > 0, message);
+
+// Schema for adding a medicine (with an optional initial batch) / editing its non-batch details.
+// Batch fields are kept as raw strings (not z.coerce.number()) so superRefine below can tell an
+// untouched field apart from one the user actually typed "0" into.
+const medicineSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(1, 'Medicine name is required'),
+    category: notBlankIfFilled('Category cannot be just spaces.'),
+    unit: notBlankIfFilled('Dosage unit cannot be just spaces.'),
+    price: z.coerce.number().gt(0, 'Unit price must be a number greater than 0'),
+    supplier: notBlankIfFilled('Supplier cannot be just spaces.'),
+    lowStockThreshold: z.coerce.number().min(0, 'Threshold cannot be negative').default(10),
+    batchNumber: z.string().optional(),
+    batchQuantity: z.string().optional(),
+    batchExpiryDate: z.string().optional(),
+    batchPurchasePrice: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const filled = (v) => !!v && v.trim() !== '';
+    const batchTouched =
+      filled(data.batchNumber) || filled(data.batchQuantity) || filled(data.batchExpiryDate) || filled(data.batchPurchasePrice);
+
+    if (!batchTouched) return;
+
+    if (!filled(data.batchNumber)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['batchNumber'], message: 'Batch number is required once any batch field is filled in.' });
+    }
+
+    const quantity = Number(data.batchQuantity);
+    if (!filled(data.batchQuantity) || !Number.isFinite(quantity) || quantity <= 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['batchQuantity'], message: 'Quantity must be a positive number.' });
+    }
+
+    if (!filled(data.batchExpiryDate)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['batchExpiryDate'], message: 'Expiry date is required once any batch field is filled in.' });
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const expiry = new Date(`${data.batchExpiryDate}T00:00:00`);
+      if (Number.isNaN(expiry.getTime()) || expiry < today) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['batchExpiryDate'], message: 'Expiry date must be today or a future date.' });
+      }
+    }
+
+    const purchasePrice = Number(data.batchPurchasePrice);
+    if (!filled(data.batchPurchasePrice) || !Number.isFinite(purchasePrice) || purchasePrice < 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['batchPurchasePrice'], message: 'Purchase price is required and cannot be negative.' });
+    }
+  });
 
 // Fields for the "add a new batch" modal (restock)
 const batchSchema = z.object({
@@ -87,20 +133,21 @@ export default function PharmacyModule() {
     handleSubmit: handleSubmitMed,
     reset: resetMed,
     setValue: setMedValue,
-    formState: { errors: medErrors },
+    formState: { errors: medErrors, isValid: isMedFormValid },
   } = useForm({
     resolver: zodResolver(medicineSchema),
+    mode: 'onChange',
     defaultValues: {
       name: '',
       category: '',
       unit: 'tablet',
-      price: 0,
+      price: '',
       supplier: '',
       lowStockThreshold: 10,
       batchNumber: '',
-      batchQuantity: 0,
+      batchQuantity: '',
       batchExpiryDate: '',
-      batchPurchasePrice: undefined,
+      batchPurchasePrice: '',
     },
   });
 
@@ -163,15 +210,13 @@ export default function PharmacyModule() {
     mutationFn: async (formData) => {
       const { batchNumber, batchQuantity, batchExpiryDate, batchPurchasePrice, ...medicineFields } = formData;
       const payload = { ...medicineFields };
-      if (batchQuantity > 0) {
-        if (!batchExpiryDate) {
-          throw { response: { data: { message: 'An initial batch needs an expiry date.' } } };
-        }
+      // Validated by medicineSchema's superRefine: batch fields are either all filled or all blank.
+      if (batchQuantity && batchQuantity.trim() !== '') {
         payload.batch = {
           batchNumber,
-          quantity: batchQuantity,
+          quantity: Number(batchQuantity),
           expiryDate: batchExpiryDate,
-          purchasePrice: batchPurchasePrice,
+          purchasePrice: Number(batchPurchasePrice),
         };
       }
       const res = await api.post('/api/pharmacy/medicines', payload);
@@ -630,6 +675,12 @@ export default function PharmacyModule() {
                                       setMedValue('price', med.price);
                                       setMedValue('supplier', med.supplier || '');
                                       setMedValue('lowStockThreshold', med.lowStockThreshold || 10);
+                                      // Edit doesn't show the batch fields, so clear any leftover values from
+                                      // an abandoned Add Medicine attempt - they share one form instance.
+                                      setMedValue('batchNumber', '');
+                                      setMedValue('batchQuantity', '');
+                                      setMedValue('batchExpiryDate', '');
+                                      setMedValue('batchPurchasePrice', '');
                                     }}
                                     className="h-7 px-2 text-muted-foreground hover:text-foreground"
                                     title="Edit details"
@@ -774,7 +825,7 @@ export default function PharmacyModule() {
             <Button
               type="submit"
               form="add-medicine-form"
-              disabled={createMedMutation.isPending}
+              disabled={createMedMutation.isPending || !isMedFormValid}
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
               {createMedMutation.isPending ? 'Saving...' : 'Add Medicine'}
@@ -805,7 +856,9 @@ export default function PharmacyModule() {
                 placeholder="e.g. Analgesic, Antibiotic"
                 {...registerMed('category')}
                 disabled={createMedMutation.isPending}
+                className={medErrors.category ? 'border-destructive' : ''}
               />
+              {medErrors.category && <p className="text-xs text-destructive">{medErrors.category.message}</p>}
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -815,7 +868,9 @@ export default function PharmacyModule() {
                 placeholder="e.g. tablet, syrup, injection"
                 {...registerMed('unit')}
                 disabled={createMedMutation.isPending}
+                className={medErrors.unit ? 'border-destructive' : ''}
               />
+              {medErrors.unit && <p className="text-xs text-destructive">{medErrors.unit.message}</p>}
             </div>
           </div>
 
@@ -843,7 +898,11 @@ export default function PharmacyModule() {
                 placeholder="e.g. 10"
                 {...registerMed('lowStockThreshold')}
                 disabled={createMedMutation.isPending}
+                className={medErrors.lowStockThreshold ? 'border-destructive' : ''}
               />
+              {medErrors.lowStockThreshold && (
+                <p className="text-xs text-destructive">{medErrors.lowStockThreshold.message}</p>
+              )}
             </div>
           </div>
 
@@ -855,7 +914,9 @@ export default function PharmacyModule() {
               placeholder="e.g. PharmaMed Distributors"
               {...registerMed('supplier')}
               disabled={createMedMutation.isPending}
+              className={medErrors.supplier ? 'border-destructive' : ''}
             />
+            {medErrors.supplier && <p className="text-xs text-destructive">{medErrors.supplier.message}</p>}
           </div>
 
           <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
@@ -869,8 +930,9 @@ export default function PharmacyModule() {
                   placeholder="e.g. B-2026-01"
                   {...registerMed('batchNumber')}
                   disabled={createMedMutation.isPending}
-                  className="h-8 text-xs"
+                  className={`h-8 text-xs ${medErrors.batchNumber ? 'border-destructive' : ''}`}
                 />
+                {medErrors.batchNumber && <p className="text-xs text-destructive">{medErrors.batchNumber.message}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-muted-foreground block">Quantity</label>
@@ -880,8 +942,9 @@ export default function PharmacyModule() {
                   placeholder="e.g. 100"
                   {...registerMed('batchQuantity')}
                   disabled={createMedMutation.isPending}
-                  className="h-8 text-xs"
+                  className={`h-8 text-xs ${medErrors.batchQuantity ? 'border-destructive' : ''}`}
                 />
+                {medErrors.batchQuantity && <p className="text-xs text-destructive">{medErrors.batchQuantity.message}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-muted-foreground block">Expiry Date</label>
@@ -889,8 +952,11 @@ export default function PharmacyModule() {
                   type="date"
                   {...registerMed('batchExpiryDate')}
                   disabled={createMedMutation.isPending}
-                  className="h-8 text-xs"
+                  className={`h-8 text-xs ${medErrors.batchExpiryDate ? 'border-destructive' : ''}`}
                 />
+                {medErrors.batchExpiryDate && (
+                  <p className="text-xs text-destructive">{medErrors.batchExpiryDate.message}</p>
+                )}
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-muted-foreground block">Purchase Price (PKR)</label>
@@ -901,8 +967,11 @@ export default function PharmacyModule() {
                   placeholder="e.g. 8.00"
                   {...registerMed('batchPurchasePrice')}
                   disabled={createMedMutation.isPending}
-                  className="h-8 text-xs"
+                  className={`h-8 text-xs ${medErrors.batchPurchasePrice ? 'border-destructive' : ''}`}
                 />
+                {medErrors.batchPurchasePrice && (
+                  <p className="text-xs text-destructive">{medErrors.batchPurchasePrice.message}</p>
+                )}
               </div>
             </div>
           </div>
@@ -930,7 +999,7 @@ export default function PharmacyModule() {
               <Button
                 type="submit"
                 form="edit-medicine-form"
-                disabled={updateMedMutation.isPending}
+                disabled={updateMedMutation.isPending || !isMedFormValid}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
                 {updateMedMutation.isPending ? 'Updating...' : 'Save Changes'}
@@ -967,7 +1036,9 @@ export default function PharmacyModule() {
                 <Input
                   {...registerMed('category')}
                   disabled={updateMedMutation.isPending}
+                  className={medErrors.category ? 'border-destructive' : ''}
                 />
+                {medErrors.category && <p className="text-xs text-destructive">{medErrors.category.message}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -976,7 +1047,9 @@ export default function PharmacyModule() {
                 <Input
                   {...registerMed('unit')}
                   disabled={updateMedMutation.isPending}
+                  className={medErrors.unit ? 'border-destructive' : ''}
                 />
+                {medErrors.unit && <p className="text-xs text-destructive">{medErrors.unit.message}</p>}
               </div>
             </div>
 
@@ -992,6 +1065,7 @@ export default function PharmacyModule() {
                   disabled={updateMedMutation.isPending}
                   className={medErrors.price ? 'border-destructive' : ''}
                 />
+                {medErrors.price && <p className="text-xs text-destructive">{medErrors.price.message}</p>}
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -1001,7 +1075,11 @@ export default function PharmacyModule() {
                   type="number"
                   {...registerMed('lowStockThreshold')}
                   disabled={updateMedMutation.isPending}
+                  className={medErrors.lowStockThreshold ? 'border-destructive' : ''}
                 />
+                {medErrors.lowStockThreshold && (
+                  <p className="text-xs text-destructive">{medErrors.lowStockThreshold.message}</p>
+                )}
               </div>
             </div>
 
@@ -1012,7 +1090,9 @@ export default function PharmacyModule() {
               <Input
                 {...registerMed('supplier')}
                 disabled={updateMedMutation.isPending}
+                className={medErrors.supplier ? 'border-destructive' : ''}
               />
+              {medErrors.supplier && <p className="text-xs text-destructive">{medErrors.supplier.message}</p>}
             </div>
 
           </form>
