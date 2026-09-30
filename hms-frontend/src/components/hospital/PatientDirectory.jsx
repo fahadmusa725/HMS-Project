@@ -296,11 +296,18 @@ export default function PatientDirectory() {
   // Mutation: Register Patient
   const registerMutation = useMutation({
     mutationFn: async (formData) => {
-      const payload = {
-        ...formData,
-        allergies: regAllergies,
-        chronicConditions: regConditions,
-      };
+      // A tag only gets added to the array on Enter, so anything still sitting in the text box
+      // (typed but never confirmed) would otherwise be silently discarded on submit - fold it in.
+      const allergies = [...regAllergies];
+      if (allergyInput.trim() && !allergies.includes(allergyInput.trim())) {
+        allergies.push(allergyInput.trim());
+      }
+      const chronicConditions = [...regConditions];
+      if (conditionInput.trim() && !chronicConditions.includes(conditionInput.trim())) {
+        chronicConditions.push(conditionInput.trim());
+      }
+
+      const payload = { ...formData, allergies, chronicConditions };
       const response = await api.post('/api/patients', payload);
       return response.data;
     },
@@ -310,6 +317,8 @@ export default function PatientDirectory() {
       reset();
       setRegAllergies([]);
       setRegConditions([]);
+      setAllergyInput('');
+      setConditionInput('');
       setFormError(null);
       toast.success(`Patient registered — MRN: ${data.mrn}`, {
         description: `Name: ${data.name}`,
@@ -325,17 +334,28 @@ export default function PatientDirectory() {
   // Mutation: Update Patient
   const updateMutation = useMutation({
     mutationFn: async (formData) => {
-      const payload = {
-        ...formData,
-        allergies: detailAllergies,
-        chronicConditions: detailConditions,
-      };
+      // Same fold-in as registration: an uncommitted tag left in the text box shouldn't be
+      // silently dropped just because the user clicked Save instead of pressing Enter first.
+      const allergies = [...detailAllergies];
+      if (detailAllergyInput.trim() && !allergies.includes(detailAllergyInput.trim())) {
+        allergies.push(detailAllergyInput.trim());
+      }
+      const chronicConditions = [...detailConditions];
+      if (detailConditionInput.trim() && !chronicConditions.includes(detailConditionInput.trim())) {
+        chronicConditions.push(detailConditionInput.trim());
+      }
+
+      const payload = { ...formData, allergies, chronicConditions };
       const response = await api.patch(`/api/patients/${selectedPatient._id}`, payload);
       return response.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['hospital-patients'] });
       setSelectedPatient(data);
+      setDetailAllergies(data.allergies || []);
+      setDetailConditions(data.chronicConditions || []);
+      setDetailAllergyInput('');
+      setDetailConditionInput('');
       setIsEditingDetail(false);
       toast.success(`Patient profile updated — MRN: ${data.mrn}`);
     },
