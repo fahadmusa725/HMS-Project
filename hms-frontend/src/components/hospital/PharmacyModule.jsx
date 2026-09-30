@@ -28,16 +28,27 @@ import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { formatCurrency } from '@/lib/utils';
 
-// Schema for adding/editing a medicine
+// Schema for adding a medicine (with an optional initial batch) / editing its non-batch details
 const medicineSchema = z.object({
   name: z.string().min(2, 'Medicine name must be at least 2 characters'),
   category: z.string().optional(),
   unit: z.string().default('tablet'),
-  stock: z.coerce.number().min(0, 'Stock cannot be negative').default(0),
   price: z.coerce.number().min(0, 'Price must be a positive number'),
-  expiryDate: z.string().optional(),
   supplier: z.string().optional(),
   lowStockThreshold: z.coerce.number().min(0, 'Threshold cannot be negative').default(10),
+  batchNumber: z.string().optional(),
+  batchQuantity: z.coerce.number().min(0, 'Quantity cannot be negative').default(0),
+  batchExpiryDate: z.string().optional(),
+  batchPurchasePrice: z.coerce.number().min(0).optional(),
+});
+
+// Fields for the "add a new batch" modal (restock)
+const batchSchema = z.object({
+  batchNumber: z.string().optional(),
+  quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
+  expiryDate: z.string().min(1, 'Expiry date is required'),
+  purchasePrice: z.coerce.number().min(0).optional(),
+  supplier: z.string().optional(),
 });
 
 export default function PharmacyModule() {
@@ -58,8 +69,7 @@ export default function PharmacyModule() {
   // Modals state
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
   const [editMedTarget, setEditMedTarget] = useState(null);
-  const [restockMedTarget, setRestockMedTarget] = useState(null);
-  const [restockQty, setRestockQty] = useState(50);
+  const [batchMedTarget, setBatchMedTarget] = useState(null);
   const [isDispenseOpen, setIsDispenseOpen] = useState(false);
 
   // Dispense Form State
@@ -84,12 +94,25 @@ export default function PharmacyModule() {
       name: '',
       category: '',
       unit: 'tablet',
-      stock: 0,
       price: 0,
-      expiryDate: '',
       supplier: '',
       lowStockThreshold: 10,
+      batchNumber: '',
+      batchQuantity: 0,
+      batchExpiryDate: '',
+      batchPurchasePrice: undefined,
     },
+  });
+
+  // Form for adding a new batch (restock)
+  const {
+    register: registerBatch,
+    handleSubmit: handleSubmitBatch,
+    reset: resetBatch,
+    formState: { errors: batchErrors },
+  } = useForm({
+    resolver: zodResolver(batchSchema),
+    defaultValues: { batchNumber: '', quantity: 50, expiryDate: '', purchasePrice: undefined, supplier: '' },
   });
 
   // Query: Medicines List
@@ -138,7 +161,20 @@ export default function PharmacyModule() {
   // Mutation: Create Medicine
   const createMedMutation = useMutation({
     mutationFn: async (formData) => {
-      const res = await api.post('/api/pharmacy/medicines', formData);
+      const { batchNumber, batchQuantity, batchExpiryDate, batchPurchasePrice, ...medicineFields } = formData;
+      const payload = { ...medicineFields };
+      if (batchQuantity > 0) {
+        if (!batchExpiryDate) {
+          throw { response: { data: { message: 'An initial batch needs an expiry date.' } } };
+        }
+        payload.batch = {
+          batchNumber,
+          quantity: batchQuantity,
+          expiryDate: batchExpiryDate,
+          purchasePrice: batchPurchasePrice,
+        };
+      }
+      const res = await api.post('/api/pharmacy/medicines', payload);
       return res.data;
     },
     onSuccess: (data) => {
@@ -169,19 +205,20 @@ export default function PharmacyModule() {
     },
   });
 
-  // Mutation: Restock Medicine
-  const restockMutation = useMutation({
-    mutationFn: async ({ id, quantity }) => {
-      const res = await api.patch(`/api/pharmacy/medicines/${id}/restock`, { quantity });
+  // Mutation: Add a new batch (restock)
+  const addBatchMutation = useMutation({
+    mutationFn: async ({ id, data }) => {
+      const res = await api.patch(`/api/pharmacy/medicines/${id}/restock`, data);
       return res.data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['pharmacy-medicines'] });
-      setRestockMedTarget(null);
-      toast.success(`Restocked ${data.name}. Current stock: ${data.stock} ${data.unit || 'units'}.`);
+      setBatchMedTarget(null);
+      resetBatch();
+      toast.success(`New batch added to ${data.name}. Current stock: ${data.stock} ${data.unit || 'units'}.`);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to restock medicine.');
+      toast.error(err.response?.data?.message || 'Failed to add batch.');
     },
   });
 
@@ -465,7 +502,7 @@ export default function PharmacyModule() {
                       <th className="py-3.5 px-4">Unit</th>
                       <th className="py-3.5 px-4">Stock Level</th>
                       <th className="py-3.5 px-4">Unit Price</th>
-                      <th className="py-3.5 px-4">Expiry Date</th>
+                      <th className="py-3.5 px-4">Batches</th>
                       <th className="py-3.5 px-4">Supplier</th>
                       <th className="py-3.5 px-6 text-right">Actions</th>
                     </tr>
@@ -526,14 +563,39 @@ export default function PharmacyModule() {
                             {formatCurrency(med.price)}
                           </td>
 
-                          <td className="py-4 px-4 text-xs text-muted-foreground">
-                            {med.expiryDate
-                              ? new Date(med.expiryDate).toLocaleDateString(undefined, {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                })
-                              : '—'}
+                          <td className="py-4 px-4">
+                            {!med.batches || med.batches.length === 0 ? (
+                              <span className="text-xs text-muted-foreground">No batches</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {med.batches
+                                  .filter((b) => b.quantity > 0)
+                                  .sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate))
+                                  .map((b, idx) => {
+                                    const daysToExpiry = Math.ceil(
+                                      (new Date(b.expiryDate) - new Date()) / (1000 * 60 * 60 * 24)
+                                    );
+                                    const isExpired = daysToExpiry < 0;
+                                    const isNearExpiry = !isExpired && daysToExpiry <= 30;
+                                    return (
+                                      <span
+                                        key={idx}
+                                        title={b.batchNumber || 'Unlabeled batch'}
+                                        className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium ${
+                                          isExpired
+                                            ? 'bg-destructive/15 text-destructive border-destructive/30'
+                                            : isNearExpiry
+                                            ? 'bg-warning/15 text-warning-foreground border-warning/30'
+                                            : 'bg-muted/60 text-muted-foreground border-border'
+                                        }`}
+                                      >
+                                        {b.quantity} · {new Date(b.expiryDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: '2-digit' })}
+                                        {isExpired ? ' (expired)' : isNearExpiry ? ' (soon)' : ''}
+                                      </span>
+                                    );
+                                  })}
+                              </div>
+                            )}
                           </td>
 
                           <td className="py-4 px-4 text-xs text-muted-foreground">
@@ -548,14 +610,14 @@ export default function PharmacyModule() {
                                     size="sm"
                                     variant="outline"
                                     onClick={() => {
-                                      setRestockMedTarget(med);
-                                      setRestockQty(50);
+                                      setBatchMedTarget(med);
+                                      resetBatch({ batchNumber: '', quantity: 50, expiryDate: '', purchasePrice: undefined, supplier: med.supplier || '' });
                                     }}
                                     className="h-7 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10"
-                                    title="Restock units"
+                                    title="Add a new batch"
                                   >
                                     <PackagePlus className="h-3.5 w-3.5 mr-1" />
-                                    Restock
+                                    Add Batch
                                   </Button>
                                   <Button
                                     size="sm"
@@ -566,10 +628,6 @@ export default function PharmacyModule() {
                                       setMedValue('category', med.category || '');
                                       setMedValue('unit', med.unit || 'tablet');
                                       setMedValue('price', med.price);
-                                      setMedValue(
-                                        'expiryDate',
-                                        med.expiryDate ? med.expiryDate.slice(0, 10) : ''
-                                      );
                                       setMedValue('supplier', med.supplier || '');
                                       setMedValue('lowStockThreshold', med.lowStockThreshold || 10);
                                     }}
@@ -744,17 +802,6 @@ export default function PharmacyModule() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Initial Stock *
-              </label>
-              <Input
-                type="number"
-                placeholder="e.g. 100"
-                {...registerMed('stock')}
-                disabled={createMedMutation.isPending}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Unit Price (PKR) *
               </label>
               <Input
@@ -766,19 +813,6 @@ export default function PharmacyModule() {
                 className={medErrors.price ? 'border-destructive' : ''}
               />
               {medErrors.price && <p className="text-xs text-destructive">{medErrors.price.message}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Expiry Date
-              </label>
-              <Input
-                type="date"
-                {...registerMed('expiryDate')}
-                disabled={createMedMutation.isPending}
-              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -802,6 +836,55 @@ export default function PharmacyModule() {
               {...registerMed('supplier')}
               disabled={createMedMutation.isPending}
             />
+          </div>
+
+          <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
+            <span className="font-bold text-foreground block text-xs uppercase tracking-wider">
+              Initial Batch (Optional)
+            </span>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Batch Number</label>
+                <Input
+                  placeholder="e.g. B-2026-01"
+                  {...registerMed('batchNumber')}
+                  disabled={createMedMutation.isPending}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Quantity</label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 100"
+                  {...registerMed('batchQuantity')}
+                  disabled={createMedMutation.isPending}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Expiry Date</label>
+                <Input
+                  type="date"
+                  {...registerMed('batchExpiryDate')}
+                  disabled={createMedMutation.isPending}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground block">Purchase Price (PKR)</label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  placeholder="e.g. 8.00"
+                  {...registerMed('batchPurchasePrice')}
+                  disabled={createMedMutation.isPending}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
@@ -896,26 +979,14 @@ export default function PharmacyModule() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                  Expiry Date
-                </label>
-                <Input
-                  type="date"
-                  {...registerMed('expiryDate')}
-                  disabled={updateMedMutation.isPending}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                  Supplier
-                </label>
-                <Input
-                  {...registerMed('supplier')}
-                  disabled={updateMedMutation.isPending}
-                />
-              </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                Supplier
+              </label>
+              <Input
+                {...registerMed('supplier')}
+                disabled={updateMedMutation.isPending}
+              />
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
@@ -939,55 +1010,101 @@ export default function PharmacyModule() {
         )}
       </Modal>
 
-      {/* MODAL 3: RESTOCK MEDICINE */}
+      {/* MODAL 3: ADD BATCH (RESTOCK) */}
       <Modal
-        isOpen={!!restockMedTarget}
-        onClose={() => setRestockMedTarget(null)}
-        title={`Restock: ${restockMedTarget?.name}`}
-        description={`Current stock: ${restockMedTarget?.stock} ${restockMedTarget?.unit || 'units'}`}
+        isOpen={!!batchMedTarget}
+        onClose={() => setBatchMedTarget(null)}
+        title={`Add Batch: ${batchMedTarget?.name}`}
+        description={`Current stock: ${batchMedTarget?.stock} ${batchMedTarget?.unit || 'units'}`}
       >
-        {restockMedTarget && (
-          <div className="space-y-4">
+        {batchMedTarget && (
+          <form
+            onSubmit={handleSubmitBatch((data) => addBatchMutation.mutate({ id: batchMedTarget._id, data }))}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  Batch Number
+                </label>
+                <Input
+                  placeholder="e.g. B-2026-02"
+                  {...registerBatch('batchNumber')}
+                  disabled={addBatchMutation.isPending}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  Quantity *
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  {...registerBatch('quantity')}
+                  disabled={addBatchMutation.isPending}
+                  className={batchErrors.quantity ? 'border-destructive' : ''}
+                  autoFocus
+                />
+                {batchErrors.quantity && <p className="text-xs text-destructive">{batchErrors.quantity.message}</p>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  Expiry Date *
+                </label>
+                <Input
+                  type="date"
+                  {...registerBatch('expiryDate')}
+                  disabled={addBatchMutation.isPending}
+                  className={batchErrors.expiryDate ? 'border-destructive' : ''}
+                />
+                {batchErrors.expiryDate && <p className="text-xs text-destructive">{batchErrors.expiryDate.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  Purchase Price (PKR)
+                </label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  {...registerBatch('purchasePrice')}
+                  disabled={addBatchMutation.isPending}
+                />
+              </div>
+            </div>
+
             <div className="space-y-1">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
-                Units to Add *
+                Supplier
               </label>
               <Input
-                type="number"
-                min="1"
-                value={restockQty}
-                onChange={(e) => setRestockQty(Number(e.target.value))}
-                disabled={restockMutation.isPending}
-                autoFocus
+                placeholder="e.g. PharmaMed Distributors"
+                {...registerBatch('supplier')}
+                disabled={addBatchMutation.isPending}
               />
-              <span className="text-[11px] text-muted-foreground">
-                New stock total will become: <strong>{restockMedTarget.stock + (Number(restockQty) || 0)}</strong> {restockMedTarget.unit || 'units'}.
-              </span>
             </div>
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setRestockMedTarget(null)}
-                disabled={restockMutation.isPending}
+                onClick={() => setBatchMedTarget(null)}
+                disabled={addBatchMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  restockMutation.mutate({
-                    id: restockMedTarget._id,
-                    quantity: Number(restockQty),
-                  })
-                }
-                disabled={restockMutation.isPending || !restockQty || restockQty <= 0}
+                type="submit"
+                disabled={addBatchMutation.isPending}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
               >
-                {restockMutation.isPending ? 'Restocking...' : `Add +${restockQty} Units`}
+                {addBatchMutation.isPending ? 'Adding...' : 'Add Batch'}
               </Button>
             </div>
-          </div>
+          </form>
         )}
       </Modal>
 

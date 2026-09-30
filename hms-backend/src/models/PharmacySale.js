@@ -1,6 +1,16 @@
 const mongoose = require("mongoose");
 const tenantPlugin = require("../utils/tenantPlugin");
 
+// Which batch(es) covered this line item and how much came from each - FEFO can split one
+// line item across several batches, so this is an array rather than a single reference.
+const batchUsedSchema = new mongoose.Schema(
+  {
+    batchNumber: { type: String, trim: true },
+    quantity: { type: Number, required: true, min: 1 },
+  },
+  { _id: false }
+);
+
 const saleItemSchema = new mongoose.Schema(
   {
     medicineId: { type: mongoose.Schema.Types.ObjectId, ref: "Medicine", required: true },
@@ -8,6 +18,7 @@ const saleItemSchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, required: true },
     subtotal: { type: Number, required: true },
+    batchesUsed: { type: [batchUsedSchema], default: [] },
   },
   { _id: false }
 );
