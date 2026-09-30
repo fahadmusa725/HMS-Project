@@ -61,4 +61,39 @@ export async function openPdf(path) {
   }
 }
 
+/**
+ * Downloads an authenticated endpoint's response as a file (a plain <a href> can't carry the
+ * Bearer token). With responseType: 'blob', axios also delivers an error response body as a
+ * Blob rather than parsed JSON, so on failure we read it back out as text and parse it, to still
+ * surface the server's real error message instead of a generic one.
+ */
+export async function downloadFile(path, params, fallbackFilename) {
+  try {
+    const res = await api.get(path, { params, responseType: "blob" });
+
+    const disposition = res.headers["content-disposition"] || "";
+    const match = /filename="([^"]+)"/.exec(disposition);
+    const filename = match ? match[1] : fallbackFilename;
+
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+  } catch (err) {
+    if (err.response?.data instanceof Blob) {
+      try {
+        const text = await err.response.data.text();
+        err.response.data = JSON.parse(text);
+      } catch {
+        // Body wasn't JSON either - leave the original Blob, the caller falls back to a generic message.
+      }
+    }
+    throw err;
+  }
+}
+
 export default api;

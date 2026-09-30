@@ -33,6 +33,9 @@ app.use(
   cors({
     origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
     credentials: true,
+    // Cross-origin JS can't read Content-Disposition unless it's explicitly exposed - needed so
+    // file downloads (data export, token slips) can pick up the server's suggested filename.
+    exposedHeaders: ["Content-Disposition"],
   })
 );
 app.use(express.json());
