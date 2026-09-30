@@ -18,7 +18,7 @@ function generateTempPassword() {
 
 async function registerPatient(req, res) {
   try {
-    const { name, dob, gender, phone, email, cnic, address, allergies, chronicConditions } = req.body;
+    const { name, dob, gender, phone, email, cnic, address, referredBy, allergies, chronicConditions } = req.body;
 
     if (!name) {
       return res.status(400).json({ message: "Patient name is required." });
@@ -42,6 +42,7 @@ async function registerPatient(req, res) {
       email,
       cnic,
       address,
+      referredBy,
       allergies: allergies || [],
       chronicConditions: chronicConditions || [],
       registeredBy: req.user.userId,
@@ -97,7 +98,7 @@ async function getPatientById(req, res) {
 
 async function updatePatient(req, res) {
   try {
-    const updates = (({ name, dob, gender, phone, email, cnic, address, allergies, chronicConditions }) => ({
+    const updates = (({ name, dob, gender, phone, email, cnic, address, referredBy, allergies, chronicConditions }) => ({
       name,
       dob,
       gender,
@@ -105,6 +106,7 @@ async function updatePatient(req, res) {
       email,
       cnic,
       address,
+      referredBy,
       allergies,
       chronicConditions,
     }))(req.body);

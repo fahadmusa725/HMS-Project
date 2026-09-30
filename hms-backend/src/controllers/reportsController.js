@@ -161,7 +161,7 @@ async function getClinicalReport(req, res) {
     const consultMatch = { ...match, ...dateRangeMatch(startDate, endDate) };
     const patientMatch = { ...match, ...dateRangeMatch(startDate, endDate) };
 
-    const [appointmentsOverTime, appointmentsByStatus, topDoctors, topDiagnoses, newPatientsOverTime] =
+    const [appointmentsOverTime, appointmentsByStatus, topDoctors, topDiagnoses, newPatientsOverTime, referralSources] =
       await Promise.all([
         Appointment.aggregate([
           { $match: apptMatch },
@@ -195,9 +195,27 @@ async function getClinicalReport(req, res) {
           },
           { $sort: { _id: 1 } },
         ]),
+        // Where patients say they heard about the hospital - blank/missing values bucket together
+        // as "Not specified" rather than each showing up as their own empty-string group.
+        Patient.aggregate([
+          { $match: patientMatch },
+          {
+            $group: {
+              _id: {
+                $cond: [
+                  { $eq: [{ $ifNull: ["$referredBy", ""] }, ""] },
+                  "Not specified",
+                  "$referredBy",
+                ],
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { count: -1 } },
+        ]),
       ]);
 
-    res.json({ appointmentsOverTime, appointmentsByStatus, topDoctors, topDiagnoses, newPatientsOverTime });
+    res.json({ appointmentsOverTime, appointmentsByStatus, topDoctors, topDiagnoses, newPatientsOverTime, referralSources });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while generating clinical report." });

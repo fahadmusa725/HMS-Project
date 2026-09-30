@@ -42,6 +42,7 @@ const patientSchema = z.object({
   email: z.string().email('Please enter a valid email address').optional().or(z.literal('')),
   cnic: z.string().optional().or(z.literal('')),
   address: z.string().optional(),
+  referredBy: z.string().optional(),
 });
 
 // ─── PatientEMRTimeline ────────────────────────────────────────────────────────
@@ -442,6 +443,7 @@ export default function PatientDirectory() {
     setEditValue('email', patient.email || '');
     setEditValue('cnic', patient.cnic || '');
     setEditValue('address', patient.address || '');
+    setEditValue('referredBy', patient.referredBy || '');
     setIsDetailOpen(true);
   };
 
@@ -833,6 +835,17 @@ export default function PatientDirectory() {
             </div>
           </div>
 
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+              Referred By <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+            </label>
+            <Input
+              placeholder="e.g. Dr. Ahmed referral, Facebook ad, Walk-in"
+              {...register('referredBy')}
+              disabled={registerMutation.isPending}
+            />
+          </div>
+
           {/* Allergies Tag Input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -1069,6 +1082,11 @@ export default function PatientDirectory() {
                   <span className="font-medium text-foreground">{selectedPatient.address || '—'}</span>
                 </div>
 
+                <div className="p-3 bg-muted/40 rounded-lg border border-border/50 text-sm">
+                  <span className="text-xs text-muted-foreground block font-medium">Referred By</span>
+                  <span className="font-medium text-foreground">{selectedPatient.referredBy || '—'}</span>
+                </div>
+
                 {/* Allergies */}
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -1194,6 +1212,17 @@ export default function PatientDirectory() {
                     </label>
                     <Input {...registerEdit('address')} disabled={updateMutation.isPending} />
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                    Referred By <span className="text-muted-foreground font-normal lowercase">(optional)</span>
+                  </label>
+                  <Input
+                    placeholder="e.g. Dr. Ahmed referral, Facebook ad, Walk-in"
+                    {...registerEdit('referredBy')}
+                    disabled={updateMutation.isPending}
+                  />
                 </div>
 
                 {/* Edit Allergies Tag Input */}

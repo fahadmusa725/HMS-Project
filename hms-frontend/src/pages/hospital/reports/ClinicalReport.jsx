@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Loader2, RefreshCw, AlertCircle, Stethoscope, Activity } from 'lucide-react';
+import { Loader2, RefreshCw, AlertCircle, Stethoscope, Activity, Share2 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -60,6 +60,7 @@ export default function ClinicalReport() {
   const topDoctors = report?.topDoctors || [];
   const topDiagnoses = report?.topDiagnoses || [];
   const newPatientsOverTime = report?.newPatientsOverTime || [];
+  const referralSources = report?.referralSources || [];
 
   return (
     <div className="space-y-6">
@@ -287,6 +288,49 @@ export default function ClinicalReport() {
                     </div>
                     <span className="text-xs font-bold text-primary shrink-0">
                       {item.count} {item.count === 1 ? 'case' : 'cases'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Referral Sources (Ranked List) */}
+          <Card className="lg:col-span-3 p-5 border-border shadow-soft bg-card space-y-4">
+            <div className="flex items-center gap-2">
+              <Share2 className="h-4 w-4 text-primary" />
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Patient Referral Sources</h3>
+                <p className="text-xs text-muted-foreground">How patients registered in this period found the hospital</p>
+              </div>
+            </div>
+
+            {referralSources.length === 0 ? (
+              <div className="p-8 text-center text-xs text-muted-foreground">
+                No patient registrations found in this period.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {referralSources.map((item, idx) => (
+                  <div
+                    key={item._id || idx}
+                    className="p-3 bg-muted/30 rounded-xl border border-border flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <span className="h-5 w-5 rounded bg-muted text-muted-foreground font-mono text-[10px] font-bold flex items-center justify-center shrink-0">
+                        #{idx + 1}
+                      </span>
+                      <span
+                        className={`font-semibold text-xs truncate ${
+                          item._id === 'Not specified' ? 'text-muted-foreground italic' : 'text-foreground'
+                        }`}
+                        title={item._id}
+                      >
+                        {item._id}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-primary shrink-0">
+                      {item.count} {item.count === 1 ? 'patient' : 'patients'}
                     </span>
                   </div>
                 ))}

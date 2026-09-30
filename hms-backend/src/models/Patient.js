@@ -13,6 +13,9 @@ const patientSchema = new mongoose.Schema(
     // A blank form field is stored as "no CNIC", never as "", so it can't collide in the unique index.
     cnic: { type: String, trim: true, set: (v) => (v == null || String(v).trim() === "" ? undefined : v) },
     address: { type: String, trim: true },
+    // Free text, e.g. "Dr. Ahmed referral", "Facebook ad", "Walk-in" - optional, most patients
+    // won't have one filled in.
+    referredBy: { type: String, trim: true },
     allergies: [{ type: String }],
     chronicConditions: [{ type: String }],
     registeredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
