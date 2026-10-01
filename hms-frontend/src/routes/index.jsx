@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
 import PatientSignup from '@/pages/PatientSignup';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
@@ -32,7 +33,9 @@ import OperationsReport from '@/pages/hospital/reports/OperationsReport';
 export function AppRoutes() {
   const { isAuthenticated, user } = useAuthStore();
 
-  // Root redirector based on authentication and role
+  // Redirector for already-authenticated users landing on / or /login - sends them to their
+  // role's default workspace. Unauthenticated visitors to / get the public landing page instead
+  // (handled directly in the route below), not a redirect to /login.
   const getHomeRedirect = () => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     if (user?.role === 'platform_super_admin') return <Navigate to="/super-admin/dashboard" replace />;
@@ -59,8 +62,8 @@ export function AppRoutes() {
 
   return (
     <Routes>
-      {/* Root redirect */}
-      <Route path="/" element={getHomeRedirect()} />
+      {/* Public landing page for logged-out visitors; authenticated users are sent to their workspace */}
+      <Route path="/" element={isAuthenticated ? getHomeRedirect() : <Landing />} />
 
       {/* Public Login Route */}
       <Route
