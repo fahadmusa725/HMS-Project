@@ -4,6 +4,7 @@ const User = require("../models/User");
 const { getNextSequence } = require("../models/Counter");
 const generateToken = require("../utils/generateToken");
 const { runWithTenantContext } = require("../utils/tenantContext");
+const { sendEmail } = require("../utils/mailer");
 
 /** Public: list of hospitals a patient can sign up under (active or on trial - not suspended). */
 async function listSignupHospitals(req, res) {
@@ -114,4 +115,64 @@ async function patientSignup(req, res) {
   }
 }
 
-module.exports = { listSignupHospitals, patientSignup };
+/** Escapes text dropped into an HTML email body - this is public, unauthenticated input. */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Public landing-page lead capture. No paid CRM/form service - this just emails the request to
+ * whoever LEAD_NOTIFICATION_EMAIL is set to, using the same mailer every other notification in
+ * this app goes through. If that address isn't configured, sendEmail() safely no-ops (logs
+ * instead of throwing), so a request is never lost silently without at least appearing in logs.
+ */
+async function requestDemo(req, res) {
+  try {
+    const { name, hospitalName, email, phone, message } = req.body;
+
+    if (!name || !hospitalName || !email) {
+      return res.status(400).json({ message: "name, hospitalName and email are required." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address." });
+    }
+
+    const recipient = process.env.LEAD_NOTIFICATION_EMAIL;
+    if (!recipient) {
+      console.error("[DemoRequest] LEAD_NOTIFICATION_EMAIL is not set - request logged here instead:", {
+        name,
+        hospitalName,
+        email,
+        phone,
+        message,
+      });
+      return res.status(201).json({ message: "Request received." });
+    }
+
+    await sendEmail({
+      to: recipient,
+      subject: `New demo request: ${hospitalName}`,
+      html: `
+        <h2>New CareFlow HMS demo request</h2>
+        <p><strong>Name:</strong> ${escapeHtml(name)}</p>
+        <p><strong>Hospital:</strong> ${escapeHtml(hospitalName)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(email)}</p>
+        <p><strong>Phone:</strong> ${escapeHtml(phone || "Not provided")}</p>
+        <p><strong>Message:</strong></p>
+        <p>${escapeHtml(message || "(none)").replace(/\n/g, "<br/>")}</p>
+      `,
+    });
+
+    res.status(201).json({ message: "Request received. We'll be in touch soon." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while sending your request." });
+  }
+}
+
+module.exports = { listSignupHospitals, patientSignup, requestDemo };
