@@ -55,9 +55,10 @@ function formatSlotTime(time) {
 
 /**
  * Lazily sweeps up appointments that were left "scheduled" long past their slot - there's no
- * cron job for this (the Vercel Hobby plan is already at its 2-job limit), so it runs inline
- * whenever the queue is read or a new booking checks for a slot clash, which is often enough to
- * keep the queue from looking stale. Past-date appointments are flagged regardless of time (token
+ * cron job for this because Hobby cron jobs can only run once a day (not a job-count limit; Vercel
+ * allows up to 100/project even on Hobby), which is useless for a 45-minute sweep. It runs inline
+ * instead, whenever the queue is read or a new booking checks for a slot clash, which is often
+ * enough to keep the queue from looking stale. Past-date appointments are flagged regardless of time (token
  * bookings included); today's are only flagged once NO_SHOW_GRACE_MINUTES has passed their slot.
  * Never touches anything already checked_in or beyond.
  */
