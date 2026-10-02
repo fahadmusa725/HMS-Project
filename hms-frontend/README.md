@@ -27,11 +27,11 @@ use that prefix.
 
 ## Deploying to Vercel
 
-1. Push this folder to its own GitHub repo (`hms-frontend`).
-2. Import it into Vercel as a new project (framework preset: Vite).
-3. Add `VITE_API_URL` in the Vercel dashboard (Project Settings → Environment Variables), pointing
+1. Import the HMS-Project repo into Vercel and set Root Directory to `hms-frontend` (framework
+   preset: Vite).
+2. Add `VITE_API_URL` in the Vercel dashboard (Project Settings → Environment Variables), pointing
    at your deployed `hms-backend` URL.
-4. Deploy — `vercel.json` already rewrites all routes to `index.html` for client-side routing.
+3. Deploy. `vercel.json` already rewrites all routes to `index.html` for client-side routing.
 
 No Hobby-plan concerns on this side: it's a static Vite build with no serverless functions, so the
 function duration/size/response limits that apply to `hms-backend` don't apply here.
