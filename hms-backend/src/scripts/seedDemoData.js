@@ -2,8 +2,8 @@
  * Seeds realistic demo data into YOUR EXISTING hospital (via the live API,
  * not direct DB writes) so the UI has real content to test against.
  *
- * Usage: node seed-demo-data.js <hospitalAdminEmail> <hospitalAdminPassword>
- * Example: node seed-demo-data.js admin@gmail.com yourpassword123
+ * Usage: npm run seed:demo -- <hospitalAdminEmail> <hospitalAdminPassword>
+ * Example: npm run seed:demo -- admin@gmail.com yourpassword123
  *
  * Safe to re-run - registering the same CNIC twice will just fail that
  * one insert (409) and the script skips to the next item rather than
@@ -16,7 +16,7 @@ const adminEmail = process.argv[2];
 const adminPassword = process.argv[3];
 
 if (!adminEmail || !adminPassword) {
-  console.error("Usage: node seed-demo-data.js <hospitalAdminEmail> <hospitalAdminPassword>");
+  console.error("Usage: npm run seed:demo -- <hospitalAdminEmail> <hospitalAdminPassword>");
   process.exit(1);
 }
 
