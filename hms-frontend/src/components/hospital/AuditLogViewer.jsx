@@ -60,7 +60,6 @@ export default function AuditLogViewer() {
   const [page, setPage] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState('');
 
-  // Fetch audit logs (paginated, optionally filtered by userId)
   const {
     data,
     isLoading,
@@ -79,7 +78,6 @@ export default function AuditLogViewer() {
     keepPreviousData: true,
   });
 
-  // Fetch staff list for the filter dropdown
   const { data: staffList = [] } = useQuery({
     queryKey: ['hospital-staff'],
     queryFn: async () => {
@@ -100,7 +98,6 @@ export default function AuditLogViewer() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -123,11 +120,8 @@ export default function AuditLogViewer() {
         </Button>
       </div>
 
-      {/* Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
-        {/* Toolbar */}
         <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
-          {/* Staff filter */}
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
             <select
@@ -145,13 +139,11 @@ export default function AuditLogViewer() {
             </select>
           </div>
 
-          {/* Count badge */}
           <span className="text-xs text-muted-foreground font-medium">
             {isLoading ? '…' : `${total.toLocaleString()} log${total !== 1 ? 's' : ''} total`}
           </span>
         </div>
 
-        {/* Table body */}
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-6 space-y-3">
@@ -202,7 +194,6 @@ export default function AuditLogViewer() {
               <tbody className="divide-y divide-border">
                 {logs.map((log) => (
                   <tr key={log.id} className="hover:bg-accent/40 transition-colors">
-                    {/* Who */}
                     <td className="py-4 px-6">
                       {log.user ? (
                         <>
@@ -221,7 +212,6 @@ export default function AuditLogViewer() {
                       )}
                     </td>
 
-                    {/* What */}
                     <td className="py-4 px-4 max-w-xs">
                       <span className="font-medium text-foreground">{log.action}</span>
                       <div className="text-[11px] text-muted-foreground font-mono mt-0.5 truncate" title={`${log.method} ${log.path}`}>
@@ -229,12 +219,10 @@ export default function AuditLogViewer() {
                       </div>
                     </td>
 
-                    {/* Status */}
                     <td className="py-4 px-4">
                       <StatusDot code={log.statusCode} />
                     </td>
 
-                    {/* When */}
                     <td className="py-4 px-6 text-right text-xs text-muted-foreground whitespace-nowrap">
                       {formatDateTime(log.createdAt)}
                     </td>
@@ -245,7 +233,6 @@ export default function AuditLogViewer() {
           )}
         </div>
 
-        {/* Pagination footer */}
         {!isLoading && !isError && total > 0 && (
           <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-muted/10 gap-4 flex-wrap">
             <span className="text-xs text-muted-foreground">

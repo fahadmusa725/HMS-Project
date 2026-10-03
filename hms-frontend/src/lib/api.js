@@ -10,7 +10,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to attach JWT Bearer token
 api.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
@@ -24,16 +23,13 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle 401 Unauthorized responses
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Clear authentication store
       useAuthStore.getState().logout();
-      // Redirect to login page if not already there
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

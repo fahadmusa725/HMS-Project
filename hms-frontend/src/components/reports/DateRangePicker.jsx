@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 export function DateRangePicker({ onRangeChange }) {
   const [activePreset, setActivePreset] = useState('30d');
 
-  // Compute preset date strings (YYYY-MM-DD)
   const getPresetRange = (preset) => {
     const today = new Date();
     const endDate = today.toISOString().slice(0, 10);

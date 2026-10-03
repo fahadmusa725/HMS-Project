@@ -73,12 +73,10 @@ app.use("/api/public", publicRoutes);
 app.use("/api/doctor-schedules", doctorScheduleRoutes);
 app.use("/api/cron", cronRoutes);
 
-// Fallback 404
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found." });
 });
 
-// Central error handler (catches anything thrown/next(err)'d above)
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(err.status || 500).json({ message: err.message || "Server error." });

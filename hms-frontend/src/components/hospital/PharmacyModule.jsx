@@ -88,7 +88,6 @@ const medicineSchema = z
     }
   });
 
-// Fields for the "add a new batch" modal (restock)
 const batchSchema = z.object({
   batchNumber: z.string().optional(),
   quantity: z.coerce.number().min(1, 'Quantity must be at least 1'),
@@ -105,20 +104,16 @@ export default function PharmacyModule() {
   const canManageInventory = ['pharmacist', 'hospital_admin'].includes(role);
   const canDispense = ['pharmacist', 'hospital_admin'].includes(role);
 
-  // Active view tab: 'inventory' | 'sales'
   const [activeTab, setActiveTab] = useState('inventory');
 
-  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  // Modals state
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
   const [editMedTarget, setEditMedTarget] = useState(null);
   const [batchMedTarget, setBatchMedTarget] = useState(null);
   const [isDispenseOpen, setIsDispenseOpen] = useState(false);
 
-  // Dispense Form State
   const [dispensePatientSearch, setDispensePatientSearch] = useState('');
   const [dispensePatient, setDispensePatient] = useState(null);
   const [isWalkIn, setIsWalkIn] = useState(false);
@@ -127,7 +122,6 @@ export default function PharmacyModule() {
   const [qtyToAdd, setQtyToAdd] = useState(1);
   const [dispenseError, setDispenseError] = useState(null);
 
-  // Form for Add/Edit Medicine
   const {
     register: registerMed,
     handleSubmit: handleSubmitMed,
@@ -151,7 +145,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Form for adding a new batch (restock)
   const {
     register: registerBatch,
     handleSubmit: handleSubmitBatch,
@@ -162,7 +155,6 @@ export default function PharmacyModule() {
     defaultValues: { batchNumber: '', quantity: 50, expiryDate: '', purchasePrice: undefined, supplier: '' },
   });
 
-  // Query: Medicines List
   const {
     data: medicines = [],
     isLoading: isMedsLoading,
@@ -179,7 +171,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Query: Sales History
   const {
     data: sales = [],
     isLoading: isSalesLoading,
@@ -194,7 +185,6 @@ export default function PharmacyModule() {
     enabled: activeTab === 'sales',
   });
 
-  // Query: Patient search for Dispense Modal
   const { data: patientSearchResults = { patients: [] } } = useQuery({
     queryKey: ['dispense-patient-search', dispensePatientSearch],
     queryFn: async () => {
@@ -205,7 +195,6 @@ export default function PharmacyModule() {
     enabled: isDispenseOpen && !isWalkIn && !dispensePatient && dispensePatientSearch.trim().length > 0,
   });
 
-  // Mutation: Create Medicine
   const createMedMutation = useMutation({
     mutationFn: async (formData) => {
       const { batchNumber, batchQuantity, batchExpiryDate, batchPurchasePrice, ...medicineFields } = formData;
@@ -233,7 +222,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Mutation: Update Medicine
   const updateMedMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const res = await api.patch(`/api/pharmacy/medicines/${id}`, data);
@@ -250,7 +238,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Mutation: Add a new batch (restock)
   const addBatchMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const res = await api.patch(`/api/pharmacy/medicines/${id}/restock`, data);
@@ -267,7 +254,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Mutation: Dispense Medicines
   const dispenseMutation = useMutation({
     mutationFn: async (payload) => {
       const res = await api.post('/api/pharmacy/dispense', payload);
@@ -290,7 +276,6 @@ export default function PharmacyModule() {
     },
   });
 
-  // Inventory stats
   const stats = useMemo(() => {
     const list = Array.isArray(medicines) ? medicines : [];
     const total = list.length;
@@ -300,12 +285,10 @@ export default function PharmacyModule() {
     return { total, inStock, lowStock, outOfStock };
   }, [medicines]);
 
-  // Dispense cart total calculation
   const cartTotal = useMemo(() => {
     return cartItems.reduce((sum, item) => sum + item.subtotal, 0);
   }, [cartItems]);
 
-  // Handle adding an item to the dispense cart
   const handleAddToCart = () => {
     if (!selectedMedIdToAdd) return;
     const med = medicines.find((m) => m._id === selectedMedIdToAdd);
@@ -366,7 +349,6 @@ export default function PharmacyModule() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header & View Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
@@ -381,7 +363,6 @@ export default function PharmacyModule() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Inventory / Sales Tab switcher */}
           <div className="flex bg-muted/60 p-1 rounded-xl border border-border">
             <button
               onClick={() => setActiveTab('inventory')}
@@ -437,10 +418,8 @@ export default function PharmacyModule() {
         </div>
       </div>
 
-      {/* VIEW 1: MEDICINE INVENTORY */}
       {activeTab === 'inventory' && (
         <div className="space-y-6">
-          {/* Unified Stat Strip */}
           <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
             <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
               <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -479,10 +458,8 @@ export default function PharmacyModule() {
             </div>
           </div>
 
-          {/* Inventory Table Card */}
           <Card className="bg-card border-border shadow-soft overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-              {/* Search */}
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -494,7 +471,6 @@ export default function PharmacyModule() {
                 />
               </div>
 
-              {/* Low Stock Toggle Filter */}
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -521,7 +497,6 @@ export default function PharmacyModule() {
               </div>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto">
               {isMedsLoading ? (
                 <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
@@ -702,7 +677,6 @@ export default function PharmacyModule() {
         </div>
       )}
 
-      {/* VIEW 2: SALES HISTORY */}
       {activeTab === 'sales' && (
         <div className="space-y-6">
           <Card className="bg-card border-border shadow-soft overflow-hidden">
@@ -806,7 +780,6 @@ export default function PharmacyModule() {
         </div>
       )}
 
-      {/* MODAL 1: ADD MEDICINE */}
       <Modal
         isOpen={isAddMedOpen}
         onClose={() => setIsAddMedOpen(false)}
@@ -979,7 +952,6 @@ export default function PharmacyModule() {
         </form>
       </Modal>
 
-      {/* MODAL 2: EDIT MEDICINE */}
       <Modal
         isOpen={!!editMedTarget}
         onClose={() => setEditMedTarget(null)}
@@ -1099,7 +1071,6 @@ export default function PharmacyModule() {
         )}
       </Modal>
 
-      {/* MODAL 3: ADD BATCH (RESTOCK) */}
       <Modal
         isOpen={!!batchMedTarget}
         onClose={() => setBatchMedTarget(null)}
@@ -1203,7 +1174,6 @@ export default function PharmacyModule() {
         )}
       </Modal>
 
-      {/* MODAL 4: DISPENSE MEDICINES */}
       <Modal
         isOpen={isDispenseOpen}
         onClose={() => {
@@ -1251,7 +1221,6 @@ export default function PharmacyModule() {
         }
       >
         <div className="space-y-4 text-xs">
-          {/* Inline 409 / Error banner */}
           {dispenseError && (
             <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive animate-slide-up font-medium">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -1259,7 +1228,6 @@ export default function PharmacyModule() {
             </div>
           )}
 
-          {/* Patient Selection / Walk-in Toggle */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="font-semibold text-foreground/80 uppercase tracking-wider block text-xs">
@@ -1336,7 +1304,6 @@ export default function PharmacyModule() {
             )}
           </div>
 
-          {/* Add Medicine Line Item row */}
           <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-2">
             <span className="font-semibold text-foreground/90 block">Add Medicine to Cart:</span>
             <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
@@ -1349,7 +1316,7 @@ export default function PharmacyModule() {
                   <option value="">-- Select Medicine --</option>
                   {medicines.map((m) => (
                     <option key={m._id} value={m._id} disabled={m.stock === 0}>
-                      {m.name} ({formatCurrency(m.price)}) — Stock: {m.stock} {m.unit || 'units'}
+                      {m.name} ({formatCurrency(m.price)}), Stock: {m.stock} {m.unit || 'units'}
                     </option>
                   ))}
                 </select>
@@ -1379,7 +1346,6 @@ export default function PharmacyModule() {
             </div>
           </div>
 
-          {/* Cart Items List */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-foreground/80 uppercase tracking-wider block">

@@ -47,7 +47,6 @@ export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange,
 
   return (
     <div className="space-y-4">
-      {/* Doctor search + list */}
       <div className="space-y-1.5">
         <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
           Select Doctor *
@@ -111,7 +110,6 @@ export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange,
         {errors.doctorId && <p className="text-xs text-destructive">{errors.doctorId.message}</p>}
       </div>
 
-      {/* Slot grid */}
       {doctorId && (
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider flex items-center justify-between">

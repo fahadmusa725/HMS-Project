@@ -22,13 +22,11 @@ const canView = allowRoles("hospital_admin", "doctor", "nurse", "receptionist");
 // clinical rounds notes below - kept as a separate list so notes access doesn't widen with it.
 const canViewForBilling = allowRoles("hospital_admin", "doctor", "nurse", "receptionist", "accountant");
 
-// Admit a patient (claims a bed atomically).
 router.post("/", canAdmit, admitPatient);
 
 // List admissions. ?status=admitted (default) | discharged | all, optional ?patientId=
 router.get("/", canViewForBilling, listAdmissions);
 
-// Single admission detail (includes daysAdmitted + advancePaid).
 router.get("/:id", canViewForBilling, getAdmissionById);
 
 // Live running bill - viewable any time before discharge, and the final breakdown after.
@@ -38,13 +36,11 @@ router.get(
   getRunningBill
 );
 
-// Record an advance/deposit payment during the stay.
 router.post("/:id/advance-payment", allowRoles("hospital_admin", "receptionist", "accountant"), addAdvancePayment);
 
 // Discharge - computes and creates the final itemized bill, frees the bed.
 router.patch("/:id/discharge", allowRoles("hospital_admin", "doctor", "nurse"), dischargePatient);
 
-// Nursing rounds notes, nested under an admission
 router.post(
   "/:admissionId/notes",
   allowRoles("nurse", "doctor", "hospital_admin"),

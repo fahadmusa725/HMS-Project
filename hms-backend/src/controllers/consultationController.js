@@ -23,7 +23,6 @@ async function createConsultation(req, res) {
       return res.status(400).json({ message: "patientId is required." });
     }
 
-    // Confirm the patient exists in this hospital (tenantPlugin makes this automatic).
     const patient = await Patient.findById(patientId);
     if (!patient) {
       return res.status(404).json({ message: "Patient not found." });
@@ -41,7 +40,6 @@ async function createConsultation(req, res) {
       followUpDate,
     });
 
-    // If this consultation is tied to an appointment, mark it completed.
     if (appointmentId) {
       await Appointment.findByIdAndUpdate(appointmentId, { status: "completed" });
     }
@@ -128,14 +126,12 @@ async function getPrescriptionPdf(req, res) {
     res.setHeader("Content-Disposition", `attachment; filename="prescription-${consultation.patientId.mrn}.pdf"`);
     doc.pipe(res);
 
-    // Header
     doc.fontSize(18).font("Helvetica-Bold").text(hospital ? hospital.name : "Hospital", { align: "center" });
     doc.fontSize(10).font("Helvetica").fillColor("#555").text("Prescription", { align: "center" });
     doc.moveDown(1.5);
     doc.strokeColor("#0F766E").lineWidth(1.5).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
     doc.moveDown();
 
-    // Patient & doctor info
     doc.fillColor("#000").fontSize(11).font("Helvetica-Bold").text("Patient: ", { continued: true });
     doc.font("Helvetica").text(`${consultation.patientId.name} (MRN: ${consultation.patientId.mrn})`);
     if (consultation.patientId.gender || consultation.patientId.dob) {
@@ -147,7 +143,7 @@ async function getPrescriptionPdf(req, res) {
       );
     }
     doc.fillColor("#000").fontSize(11).font("Helvetica-Bold").text("Doctor: ", { continued: true });
-    doc.font("Helvetica").text(`${doctorName(consultation.doctorId.name)}${consultation.doctorId.department ? " — " + consultation.doctorId.department : ""}`);
+    doc.font("Helvetica").text(`${doctorName(consultation.doctorId.name)}${consultation.doctorId.department ? ", " + consultation.doctorId.department : ""}`);
     doc.font("Helvetica-Bold").text("Date: ", { continued: true });
     doc.font("Helvetica").text(new Date(consultation.createdAt).toDateString());
     doc.moveDown();
@@ -180,7 +176,7 @@ async function getPrescriptionPdf(req, res) {
 
     if (consultation.prescriptions && consultation.prescriptions.length > 0) {
       doc.moveDown(0.5);
-      doc.font("Helvetica-Bold").fontSize(13).fillColor("#0F766E").text("Rx — Prescribed Medicines");
+      doc.font("Helvetica-Bold").fontSize(13).fillColor("#0F766E").text("Rx: Prescribed Medicines");
       doc.moveDown(0.3);
       consultation.prescriptions.forEach((p, i) => {
         doc.fillColor("#000").font("Helvetica-Bold").fontSize(11).text(`${i + 1}. ${p.medicineName}`);

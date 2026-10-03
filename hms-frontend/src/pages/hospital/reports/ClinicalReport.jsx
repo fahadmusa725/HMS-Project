@@ -19,7 +19,6 @@ import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 import { doctorName } from '@/lib/utils';
 
-// Capitalize helper for diagnoses
 function formatDiagnosis(str) {
   if (!str) return '—';
   return str
@@ -64,7 +63,6 @@ export default function ClinicalReport() {
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Date Range Picker & Refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <DateRangePicker onRangeChange={(range) => setDateRange(range)} />
         <Button
@@ -86,7 +84,6 @@ export default function ClinicalReport() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart 1: Appointments Over Time (Bar Chart) */}
           <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -125,7 +122,6 @@ export default function ClinicalReport() {
             )}
           </Card>
 
-          {/* Appointments By Status Breakdown List */}
           <Card className="p-5 border-border shadow-soft bg-card space-y-4 flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-bold text-foreground">Status Distribution</h3>
@@ -170,7 +166,6 @@ export default function ClinicalReport() {
             </div>
           </Card>
 
-          {/* Chart 2: New Patients Over Time (Line / Area Chart) */}
           <Card className="lg:col-span-3 p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -222,7 +217,6 @@ export default function ClinicalReport() {
             )}
           </Card>
 
-          {/* Top Doctors (Ranked List) */}
           <Card className="p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center gap-2">
               <Stethoscope className="h-4 w-4 text-primary" />
@@ -257,7 +251,6 @@ export default function ClinicalReport() {
             )}
           </Card>
 
-          {/* Top Diagnoses (Ranked List) */}
           <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
@@ -295,7 +288,6 @@ export default function ClinicalReport() {
             )}
           </Card>
 
-          {/* Referral Sources (Ranked List) */}
           <Card className="lg:col-span-3 p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center gap-2">
               <Share2 className="h-4 w-4 text-primary" />

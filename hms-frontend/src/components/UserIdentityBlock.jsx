@@ -26,7 +26,6 @@ export function UserIdentityBlock({ showInitialOnly = false, className = '' }) {
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
-      {/* Avatar Circle */}
       <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary border border-primary/25 flex items-center justify-center font-bold text-sm shadow-soft-sm shrink-0">
         {initial}
       </div>

@@ -7,13 +7,10 @@ export function ProtectedRoute({ allowedRoles = [], children }) {
   const location = useLocation();
 
   if (!isAuthenticated) {
-    // Redirect to login preserving intended return URL if needed
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If specific roles are required, verify user role matches
   if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
-    // Redirect to their default dashboard based on role
     if (user.role === 'platform_super_admin') {
       return <Navigate to="/super-admin/dashboard" replace />;
     } else if (user.role === 'patient') {

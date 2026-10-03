@@ -47,7 +47,6 @@ export default function ReportsOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Top action / Refresh bar */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Hospital-Wide Current Totals
@@ -64,7 +63,6 @@ export default function ReportsOverview() {
         </Button>
       </div>
 
-      {/* Export Data */}
       <div className="bg-card border border-border rounded-xl shadow-soft p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <span className="text-sm font-bold text-foreground block">Export Hospital Data</span>
@@ -111,9 +109,7 @@ export default function ReportsOverview() {
         </div>
       </div>
 
-      {/* Unified 4-Segment Stat Strip */}
       <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
-        {/* Total Revenue */}
         <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             {isLoading ? '—' : formatCurrency(overview?.totalRevenue || 0)}
@@ -123,7 +119,6 @@ export default function ReportsOverview() {
           </div>
         </div>
 
-        {/* Total Patients */}
         <div className="p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             {isLoading ? '—' : (overview?.totalPatients ?? 0).toLocaleString()}
@@ -133,7 +128,6 @@ export default function ReportsOverview() {
           </div>
         </div>
 
-        {/* Appointments Today */}
         <div className="p-4 sm:p-5 border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">
             {isLoading ? '—' : (overview?.appointmentsToday ?? 0).toLocaleString()}
@@ -143,7 +137,6 @@ export default function ReportsOverview() {
           </div>
         </div>
 
-        {/* Bed Occupancy Rate */}
         <div className="p-4 sm:p-5">
           <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             {isLoading ? (

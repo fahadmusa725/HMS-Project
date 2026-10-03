@@ -60,7 +60,6 @@ export default function OperationsReport() {
   const ipd = report?.ipd || { bedsByWard: [], admissionsOverTime: [], avgLengthOfStayDays: 0 };
   const staff = report?.staff || { countByRole: [] };
 
-  // Group bedsByWard data into per-ward summaries
   const wardSummaryMap = {};
   (ipd.bedsByWard || []).forEach((item) => {
     if (!wardSummaryMap[item.wardName]) {
@@ -73,7 +72,6 @@ export default function OperationsReport() {
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Date Range Picker & Refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <DateRangePicker onRangeChange={(range) => setDateRange(range)} />
         <Button
@@ -95,7 +93,6 @@ export default function OperationsReport() {
         </div>
       ) : (
         <div className="space-y-8">
-          {/* ════════════════ 1. LAB OPERATIONS ════════════════ */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <FlaskConical className="h-5 w-5 text-primary" />
@@ -103,7 +100,6 @@ export default function OperationsReport() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Stat Card: Total Lab Revenue */}
               <Card className="p-5 border-border shadow-soft bg-card flex flex-col justify-between">
                 <div>
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -134,7 +130,6 @@ export default function OperationsReport() {
                 </div>
               </Card>
 
-              {/* Top Lab Tests (Ranked List) */}
               <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
                 <div>
                   <h3 className="text-sm font-bold text-foreground">Top Ordered Diagnostic Tests</h3>
@@ -171,7 +166,6 @@ export default function OperationsReport() {
             </div>
           </div>
 
-          {/* ════════════════ 2. PHARMACY OPERATIONS ════════════════ */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Pill className="h-5 w-5 text-primary" />
@@ -179,7 +173,6 @@ export default function OperationsReport() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Pharmacy Revenue Over Time Line/Area Chart */}
               <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -231,7 +224,6 @@ export default function OperationsReport() {
                 )}
               </Card>
 
-              {/* Top Medicines & Low Stock Stat */}
               <Card className="p-5 border-border shadow-soft bg-card space-y-4 flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between pb-3 border-b border-border">
@@ -270,7 +262,6 @@ export default function OperationsReport() {
             </div>
           </div>
 
-          {/* ════════════════ 3. IPD OPERATIONS ════════════════ */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Bed className="h-5 w-5 text-primary" />
@@ -278,7 +269,6 @@ export default function OperationsReport() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Stat: Average Length of Stay */}
               <Card className="p-5 border-border shadow-soft bg-card flex flex-col justify-between">
                 <div>
                   <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -290,7 +280,6 @@ export default function OperationsReport() {
                   <p className="text-xs text-muted-foreground mt-1">Average stay duration for discharged patients</p>
                 </div>
 
-                {/* Ward Occupancy Overview */}
                 <div className="pt-4 border-t border-border mt-4 space-y-2">
                   <span className="text-[11px] font-semibold text-muted-foreground uppercase block">
                     Ward Occupancy Overview
@@ -328,7 +317,6 @@ export default function OperationsReport() {
                 </div>
               </Card>
 
-              {/* Admissions Over Time Bar Chart */}
               <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -369,7 +357,6 @@ export default function OperationsReport() {
             </div>
           </div>
 
-          {/* ════════════════ 4. STAFF OPERATIONS ════════════════ */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />

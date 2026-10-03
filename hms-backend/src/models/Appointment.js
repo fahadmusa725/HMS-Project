@@ -22,7 +22,6 @@ const appointmentSchema = new mongoose.Schema(
 
 appointmentSchema.plugin(tenantPlugin);
 
-// Fast lookups for "today's queue for Dr. X" and "today's queue overall"
 appointmentSchema.index({ hospitalId: 1, date: 1, doctorId: 1 });
 appointmentSchema.index({ hospitalId: 1, date: 1, tokenNumber: 1 });
 

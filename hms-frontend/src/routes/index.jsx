@@ -41,7 +41,6 @@ export function AppRoutes() {
     if (user?.role === 'platform_super_admin') return <Navigate to="/super-admin/dashboard" replace />;
     if (user?.role === 'patient') return <Navigate to="/portal" replace />;
     
-    // Role-specific default landing page for staff
     switch (user?.role) {
       case 'doctor':
         return <Navigate to="/dashboard/appointments" replace />;
@@ -65,7 +64,6 @@ export function AppRoutes() {
       {/* Public landing page for logged-out visitors; authenticated users are sent to their workspace */}
       <Route path="/" element={isAuthenticated ? getHomeRedirect() : <Landing />} />
 
-      {/* Public Login Route */}
       <Route
         path="/login"
         element={
@@ -73,7 +71,6 @@ export function AppRoutes() {
         }
       />
 
-      {/* Public Patient Self-Signup Route */}
       <Route
         path="/signup"
         element={
@@ -81,12 +78,10 @@ export function AppRoutes() {
         }
       />
 
-      {/* Protected Routes: Platform Super Admin */}
       <Route element={<ProtectedRoute allowedRoles={['platform_super_admin']} />}>
         <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
       </Route>
 
-      {/* Protected Routes: Hospital App Shell Layout */}
       <Route
         element={
           <ProtectedRoute
@@ -103,7 +98,6 @@ export function AppRoutes() {
         }
       >
         <Route path="/dashboard" element={<HospitalDashboardLayout />}>
-          {/* Overview / Home - Hospital Admin only */}
           <Route
             index
             element={
@@ -113,7 +107,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Staff Directory - Hospital Admin only */}
           <Route
             path="staff"
             element={
@@ -123,7 +116,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Patient Directory - Admin, Doctor, Receptionist, Nurse, Lab, Pharmacy, Accountant */}
           <Route
             path="patients"
             element={
@@ -143,7 +135,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Appointments & OPD Queue - Admin, Doctor, Receptionist */}
           <Route
             path="appointments"
             element={
@@ -153,7 +144,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Wards & Bed Management - Admin, Doctor, Receptionist, Nurse */}
           <Route
             path="wards"
             element={
@@ -163,7 +153,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Lab & Diagnostics - Admin, Doctor, Nurse, Lab Technician */}
           <Route
             path="lab"
             element={
@@ -173,7 +162,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Pharmacy & Stock - Admin, Pharmacist */}
           <Route
             path="pharmacy"
             element={
@@ -183,7 +171,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Billing & Invoices - Admin, Accountant, Receptionist */}
           <Route
             path="billing"
             element={
@@ -193,7 +180,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Audit Logs - Hospital Admin only */}
           <Route
             path="audit-logs"
             element={
@@ -203,7 +189,6 @@ export function AppRoutes() {
             }
           />
 
-          {/* Reports & Analytics - Hospital Admin (all 4) and Accountant (Financial only) */}
           <Route
             path="reports"
             element={
@@ -248,7 +233,6 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Protected Routes: Patient Portal */}
       <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
         <Route path="/portal" element={<PatientPortalLayout />}>
           <Route index element={<PatientOverview />} />
@@ -258,7 +242,6 @@ export function AppRoutes() {
         </Route>
       </Route>
 
-      {/* Catch-all fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

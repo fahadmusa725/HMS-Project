@@ -66,7 +66,6 @@ async function listStaff(req, res) {
   }
 }
 
-// --- Data export (no vendor lock-in) ---
 
 const EXPORT_TYPES = ["patients", "bills", "medicines", "appointments", "all"];
 

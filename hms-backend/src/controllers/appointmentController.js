@@ -331,7 +331,7 @@ async function updateAppointmentStatus(req, res) {
         if (toMinutes(now.time) < checkInOpensAt) {
           const opensAtTime = toHHMM(Math.max(checkInOpensAt, 0));
           return res.status(400).json({
-            message: `This appointment is at ${formatSlotTime(appointment.time)} — check-in opens at ${formatSlotTime(opensAtTime)}.`,
+            message: `This appointment is at ${formatSlotTime(appointment.time)}. Check-in opens at ${formatSlotTime(opensAtTime)}.`,
           });
         }
       }

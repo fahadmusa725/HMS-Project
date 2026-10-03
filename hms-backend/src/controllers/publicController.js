@@ -79,7 +79,6 @@ async function patientSignup(req, res) {
         if (address && !patient.address) patient.address = address;
         await patient.save();
       } else {
-        // No existing record - self-register a new one with whatever they gave us.
         const seq = await getNextSequence(hospitalId, "patient_mrn");
         const mrn = `${buildMrnPrefix(hospital.name)}-${String(seq).padStart(6, "0")}`;
         patient = await Patient.create({ mrn, name, phone, cnic, email, dob, gender, address, userId: user._id });

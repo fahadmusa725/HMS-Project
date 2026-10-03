@@ -38,7 +38,6 @@ function dateRangeMatch(startDate, endDate, field = "createdAt") {
   return match;
 }
 
-// ---------------- OVERVIEW ----------------
 
 async function getOverview(req, res) {
   try {
@@ -63,7 +62,6 @@ async function getOverview(req, res) {
   }
 }
 
-// ---------------- FINANCIAL ----------------
 
 async function getFinancialReport(req, res) {
   try {
@@ -105,14 +103,12 @@ async function getFinancialReport(req, res) {
             },
           },
         ]),
-        // Collections broken down by how the patient actually paid (cash/jazzcash/easypaisa/etc.)
         Bill.aggregate([
           { $match: match },
           { $unwind: "$payments" },
           { $group: { _id: "$payments.method", total: { $sum: "$payments.amount" }, count: { $sum: 1 } } },
           { $sort: { total: -1 } },
         ]),
-        // Collections broken down by who is footing the bill (self-pay patient vs. panel/TPA)
         Bill.aggregate([
           { $match: match },
           { $unwind: "$sponsors" },
@@ -146,7 +142,6 @@ async function getFinancialReport(req, res) {
   }
 }
 
-// ---------------- CLINICAL ----------------
 
 async function getClinicalReport(req, res) {
   try {
@@ -222,7 +217,6 @@ async function getClinicalReport(req, res) {
   }
 }
 
-// ---------------- OPERATIONS (Lab + Pharmacy + IPD + Staff) ----------------
 
 async function getOperationsReport(req, res) {
   try {

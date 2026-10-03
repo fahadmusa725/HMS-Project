@@ -29,7 +29,7 @@ async function checkTrialsEndingSoon() {
   });
 
   const listHtml = endingSoon
-    .map((h) => `<li>${h.name} — trial ends ${h.trialEndDate.toDateString()}</li>`)
+    .map((h) => `<li>${h.name}, trial ends ${h.trialEndDate.toDateString()}</li>`)
     .join("");
 
   const subject = `${endingSoon.length} hospital trial(s) ending within ${REMINDER_WINDOW_DAYS} days`;

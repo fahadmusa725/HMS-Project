@@ -57,10 +57,8 @@ export default function PatientPortalLayout() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
-      {/* Top Header */}
       <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Logo & Portal Badge */}
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               type="button"
@@ -91,7 +89,6 @@ export default function PatientPortalLayout() {
             </div>
           </div>
 
-          {/* User Controls */}
           <div className="flex items-center gap-3 shrink-0">
             <UserIdentityBlock />
             <div className="h-6 w-px bg-border mx-1" />
@@ -109,9 +106,7 @@ export default function PatientPortalLayout() {
         </div>
       </header>
 
-      {/* Main Body Shell Layout */}
       <div className="flex-1 overflow-hidden flex flex-row relative">
-        {/* Backdrop for the mobile drawer */}
         {isSidebarOpen && (
           <div
             className="fixed inset-0 z-30 bg-black/50 lg:hidden"
@@ -134,7 +129,6 @@ export default function PatientPortalLayout() {
             <X className="h-4 w-4" />
           </button>
 
-          {/* Hospital Tenant Display in Sidebar */}
           {user?.hospitalName && (
             <div className="mb-4 px-3 py-2.5 rounded-xl bg-primary/5 border border-primary/15">
               <div className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1">
@@ -176,7 +170,6 @@ export default function PatientPortalLayout() {
           </div>
         </aside>
 
-        {/* Main Content Area */}
         <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 animate-fade-in min-w-0">
           <Outlet />
         </main>

@@ -83,17 +83,14 @@ export default function BillingModule({ initialPatient = null }) {
   // Matches the backend's advance-payment role list exactly (hospital_admin, receptionist, accountant).
   const canAddAdvance = ['hospital_admin', 'receptionist', 'accountant'].includes(role);
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(!!initialPatient);
   const [selectedBillForDetails, setSelectedBillForDetails] = useState(null);
   const [paymentBillTarget, setPaymentBillTarget] = useState(null);
   const [selectedIpdAdmission, setSelectedIpdAdmission] = useState(null);
 
-  // Create Bill Form State
   const [billPatientSearch, setBillPatientSearch] = useState('');
   const [billPatient, setBillPatient] = useState(initialPatient);
   const [billItems, setBillItems] = useState([
@@ -104,7 +101,6 @@ export default function BillingModule({ initialPatient = null }) {
   const [initialPaymentReference, setInitialPaymentReference] = useState('');
   const [billSponsors, setBillSponsors] = useState([]);
 
-  // Record Payment Form State
   const [paymentAmount, setPaymentAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentReference, setPaymentReference] = useState('');
@@ -112,7 +108,6 @@ export default function BillingModule({ initialPatient = null }) {
 
   const REFERENCE_REQUIRED_METHODS = ['jazzcash', 'easypaisa', 'bank_transfer'];
 
-  // Query: Bills List
   const {
     data: bills = [],
     isLoading: isBillsLoading,
@@ -142,7 +137,6 @@ export default function BillingModule({ initialPatient = null }) {
     },
   });
 
-  // Query: Patient Search for Create Bill Modal
   const { data: patientSearchResults = { patients: [] } } = useQuery({
     queryKey: ['billing-patient-search', billPatientSearch],
     queryFn: async () => {
@@ -153,7 +147,6 @@ export default function BillingModule({ initialPatient = null }) {
     enabled: isCreateOpen && !billPatient && billPatientSearch.trim().length > 0,
   });
 
-  // Mutation: Create Bill
   const createBillMutation = useMutation({
     mutationFn: async (payload) => {
       const res = await api.post('/api/billing', payload);
@@ -174,7 +167,6 @@ export default function BillingModule({ initialPatient = null }) {
     },
   });
 
-  // Mutation: Record Payment
   const recordPaymentMutation = useMutation({
     mutationFn: async ({ billId, amount, paymentMethod, referenceNumber, sponsorIndex }) => {
       const res = await api.patch(`/api/billing/${billId}/payment`, {
@@ -197,7 +189,6 @@ export default function BillingModule({ initialPatient = null }) {
     },
   });
 
-  // Computed Financial Stats
   const stats = useMemo(() => {
     const list = Array.isArray(bills) ? bills : [];
     const totalBilled = list.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -208,7 +199,6 @@ export default function BillingModule({ initialPatient = null }) {
     return { totalBilled, totalCollected, totalOutstanding, paidCount, unpaidCount, totalCount: list.length };
   }, [bills]);
 
-  // Filtered Bills
   const filteredBills = useMemo(() => {
     const list = Array.isArray(bills) ? bills : [];
     return list.filter((bill) => {
@@ -224,7 +214,6 @@ export default function BillingModule({ initialPatient = null }) {
     });
   }, [bills, searchQuery]);
 
-  // Dynamic Line Item actions
   const handleAddLineItem = () => {
     setBillItems((prev) => [...prev, { description: '', category: 'Other', amount: 0 }]);
   };
@@ -265,7 +254,6 @@ export default function BillingModule({ initialPatient = null }) {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
@@ -293,7 +281,6 @@ export default function BillingModule({ initialPatient = null }) {
         </div>
       </div>
 
-      {/* Unified Stat Strip */}
       <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
         <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -343,7 +330,7 @@ export default function BillingModule({ initialPatient = null }) {
               Active IPD Stays
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Currently-admitted patients with charges still accruing — not yet a finalized invoice.
+              Currently-admitted patients with charges still accruing, not yet a finalized invoice.
             </p>
           </div>
           <Button
@@ -435,10 +422,8 @@ export default function BillingModule({ initialPatient = null }) {
         </div>
       </Card>
 
-      {/* Bills Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-          {/* Search */}
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -450,7 +435,6 @@ export default function BillingModule({ initialPatient = null }) {
             />
           </div>
 
-          {/* Status Filter Chips */}
           <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
             {[
               { key: 'all', label: 'All Invoices' },
@@ -483,7 +467,6 @@ export default function BillingModule({ initialPatient = null }) {
           </div>
         </div>
 
-        {/* Invoices Table */}
         <div className="overflow-x-auto">
           {isBillsLoading ? (
             <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
@@ -603,7 +586,6 @@ export default function BillingModule({ initialPatient = null }) {
         </div>
       </Card>
 
-      {/* MODAL 1: CREATE BILL */}
       <Modal
         isOpen={isCreateOpen}
         onClose={() => {
@@ -658,7 +640,6 @@ export default function BillingModule({ initialPatient = null }) {
         }
       >
         <div className="space-y-4 text-xs">
-          {/* Patient Selection */}
           <div className="space-y-2">
             <label className="font-semibold text-foreground/80 uppercase tracking-wider block text-xs">
               Patient *
@@ -717,7 +698,6 @@ export default function BillingModule({ initialPatient = null }) {
             )}
           </div>
 
-          {/* Dynamic Line Items */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="font-semibold text-foreground/80 uppercase tracking-wider block text-xs">
@@ -792,7 +772,6 @@ export default function BillingModule({ initialPatient = null }) {
             </div>
           </div>
 
-          {/* Initial Payment options */}
           <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
             <span className="font-bold text-foreground block">Initial Payment (Optional)</span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -841,7 +820,6 @@ export default function BillingModule({ initialPatient = null }) {
             </div>
           </div>
 
-          {/* Sponsor split (e.g. patient + a corporate panel/TPA) */}
           <div className="p-3 bg-muted/30 rounded-xl border border-border space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-bold text-foreground block">Sponsors / Payer Split (Optional)</span>
@@ -888,7 +866,6 @@ export default function BillingModule({ initialPatient = null }) {
         </div>
       </Modal>
 
-      {/* MODAL 2: RECORD PAYMENT */}
       <Modal
         isOpen={!!paymentBillTarget}
         onClose={() => setPaymentBillTarget(null)}
@@ -1014,7 +991,7 @@ export default function BillingModule({ initialPatient = null }) {
                     onChange={(e) => setPaymentSponsorIndex(e.target.value)}
                     className="flex h-9 w-full rounded-lg border border-input bg-card px-3 py-1.5 text-xs text-foreground"
                   >
-                    <option value="">— Not sponsor-specific —</option>
+                    <option value="">(Not sponsor-specific)</option>
                     {paymentBillTarget.sponsors.map((s, i) => (
                       <option key={i} value={i}>
                         {s.payerType} {s.payerName ? `(${s.payerName})` : ''}
@@ -1028,7 +1005,6 @@ export default function BillingModule({ initialPatient = null }) {
         )}
       </Modal>
 
-      {/* MODAL 3: VIEW BILL ITEMS BREAKDOWN */}
       <Modal
         isOpen={!!selectedBillForDetails}
         onClose={() => setSelectedBillForDetails(null)}

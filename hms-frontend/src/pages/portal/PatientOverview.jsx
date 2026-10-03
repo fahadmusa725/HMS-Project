@@ -27,7 +27,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 
-// ─── Tag Input Component ──────────────────────────────────────────────────────
 function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/10 text-primary border-primary/20' }) {
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef(null);
@@ -86,7 +85,6 @@ function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/1
   );
 }
 
-// ─── Edit Profile Modal ───────────────────────────────────────────────────────
 function EditProfileModal({ patient, onClose }) {
   const queryClient = useQueryClient();
 
@@ -163,7 +161,6 @@ function EditProfileModal({ patient, onClose }) {
         </>
       }
     >
-      {/* Read-only notice */}
       <div className="mb-4 flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
         <Shield className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
         <span>
@@ -171,11 +168,8 @@ function EditProfileModal({ patient, onClose }) {
         </span>
       </div>
 
-      {/* Form */}
       <form id="edit-my-profile-form" onSubmit={handleSubmit} className="space-y-4">
-          {/* DOB & Gender */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Date of Birth */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Date of Birth
@@ -194,7 +188,6 @@ function EditProfileModal({ patient, onClose }) {
               </div>
             </div>
 
-            {/* Gender */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                 Gender
@@ -218,7 +211,6 @@ function EditProfileModal({ patient, onClose }) {
             </div>
           </div>
 
-          {/* Phone */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Phone Number
@@ -238,7 +230,6 @@ function EditProfileModal({ patient, onClose }) {
             </div>
           </div>
 
-          {/* Address */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Address
@@ -258,7 +249,6 @@ function EditProfileModal({ patient, onClose }) {
             </div>
           </div>
 
-          {/* Allergies tag input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Known Allergies
@@ -274,7 +264,6 @@ function EditProfileModal({ patient, onClose }) {
             />
           </div>
 
-          {/* Chronic Conditions tag input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Chronic Conditions
@@ -294,7 +283,6 @@ function EditProfileModal({ patient, onClose }) {
   );
 }
 
-// ─── PatientOverview ──────────────────────────────────────────────────────────
 export default function PatientOverview() {
   const { user } = useAuthStore();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -334,7 +322,6 @@ export default function PatientOverview() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
@@ -349,7 +336,6 @@ export default function PatientOverview() {
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          {/* Edit Profile Button */}
           {patient && !isLoading && (
             <Button
               variant="outline"
@@ -399,7 +385,6 @@ export default function PatientOverview() {
         </Card>
       ) : (
         <>
-          {/* Patient Demographic & Clinical Record Card */}
           <Card className="border-border bg-card shadow-soft overflow-hidden">
             <CardHeader className="border-b border-border/60 bg-muted/10 pb-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -427,7 +412,6 @@ export default function PatientOverview() {
             </CardHeader>
 
             <CardContent className="p-5 sm:p-6 space-y-6">
-              {/* Core Information Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
                 <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
                   <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
@@ -466,7 +450,6 @@ export default function PatientOverview() {
                 </div>
               </div>
 
-              {/* Contact & Address Information */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                 <div className="p-3 bg-muted/20 rounded-xl border border-border/40">
                   <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
@@ -496,9 +479,7 @@ export default function PatientOverview() {
                 </div>
               </div>
 
-              {/* Health Alerts: Allergies & Chronic Conditions */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                {/* Allergies */}
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Known Allergies
@@ -519,7 +500,6 @@ export default function PatientOverview() {
                   )}
                 </div>
 
-                {/* Chronic Conditions */}
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Chronic Conditions
@@ -543,7 +523,6 @@ export default function PatientOverview() {
             </CardContent>
           </Card>
 
-          {/* Quick Navigation Links */}
           <div className="pt-2">
             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
               Patient Services &amp; Portal Sections
@@ -571,7 +550,6 @@ export default function PatientOverview() {
         </>
       )}
 
-      {/* Edit Profile Modal */}
       {showEditModal && patient && (
         <EditProfileModal
           patient={patient}

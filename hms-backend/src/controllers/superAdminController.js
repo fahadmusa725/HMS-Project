@@ -83,8 +83,7 @@ async function listHospitals(req, res) {
   try {
     const hospitals = await Hospital.find({}).sort({ createdAt: -1 });
 
-    // Auto-flag expired trials on read (lightweight; a cron job can
-    // do this proactively too, see Progress.md Phase 4).
+    // Auto-flag expired trials on read (lightweight; a cron job can do this proactively too).
     const withComputedStatus = hospitals.map((h) => {
       const obj = h.toObject();
       obj.trialExpired = h.isTrialExpired();

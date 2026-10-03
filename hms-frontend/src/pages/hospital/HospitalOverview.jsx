@@ -113,7 +113,6 @@ export default function HospitalOverview() {
   const refreshAll = () =>
     [overview, financial, queue, admissions, lowStock, activity].forEach((q) => q.refetch());
 
-  // Today's queue grouped into the stages above.
   const queueList = Array.isArray(queue.data) ? queue.data : [];
   const stageCounts = queueList.reduce((acc, a) => {
     const key = a.status === 'cancelled' || a.status === 'no_show' ? 'missed' : a.status;
@@ -141,7 +140,7 @@ export default function HospitalOverview() {
       tone: trialDaysLeft <= 3 ? 'warning' : 'muted',
       text:
         trialDaysLeft > 0
-          ? `Free trial — ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left (ends ${new Date(user.trialEndDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}).`
+          ? `Free trial: ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left (ends ${new Date(user.trialEndDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}).`
           : 'Free trial has ended. Contact the platform administrator to activate your account.',
     });
   }
@@ -175,7 +174,6 @@ export default function HospitalOverview() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -197,7 +195,6 @@ export default function HospitalOverview() {
         </Button>
       </div>
 
-      {/* Unified stat strip */}
       <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
         <StatSegment
           className="border-b lg:border-b-0 border-r"
@@ -230,7 +227,6 @@ export default function HospitalOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Today at a glance */}
         <div className="lg:col-span-2 space-y-3">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Today at a glance</div>
 
@@ -274,7 +270,6 @@ export default function HospitalOverview() {
             )}
           </div>
 
-          {/* Alerts */}
           <div className="bg-card border border-border rounded-xl shadow-soft p-4 sm:p-5 space-y-2.5">
             <span className="text-sm font-bold text-foreground">Needs attention</span>
             {lowStock.isLoading ? (
@@ -282,7 +277,7 @@ export default function HospitalOverview() {
             ) : alerts.length === 0 ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle2 className="h-4 w-4 text-primary" />
-                All clear — no low-stock medicines or unpaid fees for today.
+                All clear. No low-stock medicines or unpaid fees for today.
               </div>
             ) : (
               alerts.map(({ key, tone, text, link, icon: Icon = AlertCircle }) => (
@@ -305,7 +300,6 @@ export default function HospitalOverview() {
           </div>
         </div>
 
-        {/* Recent activity */}
         <div className="space-y-3">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Recent activity</div>
           <div className="bg-card border border-border rounded-xl shadow-soft overflow-hidden">
@@ -353,7 +347,6 @@ export default function HospitalOverview() {
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className="space-y-3">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Quick actions</div>
         <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 overflow-hidden">

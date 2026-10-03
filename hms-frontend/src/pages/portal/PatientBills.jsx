@@ -39,7 +39,6 @@ export default function PatientBills() {
     );
   };
 
-  // Financial summary calculations
   const stats = useMemo(() => {
     const list = Array.isArray(bills) ? bills : [];
     const totalBilled = list.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
@@ -50,7 +49,6 @@ export default function PatientBills() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
@@ -74,7 +72,6 @@ export default function PatientBills() {
         </Button>
       </div>
 
-      {/* Financial Summary Strip */}
       <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
         <div className="p-4 sm:p-5">
           <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
@@ -115,7 +112,6 @@ export default function PatientBills() {
         </div>
       </div>
 
-      {/* Invoices List / Table Card */}
       <Card className="border-border bg-card shadow-soft overflow-hidden">
         <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
           <div className="flex items-center justify-between">
@@ -172,7 +168,6 @@ export default function PatientBills() {
 
                 return (
                   <div key={bill._id} className="transition-colors hover:bg-muted/10">
-                    {/* Main Invoice Header Row */}
                     <div
                       onClick={() => toggleExpand(bill._id)}
                       className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer select-none"
@@ -211,7 +206,6 @@ export default function PatientBills() {
                         </div>
                       </div>
 
-                      {/* Amounts & Expand Toggle */}
                       <div className="flex items-center justify-between sm:justify-end gap-5">
                         <div className="text-left sm:text-right">
                           <div className="text-sm sm:text-base font-extrabold text-foreground">
@@ -233,7 +227,6 @@ export default function PatientBills() {
                       </div>
                     </div>
 
-                    {/* Expandable Itemized Breakdown */}
                     {isExpanded && (
                       <div className="px-4 sm:px-6 pb-5 pt-1 bg-muted/20 border-t border-border/50 animate-fade-in">
                         <div className="p-3 sm:p-4 rounded-xl bg-card border border-border/60 space-y-3">
@@ -264,7 +257,6 @@ export default function PatientBills() {
                             )}
                           </div>
 
-                          {/* Breakdown Total Footer */}
                           <div className="pt-2 border-t border-border flex items-center justify-between text-xs font-bold">
                             <span className="text-foreground">Total Invoiced:</span>
                             <span className="text-primary">{formatCurrency(bill.totalAmount)}</span>

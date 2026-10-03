@@ -97,7 +97,6 @@ export default function AppointmentsQueue() {
   const bookingDoctorId = watch('doctorId');
   const bookingTime = watch('time');
 
-  // Query: Doctors list for the queue filter (booking uses SlotPicker's real availability instead)
   const { data: staffList = [] } = useQuery({
     queryKey: ['doctors-list'],
     queryFn: async () => {
@@ -107,7 +106,6 @@ export default function AppointmentsQueue() {
     enabled: !isDoctor,
   });
 
-  // Query: Search patients for booking modal
   const { data: patientSearchResults = { patients: [] } } = useQuery({
     queryKey: ['booking-patient-search', patientSearch],
     queryFn: async () => {
@@ -120,7 +118,6 @@ export default function AppointmentsQueue() {
     enabled: isBookOpen && patientSearch.trim().length > 0,
   });
 
-  // Query: Live Queue
   const {
     data: queue = [],
     isLoading,
@@ -141,7 +138,6 @@ export default function AppointmentsQueue() {
     },
   });
 
-  // Mutation: Book Appointment
   const bookMutation = useMutation({
     mutationFn: async (formData) => {
       const response = await api.post('/api/appointments', formData);
@@ -188,7 +184,6 @@ export default function AppointmentsQueue() {
     openPdf(`/api/appointments/${appointmentId}/slip-pdf`).catch(() => toast.error('Could not open the token slip.'));
   };
 
-  // Mutation: Update Appointment Status
   const statusMutation = useMutation({
     mutationFn: async ({ id, status, tokenNumber }) => {
       const response = await api.patch(`/api/appointments/${id}/status`, { status });
@@ -381,7 +376,6 @@ export default function AppointmentsQueue() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -418,11 +412,9 @@ export default function AppointmentsQueue() {
         </div>
       </div>
 
-      {/* Queue Filter Bar & Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            {/* Date selector */}
             <div className="flex items-center gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Date:
@@ -435,7 +427,6 @@ export default function AppointmentsQueue() {
               />
             </div>
 
-            {/* Doctor filter */}
             {!isDoctor && staffList.length > 0 && (
               <div className="flex items-center gap-2">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -463,7 +454,6 @@ export default function AppointmentsQueue() {
           </div>
         </div>
 
-        {/* Live Queue Table */}
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-6 space-y-4">
@@ -594,7 +584,6 @@ export default function AppointmentsQueue() {
         </div>
       </Card>
 
-      {/* Modal: Book Appointment */}
       <Modal
         isOpen={isBookOpen}
         onClose={() => {
@@ -638,7 +627,6 @@ export default function AppointmentsQueue() {
             </div>
           )}
 
-          {/* Patient Search & Select */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Select Patient *
@@ -653,7 +641,6 @@ export default function AppointmentsQueue() {
               />
             </div>
 
-            {/* Patient Dropdown results */}
             {patientSearchResults.patients.length > 0 && (
               <div className="max-h-36 overflow-y-auto border border-border rounded-lg bg-card shadow-soft p-1 space-y-1 divide-y divide-border/40">
                 {patientSearchResults.patients.map((p) => (
@@ -800,7 +787,6 @@ export default function AppointmentsQueue() {
         </form>
       </Modal>
 
-      {/* Consultation Form Modal (doctor only) */}
       {consultationAppointment && (
         <ConsultationForm
           appointment={consultationAppointment}

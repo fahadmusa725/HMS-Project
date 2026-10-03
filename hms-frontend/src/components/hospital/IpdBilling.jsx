@@ -117,7 +117,7 @@ function AdvancePaymentModal({ admission, onClose }) {
       isOpen
       onClose={() => !mutation.isPending && onClose()}
       title="Add Advance Payment"
-      description={`Deposit against ${admission.patientId?.name || 'this patient'}'s admission — netted off the final bill at discharge.`}
+      description={`Deposit against ${admission.patientId?.name || 'this patient'}'s admission, netted off the final bill at discharge.`}
       footer={
         <>
           <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>
@@ -298,7 +298,7 @@ export function FinalBillModal({ result, onClose }) {
     <Modal
       isOpen
       onClose={onClose}
-      title="Discharge Complete — Final Bill"
+      title="Discharge Complete: Final Bill"
       description={`${admission.patientId?.name || 'Patient'} · ${admission.wardId?.name || ''}, Bed ${admission.bedId?.bedNumber || '—'} · ${summary.daysAdmitted} day${summary.daysAdmitted !== 1 ? 's' : ''}`}
       footer={
         <Button onClick={onClose} className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
@@ -320,7 +320,7 @@ export function FinalBillModal({ result, onClose }) {
         ) : bill && bill.paymentStatus !== 'paid' ? (
           <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground font-medium">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            {formatCurrency(bill.totalAmount - bill.amountPaid)} is still outstanding — collect it from Billing &amp; Invoices.
+            {formatCurrency(bill.totalAmount - bill.amountPaid)} is still outstanding. Collect it from Billing &amp; Invoices.
           </div>
         ) : null}
       </div>

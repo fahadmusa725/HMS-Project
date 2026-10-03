@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-// Safely retrieve stored theme preference or default to light
 const getInitialTheme = () => {
   try {
     const saved = localStorage.getItem('careflow-theme');

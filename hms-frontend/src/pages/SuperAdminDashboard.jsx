@@ -27,7 +27,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 
-// Form validation schema for creating a hospital tenant
 const createHospitalSchema = z.object({
   hospitalName: z.string().min(2, 'Hospital name must be at least 2 characters'),
   adminName: z.string().min(2, 'Admin name must be at least 2 characters'),
@@ -42,11 +41,9 @@ export default function SuperAdminDashboard() {
 
   const [activeTab, setActiveTab] = useState('hospitals');
 
-  // Search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [extendTrialHospital, setExtendTrialHospital] = useState(null);
   const [extendDays, setExtendDays] = useState(14);
@@ -55,7 +52,6 @@ export default function SuperAdminDashboard() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [formError, setFormError] = useState(null);
 
-  // Hook form setup
   const {
     register,
     handleSubmit,
@@ -72,7 +68,6 @@ export default function SuperAdminDashboard() {
     },
   });
 
-  // Query: List hospitals
   const {
     data: hospitals = [],
     isLoading,
@@ -88,7 +83,6 @@ export default function SuperAdminDashboard() {
     },
   });
 
-  // Safe array conversion for hospitals
   const hospitalList = useMemo(() => {
     if (Array.isArray(hospitals)) return hospitals;
     if (Array.isArray(hospitals?.hospitals)) return hospitals.hospitals;
@@ -96,7 +90,6 @@ export default function SuperAdminDashboard() {
     return [];
   }, [hospitals]);
 
-  // Mutation: Create Hospital Tenant
   const createHospitalMutation = useMutation({
     mutationFn: async (formData) => {
       const response = await api.post('/api/super-admin/hospitals', formData);
@@ -116,7 +109,6 @@ export default function SuperAdminDashboard() {
     },
   });
 
-  // Mutation: Update Hospital Status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ hospitalId, payload }) => {
       const response = await api.patch(`/api/super-admin/hospitals/${hospitalId}`, payload);
@@ -134,7 +126,6 @@ export default function SuperAdminDashboard() {
     },
   });
 
-  // Mutation: Delete Hospital Permanently
   const deleteHospitalMutation = useMutation({
     mutationFn: async (hospitalId) => {
       const response = await api.delete(`/api/super-admin/hospitals/${hospitalId}`);
@@ -173,7 +164,6 @@ export default function SuperAdminDashboard() {
     });
   };
 
-  // Helper formatting for trial dates
   const formatTrialRemaining = (hospital) => {
     if (hospital.status !== 'trial') return null;
     if (hospital.trialExpired) {
@@ -195,7 +185,6 @@ export default function SuperAdminDashboard() {
     );
   };
 
-  // Compute summary stats
   const stats = useMemo(() => {
     const total = hospitalList.length;
     const trial = hospitalList.filter((h) => String(h?.status || '').toLowerCase().trim() === 'trial').length;
@@ -204,7 +193,6 @@ export default function SuperAdminDashboard() {
     return { total, trial, active, suspended };
   }, [hospitalList]);
 
-  // Filtered hospitals
   const filteredHospitals = useMemo(() => {
     return hospitalList.filter((h) => {
       const matchesSearch =
@@ -221,7 +209,6 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
-      {/* Top Header */}
       <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -253,7 +240,6 @@ export default function SuperAdminDashboard() {
         </div>
       </header>
 
-      {/* Main Body Shell Layout */}
       <div className="flex-1 overflow-hidden flex flex-row">
         {/* Left Sidebar - hidden below lg since there's currently only one section to navigate to */}
         <aside className="hidden lg:flex w-64 h-full border-r border-border bg-card/50 p-4 shrink-0 flex-col">
@@ -284,7 +270,6 @@ export default function SuperAdminDashboard() {
 
         {/* Content Area */}
         <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 animate-fade-in space-y-8 min-w-0">
-          {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
@@ -319,7 +304,6 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Unified Stat Strip */}
           <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
             <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
               <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -358,10 +342,8 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          {/* Table Container */}
           <Card className="bg-card border-border shadow-soft overflow-hidden">
             <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-              {/* Search */}
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -372,7 +354,6 @@ export default function SuperAdminDashboard() {
                 />
               </div>
 
-              {/* Filter Buttons */}
               <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
                 {['all', 'active', 'trial', 'suspended'].map((filterKey) => (
                   <button
@@ -391,7 +372,6 @@ export default function SuperAdminDashboard() {
               </div>
             </div>
 
-            {/* Table */}
             <div className="overflow-x-auto">
               {isLoading ? (
                 <div className="p-6 space-y-4">
@@ -539,7 +519,6 @@ export default function SuperAdminDashboard() {
         </main>
       </div>
 
-      {/* Modal: Add New Hospital */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => {
@@ -667,7 +646,6 @@ export default function SuperAdminDashboard() {
         </form>
       </Modal>
 
-      {/* Modal: Extend Trial */}
       <Modal
         isOpen={!!extendTrialHospital}
         onClose={() => setExtendTrialHospital(null)}
@@ -711,7 +689,6 @@ export default function SuperAdminDashboard() {
         </form>
       </Modal>
 
-      {/* Modal: Confirm Status Change (Activate / Suspend) */}
       <Modal
         isOpen={!!confirmStatusAction}
         onClose={() => {
@@ -764,7 +741,6 @@ export default function SuperAdminDashboard() {
         </div>
       </Modal>
 
-      {/* Modal: Delete Hospital Confirmation */}
       <Modal
         isOpen={!!deleteHospitalTarget}
         onClose={() => {

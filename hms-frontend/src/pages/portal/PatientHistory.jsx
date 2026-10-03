@@ -32,7 +32,6 @@ export default function PatientHistory() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
@@ -56,7 +55,6 @@ export default function PatientHistory() {
         </Button>
       </div>
 
-      {/* Main EMR Timeline Container */}
       <Card className="border-border bg-card shadow-soft overflow-hidden">
         <CardHeader className="border-b border-border/60 bg-muted/20 pb-4">
           <div className="flex items-center justify-between">
@@ -113,12 +111,9 @@ export default function PatientHistory() {
                   key={c._id}
                   className="relative pl-5 border-l-2 border-primary/40 space-y-3 pb-2"
                 >
-                  {/* Timeline dot */}
                   <div className="absolute -left-[6px] top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-card shadow-sm" />
 
-                  {/* Consultation Card - reusing exact same card design from Prompt 9 EMR tab */}
                   <div className="p-4 sm:p-5 rounded-2xl border border-border bg-muted/15 space-y-3.5 shadow-soft-sm hover:border-border/80 transition-all">
-                    {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                       <div>
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -147,7 +142,6 @@ export default function PatientHistory() {
                       )}
                     </div>
 
-                    {/* Diagnosis */}
                     <div>
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         Diagnosis
@@ -155,7 +149,6 @@ export default function PatientHistory() {
                       <p className="text-sm sm:text-base font-bold text-foreground mt-0.5">{c.diagnosis}</p>
                     </div>
 
-                    {/* Symptoms */}
                     {c.symptoms && (
                       <div>
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -165,7 +158,6 @@ export default function PatientHistory() {
                       </div>
                     )}
 
-                    {/* Vitals */}
                     {c.vitals && Object.values(c.vitals).some(Boolean) && (
                       <div>
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -201,7 +193,6 @@ export default function PatientHistory() {
                       </div>
                     )}
 
-                    {/* Prescriptions */}
                     {c.prescriptions && c.prescriptions.length > 0 && (
                       <div>
                         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -220,7 +211,6 @@ export default function PatientHistory() {
                       </div>
                     )}
 
-                    {/* Notes */}
                     {c.notes && (
                       <div className="text-xs text-muted-foreground italic border-t border-border/50 pt-2.5">
                         <span className="font-semibold text-foreground/70 not-italic">Doctor's Clinical Notes:</span> {c.notes}

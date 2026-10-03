@@ -66,7 +66,6 @@ export default function StaffManagement() {
     },
   });
 
-  // Query: Staff list
   const {
     data: staffList = [],
     isLoading,
@@ -82,7 +81,6 @@ export default function StaffManagement() {
     },
   });
 
-  // Mutation: Invite Staff
   const inviteMutation = useMutation({
     mutationFn: async (formData) => {
       const response = await api.post('/api/hospital-admin/staff', formData);
@@ -118,7 +116,6 @@ export default function StaffManagement() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -153,10 +150,8 @@ export default function StaffManagement() {
         </div>
       </div>
 
-      {/* Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-          {/* Search */}
           <div className="relative w-full sm:w-80">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -167,7 +162,6 @@ export default function StaffManagement() {
             />
           </div>
 
-          {/* Role Filter */}
           <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
             {['all', 'doctor', 'nurse', 'receptionist', 'lab_technician', 'pharmacist', 'accountant'].map((roleKey) => (
               <button
@@ -186,7 +180,6 @@ export default function StaffManagement() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-6 space-y-4">
@@ -310,7 +303,6 @@ export default function StaffManagement() {
         </div>
       </Card>
 
-      {/* Modal: Invite Staff */}
       <Modal
         isOpen={isInviteOpen}
         onClose={() => {

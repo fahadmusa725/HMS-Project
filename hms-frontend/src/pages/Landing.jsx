@@ -93,7 +93,7 @@ function DemoRequestForm() {
         </div>
         <h3 className="text-lg font-bold text-foreground">Request received</h3>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Thanks for reaching out — we'll get back to you shortly.
+          Thanks for reaching out. We'll get back to you shortly.
         </p>
         <Button variant="outline" size="sm" onClick={() => setIsSubmitted(false)} className="mt-2">
           Send another request
@@ -161,7 +161,6 @@ function DemoRequestForm() {
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-      {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -181,7 +180,6 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] w-[400px] h-[400px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
@@ -196,7 +194,7 @@ export default function Landing() {
           </h1>
           <p className="mt-5 text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto">
             CareFlow HMS brings patients, appointments, wards, lab, pharmacy, and billing into one
-            platform — with each hospital's data fully isolated, Pakistani payment methods built
+            platform, with each hospital's data fully isolated, Pakistani payment methods built
             in, and a patient portal included.
           </p>
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -213,7 +211,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Feature Highlights */}
       <section className="py-14 sm:py-20 border-t border-border bg-muted/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
@@ -239,7 +236,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Why Multi-Tenant / How it Works */}
       <section className="py-14 sm:py-20 border-t border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
@@ -262,7 +258,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Demo Request / Contact */}
       <section id="demo" className="py-14 sm:py-20 border-t border-border bg-muted/20">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-8">
@@ -278,7 +273,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">

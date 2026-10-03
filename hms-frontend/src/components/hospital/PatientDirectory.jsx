@@ -45,7 +45,6 @@ const patientSchema = z.object({
   referredBy: z.string().optional(),
 });
 
-// ─── PatientEMRTimeline ────────────────────────────────────────────────────────
 function PatientEMRTimeline({ patientId }) {
   const {
     data: consultations = [],
@@ -102,11 +101,9 @@ function PatientEMRTimeline({ patientId }) {
           key={c._id}
           className="relative pl-4 border-l-2 border-primary/30 space-y-2.5"
         >
-          {/* Timeline dot */}
           <div className="absolute -left-[5px] top-1 h-2.5 w-2.5 rounded-full bg-primary shadow-sm" />
 
           <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-2.5">
-            {/* Header */}
             <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -132,13 +129,11 @@ function PatientEMRTimeline({ patientId }) {
               )}
             </div>
 
-            {/* Diagnosis */}
             <div>
               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Diagnosis</span>
               <p className="text-sm font-bold text-foreground mt-0.5">{c.diagnosis}</p>
             </div>
 
-            {/* Symptoms */}
             {c.symptoms && (
               <div>
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Symptoms</span>
@@ -146,7 +141,6 @@ function PatientEMRTimeline({ patientId }) {
               </div>
             )}
 
-            {/* Vitals */}
             {c.vitals && Object.values(c.vitals).some(Boolean) && (
               <div>
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -182,7 +176,6 @@ function PatientEMRTimeline({ patientId }) {
               </div>
             )}
 
-            {/* Prescriptions */}
             {c.prescriptions && c.prescriptions.length > 0 && (
               <div>
                 <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
@@ -201,7 +194,6 @@ function PatientEMRTimeline({ patientId }) {
               </div>
             )}
 
-            {/* Notes */}
             {c.notes && (
               <div className="text-xs text-muted-foreground italic border-t border-border/50 pt-2">
                 {c.notes}
@@ -226,22 +218,18 @@ export default function PatientDirectory() {
   const [detailTab, setDetailTab] = useState('profile'); // 'profile' | 'history'
   const [formError, setFormError] = useState(null);
 
-  // Roles allowed to view EMR / medical history
   const canViewHistory = ['doctor', 'nurse', 'hospital_admin', 'receptionist'].includes(user?.role);
 
-  // Tag inputs state for registration form
   const [regAllergies, setRegAllergies] = useState([]);
   const [allergyInput, setAllergyInput] = useState('');
   const [regConditions, setRegConditions] = useState([]);
   const [conditionInput, setConditionInput] = useState('');
 
-  // Tag inputs state for detail drawer edit
   const [detailAllergies, setDetailAllergies] = useState([]);
   const [detailAllergyInput, setDetailAllergyInput] = useState('');
   const [detailConditions, setDetailConditions] = useState([]);
   const [detailConditionInput, setDetailConditionInput] = useState('');
 
-  // Lab Order from Patient Directory state
   const canOrderLab = ['doctor', 'hospital_admin', 'receptionist'].includes(user?.role);
   const canEnablePortal = ['hospital_admin', 'receptionist'].includes(user?.role);
   const [isOrderLabOpen, setIsOrderLabOpen] = useState(false);
@@ -275,7 +263,6 @@ export default function PatientDirectory() {
     resolver: zodResolver(patientSchema),
   });
 
-  // Query: Paginated & Searchable Patient list
   const {
     data: patientsData = { patients: [], total: 0, page: 1, limit: 15 },
     isLoading,
@@ -294,7 +281,6 @@ export default function PatientDirectory() {
     keepPreviousData: true,
   });
 
-  // Mutation: Register Patient
   const registerMutation = useMutation({
     mutationFn: async (formData) => {
       // A tag only gets added to the array on Enter, so anything still sitting in the text box
@@ -321,7 +307,7 @@ export default function PatientDirectory() {
       setAllergyInput('');
       setConditionInput('');
       setFormError(null);
-      toast.success(`Patient registered — MRN: ${data.mrn}`, {
+      toast.success(`Patient registered, MRN: ${data.mrn}`, {
         description: `Name: ${data.name}`,
       });
     },
@@ -332,7 +318,6 @@ export default function PatientDirectory() {
     },
   });
 
-  // Mutation: Update Patient
   const updateMutation = useMutation({
     mutationFn: async (formData) => {
       // Same fold-in as registration: an uncommitted tag left in the text box shouldn't be
@@ -358,7 +343,7 @@ export default function PatientDirectory() {
       setDetailAllergyInput('');
       setDetailConditionInput('');
       setIsEditingDetail(false);
-      toast.success(`Patient profile updated — MRN: ${data.mrn}`);
+      toast.success(`Patient profile updated, MRN: ${data.mrn}`);
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to update patient details.';
@@ -366,7 +351,6 @@ export default function PatientDirectory() {
     },
   });
 
-  // Query: Lab test catalog for ordering
   const { data: labCatalog = [] } = useQuery({
     queryKey: ['lab-tests-catalog'],
     queryFn: async () => {
@@ -376,7 +360,6 @@ export default function PatientDirectory() {
     enabled: isOrderLabOpen,
   });
 
-  // Mutation: Place Lab Order
   const createLabOrderMutation = useMutation({
     mutationFn: async ({ patientId, testIds }) => {
       const res = await api.post('/api/lab/orders', { patientId, testIds });
@@ -393,7 +376,6 @@ export default function PatientDirectory() {
     },
   });
 
-  // Mutation: Enable Portal Access
   const enablePortalMutation = useMutation({
     mutationFn: async (patientId) => {
       const res = await api.post(`/api/patients/${patientId}/enable-portal`);
@@ -410,7 +392,6 @@ export default function PatientDirectory() {
     },
   });
 
-  // Toggle test checkbox
   const toggleLabTestSelection = (testId) => {
     setSelectedLabTestIds((prev) =>
       prev.includes(testId) ? prev.filter((id) => id !== testId) : [...prev, testId]
@@ -447,7 +428,6 @@ export default function PatientDirectory() {
     setIsDetailOpen(true);
   };
 
-  // Tag helper handlers
   const handleAddAllergy = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -492,7 +472,6 @@ export default function PatientDirectory() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -527,10 +506,8 @@ export default function PatientDirectory() {
         </div>
       </div>
 
-      {/* Table Card */}
       <Card className="bg-card border-border shadow-soft overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-          {/* Search Input */}
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -549,7 +526,6 @@ export default function PatientDirectory() {
           </div>
         </div>
 
-        {/* Content Table */}
         <div className="overflow-x-auto">
           {isLoading ? (
             <div className="p-6 space-y-4">
@@ -663,7 +639,6 @@ export default function PatientDirectory() {
           )}
         </div>
 
-        {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="p-4 border-t border-border flex items-center justify-between bg-card">
             <div className="text-xs text-muted-foreground">
@@ -696,7 +671,6 @@ export default function PatientDirectory() {
         )}
       </Card>
 
-      {/* Modal: Register Patient */}
       <Modal
         isOpen={isRegisterOpen}
         onClose={() => {
@@ -846,7 +820,6 @@ export default function PatientDirectory() {
             />
           </div>
 
-          {/* Allergies Tag Input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Known Allergies (Press Enter to add)
@@ -879,7 +852,6 @@ export default function PatientDirectory() {
             )}
           </div>
 
-          {/* Chronic Conditions Tag Input */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Chronic Conditions (Press Enter to add)
@@ -915,7 +887,6 @@ export default function PatientDirectory() {
         </form>
       </Modal>
 
-      {/* Modal / Drawer: Patient Detail & Edit */}
       <Modal
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
@@ -1016,7 +987,6 @@ export default function PatientDirectory() {
       >
         {selectedPatient && (
           <div className="space-y-4">
-            {/* Tab switcher */}
             {canViewHistory && !isEditingDetail && (
               <div className="flex gap-1 p-1 bg-muted/50 rounded-xl border border-border/60">
                 <button
@@ -1087,7 +1057,6 @@ export default function PatientDirectory() {
                   <span className="font-medium text-foreground">{selectedPatient.referredBy || '—'}</span>
                 </div>
 
-                {/* Allergies */}
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Allergies
@@ -1108,7 +1077,6 @@ export default function PatientDirectory() {
                   )}
                 </div>
 
-                {/* Chronic Conditions */}
                 <div className="space-y-1.5">
                   <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Chronic Conditions
@@ -1132,12 +1100,10 @@ export default function PatientDirectory() {
               </div>
             )}
 
-            {/* Medical History Tab */}
             {detailTab === 'history' && canViewHistory && (
               <PatientEMRTimeline patientId={selectedPatient._id} />
             )}
 
-            {/* Edit Mode (only when isEditingDetail) */}
             {isEditingDetail && (
               <form id="edit-patient-form" onSubmit={handleSubmitEdit(onSubmitEdit)} className="space-y-4">
                 <div className="space-y-1">
@@ -1225,7 +1191,6 @@ export default function PatientDirectory() {
                   />
                 </div>
 
-                {/* Edit Allergies Tag Input */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Allergies (Press Enter to add)
@@ -1255,7 +1220,6 @@ export default function PatientDirectory() {
                   </div>
                 </div>
 
-                {/* Edit Conditions Tag Input */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Chronic Conditions (Press Enter to add)
@@ -1291,7 +1255,6 @@ export default function PatientDirectory() {
         )}
       </Modal>
 
-      {/* Modal: Order Lab Test for Selected Patient */}
       <Modal
         isOpen={isOrderLabOpen}
         onClose={() => setIsOrderLabOpen(false)}

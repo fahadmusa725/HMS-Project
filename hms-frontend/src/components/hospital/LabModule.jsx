@@ -25,7 +25,6 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { formatCurrency, doctorName } from '@/lib/utils';
 
-// Schema for adding a lab test to catalog
 const labTestSchema = z.object({
   name: z.string().min(2, 'Test name must be at least 2 characters'),
   department: z.string().optional(),
@@ -33,7 +32,6 @@ const labTestSchema = z.object({
   turnaroundTime: z.string().optional(),
 });
 
-// Schema for entering lab test results
 const labResultSchema = z.object({
   resultNotes: z.string().min(2, 'Please enter clinical result findings/notes'),
   resultFileUrl: z.string().optional(),
@@ -48,28 +46,23 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
   const canOrderTests = ['doctor', 'hospital_admin', 'receptionist'].includes(role);
   const canManageOrders = ['lab_technician', 'hospital_admin'].includes(role);
 
-  // Active view tab: 'worklist' | 'catalog'
   const [activeTab, setActiveTab] = useState(initialTab);
 
-  // Filters
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [catalogSearch, setCatalogSearch] = useState('');
 
-  // Modals state
   const [isAddTestOpen, setIsAddTestOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(!!initialPatient);
   const [resultOrderTarget, setResultOrderTarget] = useState(null);
   const [viewResultTarget, setViewResultTarget] = useState(null);
   const [cancelOrderTarget, setCancelOrderTarget] = useState(null);
 
-  // Order modal patient & test selection state
   const [patientSearch, setPatientSearch] = useState('');
   const [selectedPatient, setSelectedPatient] = useState(initialPatient);
   const [selectedTestIds, setSelectedTestIds] = useState([]);
   const [testSearchInModal, setTestSearchInModal] = useState('');
 
-  // Forms setup
   const {
     register: registerTest,
     handleSubmit: handleSubmitTest,
@@ -90,7 +83,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     defaultValues: { resultNotes: '', resultFileUrl: '' },
   });
 
-  // Query: List Lab Tests Catalog
   const {
     data: labTests = [],
     isLoading: isTestsLoading,
@@ -102,7 +94,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Query: List Lab Orders Worklist
   const {
     data: labOrders = [],
     isLoading: isOrdersLoading,
@@ -117,7 +108,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Query: Patient search for Order Modal
   const { data: patientSearchResults = { patients: [] } } = useQuery({
     queryKey: ['lab-patient-search', patientSearch],
     queryFn: async () => {
@@ -128,7 +118,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     enabled: isOrderModalOpen && !selectedPatient && patientSearch.trim().length > 0,
   });
 
-  // Mutation: Create Lab Test (Catalog)
   const createTestMutation = useMutation({
     mutationFn: async (formData) => {
       const res = await api.post('/api/lab/tests', formData);
@@ -145,7 +134,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Mutation: Create Lab Order
   const createOrderMutation = useMutation({
     mutationFn: async ({ patientId, testIds }) => {
       const res = await api.post('/api/lab/orders', { patientId, testIds });
@@ -164,7 +152,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Mutation: Update Lab Order Status
   const updateStatusMutation = useMutation({
     mutationFn: async ({ orderId, status }) => {
       const res = await api.patch(`/api/lab/orders/${orderId}/status`, { status });
@@ -180,7 +167,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Mutation: Add Lab Result & Complete
   const addResultMutation = useMutation({
     mutationFn: async ({ orderId, payload }) => {
       const res = await api.patch(`/api/lab/orders/${orderId}/result`, payload);
@@ -197,7 +183,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     },
   });
 
-  // Computed Stats for Worklist
   const stats = useMemo(() => {
     const list = Array.isArray(labOrders) ? labOrders : [];
     const total = list.length;
@@ -208,7 +193,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     return { total, ordered, collected, inProgress, completed };
   }, [labOrders]);
 
-  // Filtered Orders
   const filteredOrders = useMemo(() => {
     const list = Array.isArray(labOrders) ? labOrders : [];
     return list.filter((order) => {
@@ -224,7 +208,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     });
   }, [labOrders, searchQuery]);
 
-  // Filtered Catalog Tests
   const filteredCatalogTests = useMemo(() => {
     const list = Array.isArray(labTests) ? labTests : [];
     return list.filter((test) => {
@@ -234,7 +217,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
     });
   }, [labTests, catalogSearch]);
 
-  // Total amount for selected tests in Order Modal
   const orderModalTotal = useMemo(() => {
     return selectedTestIds.reduce((sum, id) => {
       const t = labTests.find((item) => item._id === id);
@@ -250,7 +232,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header & View Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -267,7 +248,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Worklist / Catalog Tab switcher */}
           <div className="flex bg-muted/60 p-1 rounded-xl border border-border">
             <button
               onClick={() => setActiveTab('worklist')}
@@ -318,10 +298,8 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </div>
       </div>
 
-      {/* VIEW 1: WORKLIST */}
       {activeTab === 'worklist' && (
         <div className="space-y-6">
-          {/* Unified Stat Strip */}
           <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-2 lg:grid-cols-4">
             <div className="p-4 sm:p-5 border-b lg:border-b-0 border-r border-border">
               <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
@@ -360,10 +338,8 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             </div>
           </div>
 
-          {/* Worklist Table Card */}
           <Card className="bg-card border-border shadow-soft overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
-              {/* Search */}
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -375,7 +351,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                 />
               </div>
 
-              {/* Status Filter Chips */}
               <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
                 {[
                   { key: 'all', label: 'All Orders' },
@@ -410,7 +385,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
               </div>
             </div>
 
-            {/* Orders Table */}
             <div className="overflow-x-auto">
               {isOrdersLoading ? (
                 <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
@@ -444,7 +418,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                       const totalCost = order.tests?.reduce((sum, t) => sum + (t.price || 0), 0) || 0;
                       return (
                         <tr key={order._id} className="hover:bg-accent/40 transition-colors">
-                          {/* Patient Info */}
                           <td className="py-4 px-6">
                             <div className="font-semibold text-foreground">
                               {order.patientId?.name || 'Unknown Patient'}
@@ -460,7 +433,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                             </div>
                           </td>
 
-                          {/* Tests Ordered */}
                           <td className="py-4 px-4">
                             <div className="flex flex-wrap gap-1 max-w-xs">
                               {order.tests?.map((t, idx) => (
@@ -478,12 +450,10 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                             </div>
                           </td>
 
-                          {/* Doctor */}
                           <td className="py-4 px-4 text-xs font-medium text-foreground">
                             {doctorName(order.doctorId?.name)}
                           </td>
 
-                          {/* Date */}
                           <td className="py-4 px-4 text-xs text-muted-foreground">
                             {order.createdAt
                               ? new Date(order.createdAt).toLocaleDateString(undefined, {
@@ -495,14 +465,12 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                               : '—'}
                           </td>
 
-                          {/* Status */}
                           <td className="py-4 px-4">
                             <Badge variant={order.status}>
                               {order.status?.replace('_', ' ')}
                             </Badge>
                           </td>
 
-                          {/* Actions */}
                           <td className="py-4 px-6 text-right">
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
                               {/* Lab Tech / Admin Status Progression */}
@@ -554,7 +522,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                                 </Button>
                               )}
 
-                              {/* Completed View Details */}
                               {order.status === 'completed' && (
                                 <Button
                                   size="sm"
@@ -567,7 +534,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                                 </Button>
                               )}
 
-                              {/* Cancel */}
                               {canManageOrders && order.status !== 'completed' && order.status !== 'cancelled' && (
                                 <Button
                                   size="sm"
@@ -591,10 +557,8 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </div>
       )}
 
-      {/* VIEW 2: TEST CATALOG */}
       {activeTab === 'catalog' && (
         <div className="space-y-6">
-          {/* Catalog Card */}
           <Card className="bg-card border-border shadow-soft overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
               <div className="relative w-full sm:w-80">
@@ -663,7 +627,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </div>
       )}
 
-      {/* MODAL 1: ORDER LAB TEST */}
       <Modal
         isOpen={isOrderModalOpen}
         onClose={() => {
@@ -714,7 +677,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         }
       >
         <div className="space-y-4">
-          {/* Patient Selection / Display */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Patient *
@@ -773,7 +735,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             )}
           </div>
 
-          {/* Test Selector with Live Total */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -842,7 +803,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </div>
       </Modal>
 
-      {/* MODAL 2: ADD TEST TO CATALOG (hospital_admin) */}
       <Modal
         isOpen={isAddTestOpen}
         onClose={() => setIsAddTestOpen(false)}
@@ -923,7 +883,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         </form>
       </Modal>
 
-      {/* MODAL 3: COMPLETE & ADD RESULT */}
       <Modal
         isOpen={!!resultOrderTarget}
         onClose={() => setResultOrderTarget(null)}
@@ -967,7 +926,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             )}
             className="space-y-4"
           >
-            {/* Ordered Tests summary */}
             <div className="p-3 bg-muted/40 rounded-xl border border-border/60 text-xs">
               <span className="text-muted-foreground block font-medium">Tests Evaluated:</span>
               <div className="flex flex-wrap gap-1 mt-1">
@@ -1013,7 +971,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         )}
       </Modal>
 
-      {/* MODAL 4: VIEW RESULT */}
       <Modal
         isOpen={!!viewResultTarget}
         onClose={() => setViewResultTarget(null)}
@@ -1078,7 +1035,6 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
         )}
       </Modal>
 
-      {/* MODAL 5: CANCEL ORDER CONFIRMATION */}
       <Modal
         isOpen={!!cancelOrderTarget}
         onClose={() => setCancelOrderTarget(null)}

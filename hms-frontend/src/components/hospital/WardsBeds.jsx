@@ -31,7 +31,7 @@ import { Modal } from '@/components/ui/modal';
 import { RunningBillCard, FinalBillModal } from '@/components/hospital/IpdBilling';
 import { formatCurrency, doctorName } from '@/lib/utils';
 
-// ─── Bed status — CSS variable token colours ONLY (no raw Tailwind colour classes) ───
+// ─── Bed status: CSS variable token colours ONLY (no raw Tailwind colour classes) ───
 const BED_STYLES = {
   vacant:   'bg-primary/10 border-primary/40 text-primary',
   occupied: 'bg-muted/60 border-border text-foreground',
@@ -56,15 +56,12 @@ export default function WardsBeds() {
   // Deposits are taken at the front desk, not by clinical staff
   const canAddAdvance = ['hospital_admin', 'receptionist'].includes(role);
 
-  // ── View state ────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('beds');
   const [ipdStatus, setIpdStatus] = useState('admitted');
 
-  // ── Bed grid filters ──────────────────────────────────────────────────────
   const [wardFilter, setWardFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // ── Manage wards state ────────────────────────────────────────────────────
   const [selectedWardForManage, setSelectedWardForManage] = useState(null);
   const [isAddWardOpen, setIsAddWardOpen] = useState(false);
   const [isAddBedsOpen, setIsAddBedsOpen] = useState(false);
@@ -76,7 +73,6 @@ export default function WardsBeds() {
   const [wardFormError, setWardFormError] = useState(null);
   const [bedsFormError, setBedsFormError] = useState(null);
 
-  // ── Admit state ───────────────────────────────────────────────────────────
   const [isAdmitOpen, setIsAdmitOpen] = useState(false);
   const [admitError, setAdmitError] = useState(null);
   const [admitPatientSearch, setAdmitPatientSearch] = useState('');
@@ -89,7 +85,6 @@ export default function WardsBeds() {
   );
   const [admitReason, setAdmitReason] = useState('');
 
-  // ── IPD detail state ──────────────────────────────────────────────────────
   const [selectedAdmission, setSelectedAdmission] = useState(null);
   const [isDischargeOpen, setIsDischargeOpen] = useState(false);
   const [dischargeNotes, setDischargeNotes] = useState('');
@@ -101,7 +96,6 @@ export default function WardsBeds() {
     pulse: '',
   });
 
-  // ── Queries ───────────────────────────────────────────────────────────────
 
   // Ward list (shared across all tabs)
   const { data: wards = [], isLoading: wardsLoading } = useQuery({
@@ -153,7 +147,6 @@ export default function WardsBeds() {
     enabled: isAdmitOpen && !!admitWardId,
   });
 
-  // Patient search for admit form
   const { data: admitPatientResults = { patients: [] } } = useQuery({
     queryKey: ['admit-patient-search', admitPatientSearch],
     queryFn: async () => {
@@ -190,7 +183,6 @@ export default function WardsBeds() {
     },
   });
 
-  // Rounds notes for the selected admission
   const {
     data: admissionNotes = [],
     isLoading: notesLoading,
@@ -204,7 +196,6 @@ export default function WardsBeds() {
     enabled: !!selectedAdmission,
   });
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
 
   const createWardMutation = useMutation({
     mutationFn: async () => {
@@ -358,7 +349,6 @@ export default function WardsBeds() {
     },
   });
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const resetAdmitForm = () => {
     setAdmitPatientSearch('');
@@ -371,7 +361,6 @@ export default function WardsBeds() {
     setAdmitError(null);
   };
 
-  // Group grid beds by ward for the visual floor board
   const bedsByWard = useMemo(() => {
     const map = {};
     gridBeds.forEach((bed) => {
@@ -400,12 +389,10 @@ export default function WardsBeds() {
     ...(isAdmin ? [{ id: 'manage', label: 'Manage Wards', Icon: Settings }] : []),
   ];
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6 animate-fade-in">
 
-      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -442,7 +429,6 @@ export default function WardsBeds() {
         </div>
       </div>
 
-      {/* ── Tab bar ── */}
       <div className="flex gap-1 p-1 bg-muted/50 rounded-xl border border-border/60 w-fit">
         {tabs.map(({ id, label, Icon }) => (
           <button
@@ -460,12 +446,8 @@ export default function WardsBeds() {
         ))}
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* BED STATUS GRID                                                     */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'beds' && (
         <div className="space-y-5">
-          {/* Filters + Legend */}
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={wardFilter}
@@ -488,7 +470,6 @@ export default function WardsBeds() {
               <option value="reserved">Reserved</option>
             </select>
 
-            {/* Legend */}
             <div className="flex items-center gap-4 ml-auto">
               {(['vacant', 'occupied', 'reserved']).map((s) => (
                 <span key={s} className="flex items-center gap-1.5 text-xs font-medium text-foreground">
@@ -538,7 +519,7 @@ export default function WardsBeds() {
                     {wardGroup.beds.map((bed) => (
                       <div
                         key={bed._id}
-                        title={`Bed ${bed.bedNumber} — ${BED_LABELS[bed.status] || bed.status}`}
+                        title={`Bed ${bed.bedNumber}: ${BED_LABELS[bed.status] || bed.status}`}
                         className={`flex flex-col items-center justify-center gap-0.5 p-2.5 rounded-xl border-2 transition-all ${BED_STYLES[bed.status] || BED_STYLES.vacant}`}
                       >
                         {BED_ICON[bed.status] || BED_ICON.vacant}
@@ -558,9 +539,6 @@ export default function WardsBeds() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* ACTIVE IPD LIST                                                     */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'ipd' && !selectedAdmission && (
         <div className="space-y-4">
           <div className="flex gap-1 p-1 bg-muted/50 rounded-lg border border-border/60 w-fit">
@@ -683,12 +661,8 @@ export default function WardsBeds() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* IPD DETAIL PANEL                                                   */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'ipd' && selectedAdmission && (
         <div className="space-y-5 animate-fade-in">
-          {/* Back */}
           <button
             onClick={() => setSelectedAdmission(null)}
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground font-medium transition-colors"
@@ -697,7 +671,6 @@ export default function WardsBeds() {
             Back to IPD List
           </button>
 
-          {/* Admission info card */}
           <Card className="p-5 border-border shadow-soft">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
@@ -708,7 +681,7 @@ export default function WardsBeds() {
                   MRN: {selectedAdmission.patientId?.mrn || '—'}
                 </p>
               </div>
-              {/* Discharge button — clinical staff only, active stays only */}
+              {/* Discharge button: clinical staff only, active stays only */}
               {canActOnIPD && selectedAdmission.status === 'admitted' && (
                 <Button
                   variant="outline"
@@ -793,7 +766,6 @@ export default function WardsBeds() {
           {/* Live running bill (or final bill once discharged) */}
           <RunningBillCard admission={selectedAdmission} canAddAdvance={canAddAdvance} />
 
-          {/* Rounds Notes + Add Note */}
           <Card className="border-border shadow-soft overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-border bg-muted/20 flex items-center gap-2">
               <FileText className="h-4 w-4 text-primary" />
@@ -804,7 +776,6 @@ export default function WardsBeds() {
               </span>
             </div>
 
-            {/* Notes list */}
             <div className="divide-y divide-border/60 max-h-72 overflow-y-auto">
               {notesLoading ? (
                 <div className="p-6 space-y-3">
@@ -861,7 +832,7 @@ export default function WardsBeds() {
               )}
             </div>
 
-            {/* Add Note form — clinical staff only, NOT receptionist; closed once discharged */}
+            {/* Add Note form: clinical staff only, NOT receptionist; closed once discharged */}
             {canActOnIPD && selectedAdmission.status === 'admitted' && (
               <div className="p-4 sm:p-5 border-t border-border bg-muted/10 space-y-3">
                 <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
@@ -923,9 +894,6 @@ export default function WardsBeds() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MANAGE WARDS (hospital_admin only)                                 */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'manage' && isAdmin && (
         <div className="space-y-5">
           {selectedWardForManage ? (
@@ -1088,9 +1056,6 @@ export default function WardsBeds() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: Admit Patient                                               */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={isAdmitOpen}
         onClose={() => {
@@ -1152,7 +1117,6 @@ export default function WardsBeds() {
             </div>
           )}
 
-          {/* Patient search */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
               Patient *
@@ -1193,7 +1157,6 @@ export default function WardsBeds() {
             )}
           </div>
 
-          {/* Ward select */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
               Ward *
@@ -1208,7 +1171,7 @@ export default function WardsBeds() {
               disabled={admitMutation.isPending}
               className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <option value="">— Select Ward —</option>
+              <option value="">(Select Ward)</option>
               {wards.map((w) => (
                 <option key={w._id} value={w._id}>
                   {w.name}{w.department ? ` (${w.department})` : ''}
@@ -1217,7 +1180,7 @@ export default function WardsBeds() {
             </select>
           </div>
 
-          {/* Bed select — auto-filtered to vacant beds in chosen ward */}
+          {/* Bed select: auto-filtered to vacant beds in chosen ward */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
               Bed *{' '}
@@ -1234,12 +1197,12 @@ export default function WardsBeds() {
             >
               <option value="">
                 {!admitWardId
-                  ? '— Select a ward first —'
+                  ? '(Select a ward first)'
                   : vacantBedsLoading
                   ? 'Loading vacant beds...'
                   : vacantBeds.length === 0
                   ? 'No vacant beds in this ward'
-                  : '— Select Bed —'}
+                  : '(Select Bed)'}
               </option>
               {vacantBeds.map((b) => (
                 <option key={b._id} value={b._id}>
@@ -1249,7 +1212,6 @@ export default function WardsBeds() {
             </select>
           </div>
 
-          {/* Doctor select / display */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
               Doctor *
@@ -1272,7 +1234,7 @@ export default function WardsBeds() {
                     ? 'Loading doctors...'
                     : doctorsList.length === 0
                     ? 'No active doctors on staff'
-                    : '— Select Doctor —'}
+                    : '(Select Doctor)'}
                 </option>
                 {doctorsList.map((d) => (
                   <option key={d._id} value={d._id}>
@@ -1283,7 +1245,6 @@ export default function WardsBeds() {
             )}
           </div>
 
-          {/* Reason */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider block">
               Reason for Admission *
@@ -1301,9 +1262,6 @@ export default function WardsBeds() {
 
       </Modal>
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: Discharge Confirmation                                       */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={isDischargeOpen}
         onClose={() => {
@@ -1367,9 +1325,6 @@ export default function WardsBeds() {
         </div>
       </Modal>
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: Add Ward                                                     */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={isAddWardOpen}
         onClose={() => {
@@ -1464,9 +1419,6 @@ export default function WardsBeds() {
         </div>
       </Modal>
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: Add Beds                                                     */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={isAddBedsOpen}
         onClose={() => {
@@ -1476,7 +1428,7 @@ export default function WardsBeds() {
             setBedsFormError(null);
           }
         }}
-        title={`Add Beds — ${selectedWardForManage?.name || ''}`}
+        title={`Add Beds: ${selectedWardForManage?.name || ''}`}
         description="Enter comma-separated bed numbers to bulk-create."
         footer={
           <>
@@ -1534,7 +1486,6 @@ export default function WardsBeds() {
             </p>
           </div>
 
-          {/* Preview of beds to be added */}
           {parsedBedNumbers.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {parsedBedNumbers.map((b, i) => (
@@ -1551,15 +1502,12 @@ export default function WardsBeds() {
         </div>
       </Modal>
 
-      {/* ════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: Edit Ward (name / department / daily rate)                   */}
-      {/* ════════════════════════════════════════════════════════════════════ */}
       <Modal
         isOpen={!!editWard}
         onClose={() => {
           if (!updateWardMutation.isPending) setEditWard(null);
         }}
-        title={`Edit Ward — ${selectedWardForManage?.name || ''}`}
+        title={`Edit Ward: ${selectedWardForManage?.name || ''}`}
         description="A new daily rate applies to the whole stay of patients currently in this ward."
         footer={
           editWard && (

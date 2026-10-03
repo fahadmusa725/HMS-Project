@@ -54,7 +54,7 @@ export default function DoctorScheduleModal({ doctor, onClose }) {
       <Modal
         isOpen
         onClose={onClose}
-        title={`Schedule — ${doctorName(doctor.name)}`}
+        title={`Schedule: ${doctorName(doctor.name)}`}
         description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
       >
         <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
@@ -109,7 +109,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
     <Modal
       isOpen
       onClose={onClose}
-      title={`Schedule — ${doctorName(doctor.name)}`}
+      title={`Schedule: ${doctorName(doctor.name)}`}
       description="Consultation fee, appointment length and weekly OPD hours. Patients can only be booked into these slots."
       footer={
         <>
@@ -190,7 +190,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
 
         {blocks.length === 0 ? (
           <div className="p-4 rounded-lg border border-dashed border-border text-xs text-muted-foreground text-center">
-            No working hours yet — this doctor won&rsquo;t appear in appointment booking until you add some.
+            No working hours yet. This doctor won&rsquo;t appear in appointment booking until you add some.
           </div>
         ) : (
           <div className="space-y-2">
@@ -238,7 +238,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
                 </div>
                 {b.startTime && b.endTime && b.endTime < b.startTime && (
                   <p className="text-[10px] text-muted-foreground pl-1">
-                    Overnight shift — runs past midnight until {formatSlotTime(b.endTime)} on{' '}
+                    Overnight shift: runs past midnight until {formatSlotTime(b.endTime)} on{' '}
                     {DAY_NAMES[(Number(b.dayOfWeek) + 1) % 7]}.
                   </p>
                 )}

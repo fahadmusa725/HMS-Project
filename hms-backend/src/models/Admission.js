@@ -33,7 +33,6 @@ const admissionSchema = new mongoose.Schema(
 
 admissionSchema.plugin(tenantPlugin);
 
-// Fast lookup: "all currently admitted patients" (the live IPD list)
 admissionSchema.index({ hospitalId: 1, status: 1 });
 
 module.exports = mongoose.model("Admission", admissionSchema);

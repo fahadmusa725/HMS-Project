@@ -18,11 +18,9 @@ const router = express.Router();
 
 router.use(protect, auditLogger);
 
-// Catalog setup - hospital_admin only
 router.post("/tests", allowRoles("hospital_admin"), createLabTest);
 router.get("/tests", allowRoles("hospital_admin", "doctor", "lab_technician", "receptionist"), listLabTests);
 
-// Orders
 const canOrder = allowRoles("doctor", "hospital_admin", "receptionist");
 const canManageOrders = allowRoles("lab_technician", "hospital_admin");
 const canView = allowRoles("hospital_admin", "doctor", "nurse", "receptionist", "lab_technician");

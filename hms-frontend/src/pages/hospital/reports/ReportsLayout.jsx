@@ -9,7 +9,6 @@ export default function ReportsLayout() {
 
   const isHospitalAdmin = role === 'hospital_admin';
 
-  // Sub-navigation tabs for reports
   const subNavItems = [
     { path: '/dashboard/reports', end: true, label: 'Overview', icon: LayoutDashboard },
     { path: '/dashboard/reports/financial', label: 'Financial', icon: TrendingUp },
@@ -57,7 +56,6 @@ export default function ReportsLayout() {
         </div>
       )}
 
-      {/* Active Sub-report Content */}
       <div>
         <Outlet />
       </div>

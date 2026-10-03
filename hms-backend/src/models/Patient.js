@@ -39,7 +39,6 @@ patientSchema.index(
   { unique: true, partialFilterExpression: { cnic: { $type: "string" } } }
 );
 
-// Simple text search across name/mrn/phone for the patient directory
 patientSchema.index({ name: "text", mrn: "text", phone: "text" });
 
 module.exports = mongoose.model("Patient", patientSchema);

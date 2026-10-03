@@ -59,18 +59,14 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-background overflow-hidden selection:bg-primary/20 selection:text-primary">
-      {/* Top right theme toggle */}
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
 
-      {/* Subtle ambient background glow */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Container */}
       <div className="w-full max-w-md z-10 animate-fade-in">
-        {/* Brand Header */}
         <div className="flex flex-col items-center mb-8 text-center">
           <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 mb-4 ring-8 ring-primary/10">
             <HeartPulse className="h-8 w-8 text-primary-foreground" />
@@ -83,7 +79,6 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Login Card */}
         <Card className="bg-card border-border shadow-soft-xl">
           <CardHeader className="space-y-1 text-center pb-6">
             <CardTitle className="text-xl font-bold text-foreground">Sign in to your account</CardTitle>
@@ -93,7 +88,6 @@ export default function Login() {
           </CardHeader>
 
           <CardContent>
-            {/* Inline Error Alert */}
             {error && (
               <div className="mb-5 flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3.5 text-sm text-destructive animate-slide-up">
                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -102,7 +96,6 @@ export default function Login() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Email field */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Email Address
@@ -127,7 +120,6 @@ export default function Login() {
                 )}
               </div>
 
-              {/* Password field */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
@@ -162,7 +154,6 @@ export default function Login() {
                 )}
               </div>
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all duration-200 mt-2"

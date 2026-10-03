@@ -13,7 +13,6 @@ const NEAR_EXPIRY_DAYS = 30;
 // Don't re-email about the same medicine more than once a day even if the queue is hit constantly.
 const NEAR_EXPIRY_ALERT_COOLDOWN_HOURS = 24;
 
-// --- Inventory management (pharmacist, hospital_admin) ---
 
 async function createMedicine(req, res) {
   try {
@@ -183,7 +182,6 @@ async function restockMedicine(req, res) {
   }
 }
 
-// --- Dispensing ---
 
 /** Emails every pharmacist + hospital_admin in this hospital about a medicine that just crossed into low stock. */
 async function sendLowStockAlert(medicine) {
@@ -336,7 +334,6 @@ async function dispenseMedicine(req, res) {
 
     res.status(201).json(sale);
   } catch (err) {
-    // Roll back any stock already deducted in this request before failing.
     for (const { medicineId, quantity, plan } of deductedSoFar) {
       await rollbackFefo(medicineId, plan, quantity);
     }

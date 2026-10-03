@@ -21,7 +21,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 
-// HSL CSS Variable Tokens aligned colors
 const CATEGORY_COLORS = {
   OPD: 'hsl(175, 77%, 26%)',      // Primary teal
   IPD: 'hsl(173, 80%, 40%)',      // Secondary teal
@@ -89,7 +88,6 @@ export default function FinancialReport() {
 
   return (
     <div className="space-y-6">
-      {/* Top Controls: Date Range Picker & Refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <DateRangePicker onRangeChange={(range) => setDateRange(range)} />
         <Button
@@ -104,9 +102,7 @@ export default function FinancialReport() {
         </Button>
       </div>
 
-      {/* Unified 3-Segment Stat Strip */}
       <div className="bg-card border border-border rounded-xl shadow-soft grid grid-cols-1 sm:grid-cols-3">
-        {/* Total Invoiced */}
         <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
             {isLoading ? '—' : formatCurrency(report?.totalInvoiced || 0)}
@@ -116,7 +112,6 @@ export default function FinancialReport() {
           </div>
         </div>
 
-        {/* Total Collected */}
         <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-border">
           <div className="text-2xl sm:text-3xl font-extrabold text-primary tracking-tight">
             {isLoading ? '—' : formatCurrency(report?.totalCollected || 0)}
@@ -126,7 +121,6 @@ export default function FinancialReport() {
           </div>
         </div>
 
-        {/* Outstanding Balance */}
         <div className="p-4 sm:p-5">
           <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
             {isLoading ? '—' : formatCurrency(report?.totalOutstanding || 0)}
@@ -144,7 +138,6 @@ export default function FinancialReport() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Chart: Revenue Over Time (Invoiced vs Collected) */}
           <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -230,7 +223,6 @@ export default function FinancialReport() {
             )}
           </Card>
 
-          {/* Donut Chart: Revenue by Category */}
           <Card className="p-5 border-border shadow-soft bg-card space-y-4 flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-bold text-foreground">Revenue by Category</h3>
@@ -278,7 +270,6 @@ export default function FinancialReport() {
               </div>
             )}
 
-            {/* Category Legend List */}
             <div className="space-y-1.5 pt-2 border-t border-border">
               {revenueByCategory.map((cat, idx) => (
                 <div key={cat._id || idx} className="flex items-center justify-between text-xs">
@@ -298,7 +289,6 @@ export default function FinancialReport() {
             </div>
           </Card>
 
-          {/* Payment Status Breakdown */}
           <Card className="lg:col-span-3 p-5 border-border shadow-soft bg-card space-y-4">
             <div>
               <h3 className="text-sm font-bold text-foreground">Payment Status Breakdown</h3>
@@ -365,7 +355,6 @@ export default function FinancialReport() {
             )}
           </Card>
 
-          {/* Collections by Payment Method */}
           <Card className="lg:col-span-1 p-5 border-border shadow-soft bg-card space-y-4">
             <div>
               <h3 className="text-sm font-bold text-foreground">Collections by Payment Method</h3>
@@ -388,7 +377,6 @@ export default function FinancialReport() {
             )}
           </Card>
 
-          {/* Collections by Sponsor Type */}
           <Card className="lg:col-span-2 p-5 border-border shadow-soft bg-card space-y-4">
             <div>
               <h3 className="text-sm font-bold text-foreground">Collections by Sponsor Type</h3>

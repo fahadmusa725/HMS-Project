@@ -30,7 +30,7 @@ async function sendAppointmentReminders() {
   for (const appt of upcoming) {
     const result = await sendEmail({
       to: appt.patient.email,
-      subject: `Appointment Reminder — ${tomorrow}`,
+      subject: `Appointment Reminder: ${tomorrow}`,
       html: `
         <p>Hello ${appt.patient.name},</p>
         <p>This is a reminder of your appointment <strong>tomorrow (${tomorrow})</strong>

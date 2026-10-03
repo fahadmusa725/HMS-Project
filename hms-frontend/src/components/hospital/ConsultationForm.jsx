@@ -157,7 +157,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             </div>
           )}
 
-          {/* ── Diagnosis ── */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
               <Stethoscope className="h-3.5 w-3.5 text-primary" />
@@ -173,7 +172,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             />
           </div>
 
-          {/* ── Vitals Grid ── */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Vitals <span className="font-normal text-muted-foreground">(all optional)</span>
@@ -202,7 +200,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             </div>
           </div>
 
-          {/* ── Symptoms ── */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Symptoms
@@ -217,7 +214,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             />
           </div>
 
-          {/* ── Clinical Notes ── */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Clinical Notes
@@ -232,7 +228,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             />
           </div>
 
-          {/* ── Prescription Builder ── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider flex items-center gap-1.5">
@@ -310,7 +305,6 @@ export default function ConsultationForm({ appointment, onClose }) {
             </div>
           </div>
 
-          {/* ── Follow-up Date ── */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider flex items-center gap-1.5 block">
               <CalendarCheck className="h-3.5 w-3.5 text-primary" />

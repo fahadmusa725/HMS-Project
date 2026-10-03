@@ -231,7 +231,6 @@ async function dischargePatient(req, res) {
     // Compute the final charges using the discharge time as the end of the stay.
     const running = await computeRunningBill(admission);
 
-    // Build the final bill's line items.
     const items = [];
     if (running.room.amount > 0) {
       items.push({

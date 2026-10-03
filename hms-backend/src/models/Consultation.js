@@ -35,7 +35,6 @@ const consultationSchema = new mongoose.Schema(
 
 consultationSchema.plugin(tenantPlugin);
 
-// Fast "EMR timeline" lookups: all consultations for one patient, newest first.
 consultationSchema.index({ hospitalId: 1, patientId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Consultation", consultationSchema);

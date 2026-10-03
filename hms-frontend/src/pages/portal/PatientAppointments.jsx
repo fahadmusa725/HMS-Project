@@ -59,7 +59,6 @@ export default function PatientAppointments() {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [lastBooked, setLastBooked] = useState(null);
 
-  // Form for booking
   const {
     register,
     handleSubmit,
@@ -80,7 +79,6 @@ export default function PatientAppointments() {
   const bookingDoctorId = watch('doctorId');
   const bookingTime = watch('time');
 
-  // Query: My appointments
   const {
     data: appointments = [],
     isLoading: isAppointmentsLoading,
@@ -96,7 +94,6 @@ export default function PatientAppointments() {
     },
   });
 
-  // Mutation: Book appointment
   const bookMutation = useMutation({
     mutationFn: async (payload) => {
       const res = await api.post('/api/appointments/book-mine', payload);
@@ -127,7 +124,6 @@ export default function PatientAppointments() {
     bookMutation.mutate(data);
   };
 
-  // Mutation: Self check-in
   const checkInMutation = useMutation({
     mutationFn: async (appointmentId) => {
       const res = await api.patch(`/api/appointments/${appointmentId}/status`, { status: 'checked_in' });
@@ -142,7 +138,6 @@ export default function PatientAppointments() {
     },
   });
 
-  // Filter appointments
   const todayStr = localDateStr();
 
   const filteredAppointments = useMemo(() => {
@@ -170,7 +165,6 @@ export default function PatientAppointments() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground flex items-center gap-2.5">
@@ -203,7 +197,6 @@ export default function PatientAppointments() {
         </div>
       </div>
 
-      {/* Success banner if just booked */}
       {lastBooked && (
         <div className="p-4 rounded-xl border border-primary/30 bg-primary/10 flex items-center justify-between gap-3 animate-slide-up">
           <div className="flex items-center gap-3">
@@ -244,7 +237,6 @@ export default function PatientAppointments() {
         </div>
       )}
 
-      {/* Filter Tabs & Content */}
       <Card className="border-border bg-card shadow-soft overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
           <div className="flex items-center gap-1.5 bg-card border border-border p-1 rounded-xl">
@@ -288,7 +280,6 @@ export default function PatientAppointments() {
           </div>
         </div>
 
-        {/* Appointments List */}
         <div className="p-4 sm:p-6">
           {isAppointmentsLoading ? (
             <div className="space-y-3">
@@ -340,7 +331,6 @@ export default function PatientAppointments() {
                   key={apt._id}
                   className="p-4 rounded-xl border border-border bg-muted/15 hover:border-border/80 transition-all space-y-3 shadow-soft-sm"
                 >
-                  {/* Card Header: Doctor & Token */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-2.5">
                       <div className="h-10 w-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center font-bold shrink-0">
@@ -356,7 +346,6 @@ export default function PatientAppointments() {
                       </div>
                     </div>
 
-                    {/* Token Badge */}
                     <div className="text-right shrink-0">
                       <span className="text-[10px] font-semibold text-muted-foreground block uppercase">OPD Token</span>
                       <span className="font-mono text-sm font-extrabold text-primary bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20">
@@ -365,7 +354,6 @@ export default function PatientAppointments() {
                     </div>
                   </div>
 
-                  {/* Date, Time & Status Badges */}
                   <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
                     <div className="flex items-center gap-3 text-muted-foreground">
                       <span className="flex items-center gap-1 font-medium text-foreground">
@@ -403,14 +391,12 @@ export default function PatientAppointments() {
                     </div>
                   </div>
 
-                  {/* Reason for Visit */}
                   {apt.reason && (
                     <div className="text-xs text-muted-foreground bg-card/60 p-2.5 rounded-lg border border-border/40">
                       <span className="font-semibold text-foreground/80">Reason:</span> {apt.reason}
                     </div>
                   )}
 
-                  {/* Self Check-In */}
                   {canCheckInNow(apt) && (
                     <Button
                       size="sm"
@@ -429,7 +415,6 @@ export default function PatientAppointments() {
         </div>
       </Card>
 
-      {/* Modal: Book Appointment */}
       <Modal
         isOpen={isBookModalOpen}
         onClose={() => {
@@ -500,7 +485,6 @@ export default function PatientAppointments() {
             errors={errors}
           />
 
-          {/* Reason */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
               Reason / Symptoms <span className="text-muted-foreground font-normal lowercase">(optional)</span>

@@ -19,7 +19,6 @@ const hospitalSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Helper: is this hospital's trial currently expired?
 hospitalSchema.methods.isTrialExpired = function () {
   if (this.status !== "trial" || !this.trialEndDate) return false;
   return new Date() > this.trialEndDate;

@@ -35,18 +35,15 @@ export function Modal({ isOpen, onClose, title, description, children, footer })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in">
-      {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal Dialog */}
       <div
         ref={modalRef}
         className="relative w-full max-w-lg max-h-[90vh] flex flex-col bg-card text-card-foreground rounded-2xl border border-border/80 shadow-soft-xl z-10 overflow-hidden animate-slide-up"
       >
-        {/* Fixed header */}
         <div className="shrink-0 flex items-center justify-between p-4 sm:p-6 border-b border-border/60">
           <div className="min-w-0">
             <h3 className="text-lg font-bold text-foreground">{title}</h3>
@@ -64,10 +61,8 @@ export function Modal({ isOpen, onClose, title, description, children, footer })
           </Button>
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">{children}</div>
 
-        {/* Fixed footer */}
         {footer && (
           <div className="shrink-0 flex items-center justify-end gap-3 p-4 sm:p-6 border-t border-border/60">
             {footer}

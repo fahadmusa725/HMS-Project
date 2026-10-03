@@ -59,7 +59,6 @@ const billSchema = new mongoose.Schema(
       default: "unpaid",
     },
     paymentMethod: { type: String, enum: PAYMENT_METHODS },
-    // Optional links back to the source records this bill covers
     labOrderId: { type: mongoose.Schema.Types.ObjectId, ref: "LabOrder" },
     appointmentId: { type: mongoose.Schema.Types.ObjectId, ref: "Appointment" }, // auto-created OPD fee bill
     pharmacySaleId: { type: mongoose.Schema.Types.ObjectId, ref: "PharmacySale" },

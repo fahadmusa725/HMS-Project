@@ -113,18 +113,14 @@ export default function PatientSignup() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-background overflow-hidden selection:bg-primary/20 selection:text-primary">
-      {/* Top right theme toggle */}
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
 
-      {/* Subtle ambient background glow */}
       <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Main Container */}
       <div className="w-full max-w-lg z-10 animate-fade-in my-6">
-        {/* Brand Header */}
         <div className="flex flex-col items-center mb-6 text-center">
           <div className="h-14 w-14 rounded-2xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 mb-4 ring-8 ring-primary/10">
             <HeartPulse className="h-8 w-8 text-primary-foreground" />
@@ -137,7 +133,6 @@ export default function PatientSignup() {
           </p>
         </div>
 
-        {/* Signup Card */}
         <Card className="bg-card border-border shadow-soft-xl">
           <CardHeader className="space-y-1 text-center pb-5">
             <CardTitle className="text-xl font-bold text-foreground">Self Patient Registration</CardTitle>
@@ -147,7 +142,6 @@ export default function PatientSignup() {
           </CardHeader>
 
           <CardContent>
-            {/* Inline Error Alert */}
             {error && (
               <div className="mb-5 flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3.5 text-sm text-destructive animate-slide-up">
                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -172,7 +166,6 @@ export default function PatientSignup() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              {/* Hospital Dropdown */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Select Hospital *
@@ -205,7 +198,6 @@ export default function PatientSignup() {
                 )}
               </div>
 
-              {/* Full Name */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Full Name *
@@ -231,9 +223,7 @@ export default function PatientSignup() {
                 )}
               </div>
 
-              {/* Phone & CNIC (2 Column Grid) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Phone */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Phone Number <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -252,7 +242,6 @@ export default function PatientSignup() {
                   </div>
                 </div>
 
-                {/* CNIC / National ID */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     CNIC / ID <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -271,7 +260,6 @@ export default function PatientSignup() {
                 </div>
               </div>
 
-              {/* CNIC Link Helper Note */}
               <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
                 <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <span>
@@ -279,9 +267,7 @@ export default function PatientSignup() {
                 </span>
               </div>
 
-              {/* DOB & Gender (2 Column Grid) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Date of Birth */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Date of Birth <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -299,7 +285,6 @@ export default function PatientSignup() {
                   </div>
                 </div>
 
-                {/* Gender */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Gender <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -322,7 +307,6 @@ export default function PatientSignup() {
                 </div>
               </div>
 
-              {/* Address */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Address <span className="text-muted-foreground font-normal lowercase">(optional)</span>
@@ -341,7 +325,6 @@ export default function PatientSignup() {
                 </div>
               </div>
 
-              {/* Email */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Email Address *
@@ -368,7 +351,6 @@ export default function PatientSignup() {
                 )}
               </div>
 
-              {/* Password */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Password *
@@ -403,7 +385,6 @@ export default function PatientSignup() {
                 )}
               </div>
 
-              {/* Submit Button */}
               <Button
                 type="submit"
                 className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all duration-200 mt-2"

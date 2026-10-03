@@ -3,7 +3,6 @@ const LabOrder = require("../models/LabOrder");
 const Patient = require("../models/Patient");
 const { uploadBufferToCloudinary } = require("../utils/uploadBufferToCloudinary");
 
-// --- Catalog management (hospital_admin) ---
 
 async function createLabTest(req, res) {
   try {
@@ -29,7 +28,6 @@ async function listLabTests(req, res) {
   }
 }
 
-// --- Orders ---
 
 async function createLabOrder(req, res) {
   try {
