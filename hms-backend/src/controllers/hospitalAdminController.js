@@ -4,6 +4,11 @@ const Patient = require("../models/Patient");
 const Bill = require("../models/Bill");
 const Medicine = require("../models/Medicine");
 const Appointment = require("../models/Appointment");
+const { sendEmail } = require("../utils/mailer");
+const { escapeHtml, generateTempPassword } = require("../utils/security");
+const { invalidateAccessCache } = require("../utils/accountAccess");
+
+const MIN_PASSWORD_LENGTH = 8;
 
 const STAFF_ROLES = ROLES.filter(
   (r) => !["platform_super_admin", "hospital_admin", "patient"].includes(r)
@@ -29,6 +34,9 @@ async function createStaff(req, res) {
         message: `role must be one of: ${STAFF_ROLES.join(", ")}`,
       });
     }
+    if (String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
+    }
 
     const staff = await User.create({
       name,
@@ -37,6 +45,8 @@ async function createStaff(req, res) {
       role,
       department,
       status: "active",
+      // The admin chose this password and knows it - the staff member must set their own.
+      mustChangePassword: true,
     });
 
     res.status(201).json({
@@ -63,6 +73,125 @@ async function listStaff(req, res) {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while listing staff." });
+  }
+}
+
+/**
+ * Only real staff of this hospital can be managed here - never the admin's own
+ * account, the platform super admin, or a patient portal account. Tenant scoping
+ * already limits the lookup to this hospital.
+ */
+async function findManageableStaff(id) {
+  const staff = await User.findById(id);
+  if (!staff || !STAFF_ROLES.includes(staff.role)) return null;
+  return staff;
+}
+
+/** Edit a staff member's name, department or role (role stays within STAFF_ROLES). */
+async function updateStaff(req, res) {
+  try {
+    const staff = await findManageableStaff(req.params.id);
+    if (!staff) return res.status(404).json({ message: "Staff member not found." });
+
+    const { name, department, role } = req.body;
+    const updates = {};
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) return res.status(400).json({ message: "Name cannot be empty." });
+      updates.name = trimmed;
+    }
+    if (department !== undefined) updates.department = String(department).trim();
+    if (role !== undefined) {
+      if (!STAFF_ROLES.includes(role)) {
+        return res.status(400).json({ message: `role must be one of: ${STAFF_ROLES.join(", ")}` });
+      }
+      updates.role = role;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "Nothing to update." });
+    }
+
+    const updated = await User.findByIdAndUpdate(staff._id, updates, { new: true, runValidators: true });
+    // A role change must not wait for the status cache to expire.
+    invalidateAccessCache(staff._id);
+
+    res.json({
+      id: updated._id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role,
+      department: updated.department,
+      status: updated.status,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while updating staff." });
+  }
+}
+
+/** Disable or re-enable a staff member's login. Takes effect on their next request. */
+async function setStaffStatus(req, res) {
+  try {
+    const { status } = req.body;
+    if (!["active", "disabled"].includes(status)) {
+      return res.status(400).json({ message: "status must be either active or disabled." });
+    }
+
+    const staff = await findManageableStaff(req.params.id);
+    if (!staff) return res.status(404).json({ message: "Staff member not found." });
+
+    const updated = await User.findByIdAndUpdate(staff._id, { status }, { new: true });
+    invalidateAccessCache(staff._id);
+
+    res.json({ id: updated._id, name: updated.name, status: updated.status });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while updating staff status." });
+  }
+}
+
+/**
+ * Admin-triggered password reset: a temporary password is generated and emailed
+ * to the staff member, who must choose their own password at next login.
+ */
+async function resetStaffPassword(req, res) {
+  try {
+    const staff = await User.findById(req.params.id).select("+password");
+    if (!staff || !STAFF_ROLES.includes(staff.role)) {
+      return res.status(404).json({ message: "Staff member not found." });
+    }
+
+    const tempPassword = generateTempPassword();
+    staff.password = tempPassword;
+    staff.mustChangePassword = true;
+    staff.failedLoginAttempts = 0;
+    staff.lockUntil = undefined;
+    await staff.save();
+    invalidateAccessCache(staff._id);
+
+    const emailResult = await sendEmail({
+      to: staff.email,
+      subject: "Your CareFlow HMS password was reset",
+      html: `<p>Hello ${escapeHtml(staff.name)},</p>
+             <p>Your hospital administrator reset your password.</p>
+             <p><strong>Email:</strong> ${escapeHtml(staff.email)}<br/>
+             <strong>Temporary password:</strong> ${escapeHtml(tempPassword)}</p>
+             <p>You will be asked to set your own password after logging in.</p>`,
+    });
+
+    res.json({
+      message: emailResult.sent
+        ? `A temporary password has been emailed to ${staff.email}.`
+        : "Temporary password generated, but the email could not be sent - share it with the staff member yourself.",
+      emailSent: emailResult.sent,
+      // With no SMTP configured (or a mail failure) the admin still needs the password to hand over.
+      tempPassword: emailResult.sent ? undefined : tempPassword,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while resetting the password." });
   }
 }
 
@@ -296,4 +425,11 @@ async function exportData(req, res) {
   }
 }
 
-module.exports = { createStaff, listStaff, exportData };
+module.exports = {
+  createStaff,
+  listStaff,
+  updateStaff,
+  setStaffStatus,
+  resetStaffPassword,
+  exportData,
+};

@@ -13,7 +13,12 @@ import {
   RefreshCw,
   Mail,
   Building,
-  CalendarClock
+  CalendarClock,
+  Pencil,
+  KeyRound,
+  Ban,
+  CheckCircle2,
+  Copy,
 } from 'lucide-react';
 import api from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -23,11 +28,21 @@ import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import DoctorScheduleModal from '@/components/hospital/DoctorScheduleModal';
 
+const STAFF_ROLE_VALUES = ['doctor', 'receptionist', 'nurse', 'lab_technician', 'pharmacist', 'accountant'];
+
 const staffSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['doctor', 'receptionist', 'nurse', 'lab_technician', 'pharmacist', 'accountant'], {
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.enum(STAFF_ROLE_VALUES, {
+    required_error: 'Please select a role',
+  }),
+  department: z.string().optional(),
+});
+
+const staffEditSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  role: z.enum(STAFF_ROLE_VALUES, {
     required_error: 'Please select a role',
   }),
   department: z.string().optional(),
@@ -49,6 +64,8 @@ export default function StaffManagement() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [formError, setFormError] = useState(null);
   const [scheduleDoctor, setScheduleDoctor] = useState(null);
+  const [editStaff, setEditStaff] = useState(null);
+  const [resetResult, setResetResult] = useState(null);
 
   const {
     register,
@@ -91,7 +108,7 @@ export default function StaffManagement() {
       setIsInviteOpen(false);
       reset();
       setFormError(null);
-      toast.success(`Staff member "${data.name}" successfully invited as ${ROLE_LABELS[data.role] || data.role}!`);
+      toast.success(`Staff member "${data.name}" created as ${ROLE_LABELS[data.role] || data.role}.`);
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to invite staff member.';
@@ -99,6 +116,85 @@ export default function StaffManagement() {
       toast.error(message);
     },
   });
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEditForm,
+    formState: { errors: editErrors },
+  } = useForm({
+    resolver: zodResolver(staffEditSchema),
+    defaultValues: { name: '', role: 'doctor', department: '' },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, values }) => {
+      const response = await api.patch(`/api/hospital-admin/staff/${id}`, values);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-staff'] });
+      setEditStaff(null);
+      setFormError(null);
+      toast.success(`${data.name} updated.`);
+    },
+    onError: (err) => {
+      const message = err.response?.data?.message || 'Failed to update staff member.';
+      setFormError(message);
+      toast.error(message);
+    },
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: async ({ id, status }) => {
+      const response = await api.patch(`/api/hospital-admin/staff/${id}/status`, { status });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-staff'] });
+      toast.success(
+        data.status === 'disabled'
+          ? `${data.name} can no longer sign in.`
+          : `${data.name} can sign in again.`
+      );
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to update staff status.');
+    },
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: async (id) => {
+      const response = await api.post(`/api/hospital-admin/staff/${id}/reset-password`);
+      return response.data;
+    },
+    onSuccess: (data, id) => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-staff'] });
+      const staff = staffList.find((member) => member._id === id);
+      setResetResult({ name: staff?.name, email: staff?.email, ...data });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to reset the password.');
+    },
+  });
+
+  const openEdit = (staff) => {
+    setFormError(null);
+    setEditStaff(staff);
+    resetEditForm({ name: staff.name, role: staff.role, department: staff.department || '' });
+  };
+
+  const copyTempPassword = () => {
+    if (!resetResult?.tempPassword) return;
+    if (!navigator.clipboard) {
+      toast.error('Copy is not available here. Select the password manually.');
+      return;
+    }
+    navigator.clipboard.writeText(resetResult.tempPassword).then(
+      () => toast.success('Temporary password copied.'),
+      () => toast.error('Could not copy. Select the password manually.')
+    );
+  };
 
   const onSubmit = (values) => {
     setFormError(null);
@@ -122,7 +218,7 @@ export default function StaffManagement() {
             Staff Directory &amp; Management
           </h2>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            Invite and manage doctors, nurses, receptionists, and departmental staff.
+            Add and manage doctors, nurses, receptionists, and departmental staff.
           </p>
         </div>
 
@@ -145,7 +241,7 @@ export default function StaffManagement() {
             className="h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-2 shadow-sm"
           >
             <UserPlus className="h-4 w-4" />
-            <span>Invite Staff</span>
+            <span>Add Staff</span>
           </Button>
         </div>
       </div>
@@ -227,7 +323,7 @@ export default function StaffManagement() {
                   className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Invite First Staff Member
+                  Add First Staff Member
                 </Button>
               )}
             </div>
@@ -269,9 +365,18 @@ export default function StaffManagement() {
                       )}
                     </td>
                     <td className="py-4 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
-                        Active
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          staff.status === 'disabled'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-primary/10 text-primary'
+                        }`}
+                      >
+                        {staff.status === 'disabled' ? 'Disabled' : 'Active'}
                       </span>
+                      {staff.mustChangePassword && (
+                        <div className="text-[10px] font-medium text-warning-foreground mt-1">Temp password</div>
+                      )}
                     </td>
                     <td className="py-4 px-4 text-xs text-muted-foreground">
                       {staff.createdAt
@@ -282,18 +387,72 @@ export default function StaffManagement() {
                           })
                         : '—'}
                     </td>
-                    <td className="py-4 px-6 text-right">
-                      {staff.role === 'doctor' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setScheduleDoctor(staff)}
-                          className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40"
-                        >
-                          <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
-                          Schedule &amp; Fee
-                        </Button>
-                      )}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {staff.role === 'doctor' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setScheduleDoctor(staff)}
+                            className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40"
+                            title="Set schedule and fee"
+                          >
+                            <CalendarClock className="h-3.5 w-3.5" />
+                            <span className="hidden xl:inline ml-1.5">Schedule</span>
+                          </Button>
+                        )}
+                        {STAFF_ROLE_VALUES.includes(staff.role) && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openEdit(staff)}
+                              className="h-8 text-xs font-semibold"
+                              title="Edit name, department or role"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline ml-1.5">Edit</span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                statusMutation.mutate({
+                                  id: staff._id,
+                                  status: staff.status === 'disabled' ? 'active' : 'disabled',
+                                })
+                              }
+                              disabled={statusMutation.isPending}
+                              className={`h-8 text-xs font-semibold ${
+                                staff.status === 'disabled'
+                                  ? 'text-primary hover:bg-primary/10 hover:border-primary/40'
+                                  : 'text-destructive hover:bg-destructive/10 hover:border-destructive/40'
+                              }`}
+                              title={staff.status === 'disabled' ? 'Allow sign in again' : 'Block sign in'}
+                            >
+                              {staff.status === 'disabled' ? (
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                              ) : (
+                                <Ban className="h-3.5 w-3.5" />
+                              )}
+                              <span className="hidden xl:inline ml-1.5">
+                                {staff.status === 'disabled' ? 'Enable' : 'Disable'}
+                              </span>
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => resetMutation.mutate(staff._id)}
+                              disabled={resetMutation.isPending}
+                              className="h-8 text-xs font-semibold text-muted-foreground hover:text-foreground"
+                              title="Generate and email a temporary password"
+                            >
+                              <KeyRound className="h-3.5 w-3.5" />
+                              <span className="hidden xl:inline ml-1.5">Reset</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -308,7 +467,7 @@ export default function StaffManagement() {
         onClose={() => {
           if (!inviteMutation.isPending) setIsInviteOpen(false);
         }}
-        title="Invite New Staff Member"
+        title="Add Staff Member"
         description="Create account credentials for a doctor, nurse, receptionist, or administrative staff member."
         footer={
           <>
@@ -420,6 +579,137 @@ export default function StaffManagement() {
           </div>
 
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(editStaff)}
+        onClose={() => {
+          if (!updateMutation.isPending) setEditStaff(null);
+        }}
+        title="Edit Staff Member"
+        description={editStaff ? `Sign-in email: ${editStaff.email} (email cannot be changed here).` : ''}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditStaff(null)}
+              disabled={updateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="edit-staff-form"
+              disabled={updateMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </>
+        }
+      >
+        {formError && (
+          <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive animate-slide-up font-medium">
+            <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+            <span>{formError}</span>
+          </div>
+        )}
+
+        <form
+          id="edit-staff-form"
+          onSubmit={handleEditSubmit((values) =>
+            updateMutation.mutate({ id: editStaff._id, values })
+          )}
+          className="space-y-4"
+        >
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+              Full Name
+            </label>
+            <Input
+              {...registerEdit('name')}
+              disabled={updateMutation.isPending}
+              className={editErrors.name ? 'border-destructive' : ''}
+            />
+            {editErrors.name && <p className="text-xs text-destructive">{editErrors.name.message}</p>}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                Role
+              </label>
+              <select
+                {...registerEdit('role')}
+                disabled={updateMutation.isPending}
+                className="flex h-10 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {STAFF_ROLE_VALUES.map((roleKey) => (
+                  <option key={roleKey} value={roleKey}>
+                    {ROLE_LABELS[roleKey] || roleKey}
+                  </option>
+                ))}
+              </select>
+              {editErrors.role && <p className="text-xs text-destructive">{editErrors.role.message}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                Department (Optional)
+              </label>
+              <Input placeholder="e.g. Cardiology, OPD" {...registerEdit('department')} disabled={updateMutation.isPending} />
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(resetResult)}
+        onClose={() => setResetResult(null)}
+        title="Password Reset"
+        description={
+          resetResult
+            ? `${resetResult.name || 'This staff member'} must set a new password at the next sign in.`
+            : ''
+        }
+        footer={<Button onClick={() => setResetResult(null)}>Done</Button>}
+      >
+        {resetResult && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-2.5 rounded-lg border border-primary/25 bg-primary/10 p-3 text-xs text-primary font-medium">
+              <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>{resetResult.message}</span>
+            </div>
+
+            {resetResult.tempPassword && (
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
+                  Temporary Password
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-mono text-foreground break-all">
+                    {resetResult.tempPassword}
+                  </code>
+                  <Button type="button" variant="outline" size="sm" onClick={copyTempPassword}>
+                    <Copy className="h-4 w-4 mr-1.5" />
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  This is shown once. Send it to {resetResult.email} and ask them to change it after signing in.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
       {scheduleDoctor && (
