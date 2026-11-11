@@ -33,9 +33,9 @@ CareFlow HMS is designed for hospitals of any size to manage their day-to-day cl
 
 ## Architecture Highlights
 
-- Tenant isolation is enforced automatically at the database layer using an AsyncLocalStorage-based request context combined with a Mongoose plugin, so every query is scoped to the logged-in user's hospital by construction, not something a developer has to remember to add per-query.
-- JWT-based authentication with role and tenant information embedded in the token.
-- A hybrid patient-account model: hospital staff can enable portal access for an existing patient record, or a patient can self-register (matched against existing records by CNIC/phone to prevent duplicates).
+- Tenant isolation is enforced automatically at the database layer using an AsyncLocalStorage-based request context combined with a Mongoose plugin, so every Mongoose query is scoped to the logged-in user's hospital by construction, not something a developer has to remember to add per-query. Aggregations are the one exception (a pipeline can't be filtered after the fact), so the plugin rejects any aggregate that doesn't start with a `$match` on the current `hospitalId`; deliberate cross-tenant jobs must opt out explicitly.
+- JWT-based authentication (1-day tokens, no refresh tokens) with the account, hospital status and trial state re-checked on every authenticated request, so suspending a hospital or disabling a staff member takes effect almost immediately.
+- A hybrid patient-account model: hospital staff can enable portal access for an existing patient record, or a patient can self-register. A self-registration that matches an existing clinical record is never linked automatically, the record's own email must confirm a one-time code first (or front desk links it after checking ID in person).
 
 ## Getting Started
 
