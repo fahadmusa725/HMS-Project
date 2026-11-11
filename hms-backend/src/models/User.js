@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     // Global unique email (not per-hospital) - keeps login unambiguous:
     // one email always maps to exactly one account/hospital.
     email: { type: String, required: true, trim: true, lowercase: true, unique: true },
-    password: { type: String, required: true, minlength: 6, select: false },
+    password: { type: String, required: true, minlength: 8, select: false },
     role: { type: String, enum: ROLES, required: true },
     department: { type: String },
     status: {
@@ -28,6 +28,21 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "invited", "disabled"],
       default: "invited",
     },
+    // Set for admin-generated / portal temporary passwords: the user may log in
+    // but cannot use any other endpoint until they choose their own password.
+    mustChangePassword: { type: Boolean, default: false },
+    // Brute-force protection. Counted per account, reset on a successful login.
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date },
+    // Forgot-password token: only its SHA-256 hash is stored, single use.
+    resetTokenHash: { type: String, index: true, select: false },
+    resetTokenExpiresAt: { type: Date, select: false },
+    // Patient self-signup matched an existing clinical record: remember which one
+    // and require the emailed one-time code before linking it to this account.
+    pendingPatientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
+    claimCodeHash: { type: String, select: false },
+    claimCodeExpiresAt: { type: Date, select: false },
+    claimCodeAttempts: { type: Number, default: 0, select: false },
   },
   { timestamps: true }
 );

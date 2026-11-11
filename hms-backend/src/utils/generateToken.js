@@ -13,7 +13,10 @@ function generateToken(user) {
       hospitalId: user.hospitalId ? user.hospitalId.toString() : null,
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+    // No refresh-token system: this one token IS the session. 1 day keeps a full
+    // shift (including overnight) usable while keeping a stolen token short-lived.
+    // Account status is re-checked from the database on every request anyway.
+    { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
   );
 }
 

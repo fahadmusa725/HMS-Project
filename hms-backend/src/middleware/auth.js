@@ -1,13 +1,21 @@
 const jwt = require("jsonwebtoken");
 const { runWithTenantContext } = require("../utils/tenantContext");
+const { getRequestIdentity } = require("../utils/accountAccess");
+
+// A user with a temporary password may only read their profile or set a new
+// password - everything else is blocked until they do.
+const PASSWORD_CHANGE_ALLOWED = new Set(["/api/auth/me", "/api/auth/change-password"]);
 
 /**
- * protect() - verifies the JWT, then wraps the rest of the request
- * pipeline in a tenant context carrying { hospitalId, role, userId }.
- * Every downstream model query automatically gets scoped via
- * tenantPlugin reading this context - no manual hospitalId passing.
+ * protect() - verifies the JWT, re-checks the account against the database
+ * (user status, hospital suspension, expired trial - cached, see
+ * accountAccess.js), then wraps the rest of the request pipeline in a tenant
+ * context carrying { hospitalId, role, userId }. Every downstream model query
+ * automatically gets scoped via tenantPlugin reading this context - no manual
+ * hospitalId passing. Role and hospitalId come from the database record, not
+ * the token, so a role change takes effect without re-issuing tokens.
  */
-function protect(req, res, next) {
+async function protect(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -16,13 +24,35 @@ function protect(req, res, next) {
 
   const token = authHeader.split(" ")[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid or expired token." });
+  }
+
+  try {
+    const identity = await getRequestIdentity(decoded.userId);
+
+    if (!identity) {
+      return res.status(401).json({ message: "Invalid or expired token." });
+    }
+
+    if (identity.block) {
+      return res.status(403).json(identity.block);
+    }
+
+    if (identity.mustChangePassword && !PASSWORD_CHANGE_ALLOWED.has(req.baseUrl + req.path)) {
+      return res.status(403).json({
+        code: "PASSWORD_CHANGE_REQUIRED",
+        message: "Please set your own password before continuing.",
+      });
+    }
 
     req.user = {
-      userId: decoded.userId,
-      role: decoded.role,
-      hospitalId: decoded.hospitalId,
+      userId: identity.userId,
+      role: identity.role,
+      hospitalId: identity.hospitalId,
     };
 
     // Everything from here to the end of the request runs inside
@@ -32,11 +62,12 @@ function protect(req, res, next) {
     // (see tenantPlugin.js `skipTenantScope` option) for admin-only
     // cross-tenant endpoints like listing all hospitals.
     runWithTenantContext(
-      { hospitalId: decoded.hospitalId, role: decoded.role, userId: decoded.userId },
+      { hospitalId: identity.hospitalId, role: identity.role, userId: identity.userId },
       () => next()
     );
   } catch (err) {
-    return res.status(401).json({ message: "Invalid or expired token." });
+    console.error("[Auth] Failed to verify account status:", err);
+    return res.status(500).json({ message: "Server error while verifying your session." });
   }
 }
 

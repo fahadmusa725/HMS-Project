@@ -35,6 +35,9 @@ async function createHospital(req, res) {
         message: "hospitalName, adminName, adminEmail and adminPassword are required.",
       });
     }
+    if (String(adminPassword).length < 8) {
+      return res.status(400).json({ message: "Admin password must be at least 8 characters." });
+    }
 
     const days = Number.isFinite(trialDays) ? trialDays : 14; // sensible default, fully overridable
     const now = new Date();
@@ -61,6 +64,8 @@ async function createHospital(req, res) {
           password: adminPassword,
           role: "hospital_admin",
           status: "active",
+          // Chosen by the platform admin, so the hospital admin must replace it at first login.
+          mustChangePassword: true,
           hospitalId: hospital._id,
         })
     );

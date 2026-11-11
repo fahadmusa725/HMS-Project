@@ -1,7 +1,9 @@
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
 
+const validateEnv = require("./config/env");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const superAdminRoutes = require("./routes/superAdminRoutes");
@@ -20,18 +22,28 @@ const publicRoutes = require("./routes/publicRoutes");
 const doctorScheduleRoutes = require("./routes/doctorScheduleRoutes");
 const cronRoutes = require("./routes/cronRoutes");
 
+// Refuse to boot with a missing MONGO_URI/JWT_SECRET/CLIENT_URL or a weak
+// JWT_SECRET, instead of failing confusingly on the first request.
+validateEnv();
+
 const app = express();
+
+// The API only ever returns JSON/files, so helmet's default CSP is pointless
+// here (and we don't want to advertise one); the remaining defaults - nosniff,
+// HSTS, no-referrer, frameguard - are correct for this app and cost nothing.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // CLIENT_URL may list several origins separated by commas (e.g. local dev + the Vercel URL).
 // Trailing slashes are ignored so "https://x.vercel.app/" and "https://x.vercel.app" both match.
-const allowedOrigins = (process.env.CLIENT_URL || "")
-  .split(",")
+// Required above, and there is deliberately NO "*" fallback - an unlisted origin simply gets
+// no CORS headers and the browser blocks it.
+const allowedOrigins = process.env.CLIENT_URL.split(",")
   .map((o) => o.trim().replace(/\/+$/, ""))
   .filter(Boolean);
 
 app.use(
   cors({
-    origin: allowedOrigins.length > 0 ? allowedOrigins : "*",
+    origin: allowedOrigins,
     credentials: true,
     // Cross-origin JS can't read Content-Disposition unless it's explicitly exposed - needed so
     // file downloads (data export, token slips) can pick up the server's suggested filename.
@@ -79,7 +91,11 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status || 500).json({ message: err.message || "Server error." });
+  const status = err.status || 500;
+  // Never hand out internal error text (stack-adjacent driver/mongoose messages)
+  // for server errors in production - only 4xx messages are meant for clients.
+  const message = status >= 500 && process.env.NODE_ENV === "production" ? "Server error." : err.message || "Server error.";
+  res.status(status).json({ message });
 });
 
 module.exports = app;
