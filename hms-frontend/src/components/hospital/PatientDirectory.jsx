@@ -25,6 +25,7 @@ import {
   FlaskConical,
   KeyRound,
   ShieldCheck,
+  Link2,
 } from 'lucide-react';
 import { formatCurrency, doctorName } from '@/lib/utils';
 import api from '@/lib/api';
@@ -235,6 +236,8 @@ export default function PatientDirectory() {
   const [isOrderLabOpen, setIsOrderLabOpen] = useState(false);
   const [selectedLabTestIds, setSelectedLabTestIds] = useState([]);
   const [labSearchQuery, setLabSearchQuery] = useState('');
+  const [isLinkAccountOpen, setIsLinkAccountOpen] = useState(false);
+  const [linkAccountEmail, setLinkAccountEmail] = useState('');
 
   const {
     register,
@@ -384,11 +387,36 @@ export default function PatientDirectory() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['hospital-patients'] });
       setSelectedPatient((prev) => (prev ? { ...prev, userId: 'linked' } : prev));
-      toast.success(data.message || 'Portal access enabled and credentials emailed to the patient.');
+      if (data.tempPassword) {
+        // No SMTP configured on this deployment - the front desk has to hand the password over.
+        toast.warning(data.message, {
+          description: `Temporary password: ${data.tempPassword}`,
+          duration: 20000,
+        });
+      } else {
+        toast.success(data.message || 'Portal access enabled and credentials emailed to the patient.');
+      }
     },
     onError: (err) => {
       const message = err.response?.data?.message || 'Failed to enable portal access.';
       toast.error(message);
+    },
+  });
+
+  const linkAccountMutation = useMutation({
+    mutationFn: async ({ patientId, email }) => {
+      const res = await api.post(`/api/patients/${patientId}/link-account`, { email });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-patients'] });
+      setSelectedPatient((prev) => (prev ? { ...prev, userId: 'linked' } : prev));
+      setIsLinkAccountOpen(false);
+      setLinkAccountEmail('');
+      toast.success(data.message || 'Portal account linked to this record.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Failed to link the portal account.');
     },
   });
 
@@ -958,6 +986,20 @@ export default function PatientDirectory() {
                     )}
                   </Button>
                 )}
+                {canEnablePortal && !selectedPatient.userId && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setLinkAccountEmail('');
+                      setIsLinkAccountOpen(true);
+                    }}
+                    className="h-9 text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1.5"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    Link Existing Account
+                  </Button>
+                )}
                 {canOrderLab && (
                   <Button
                     type="button"
@@ -1253,6 +1295,63 @@ export default function PatientDirectory() {
             )}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={isLinkAccountOpen}
+        onClose={() => setIsLinkAccountOpen(false)}
+        title="Link an Existing Portal Account"
+        description={
+          selectedPatient
+            ? `Attach a patient portal account to ${selectedPatient.name} (MRN: ${selectedPatient.mrn}).`
+            : ''
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsLinkAccountOpen(false)}
+              disabled={linkAccountMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!linkAccountEmail.trim()) {
+                  toast.error('Enter the email of the patient portal account.');
+                  return;
+                }
+                linkAccountMutation.mutate({ patientId: selectedPatient._id, email: linkAccountEmail.trim() });
+              }}
+              disabled={linkAccountMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {linkAccountMutation.isPending ? 'Linking...' : 'Link Account'}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Use this when the patient already signed up for the portal but this record stayed unlinked, for example
+            when the record had no email on file. Verify the person in front of you first - you are granting access to
+            their medical history.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+              Portal Account Email
+            </label>
+            <Input
+              type="email"
+              value={linkAccountEmail}
+              onChange={(e) => setLinkAccountEmail(e.target.value)}
+              placeholder="patient@example.com"
+              disabled={linkAccountMutation.isPending}
+            />
+          </div>
+        </div>
       </Modal>
 
       <Modal

@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Hospital = require("../models/Hospital");
 const Patient = require("../models/Patient");
 const User = require("../models/User");
@@ -5,11 +6,17 @@ const { getNextSequence } = require("../models/Counter");
 const generateToken = require("../utils/generateToken");
 const { runWithTenantContext } = require("../utils/tenantContext");
 const { sendEmail } = require("../utils/mailer");
+const { escapeHtml, generateNumericCode, hashToken } = require("../utils/security");
 
-/** Public: list of hospitals a patient can sign up under (active or on trial - not suspended). */
+const MIN_PASSWORD_LENGTH = 8;
+const CLAIM_CODE_TTL_MS = 15 * 60 * 1000;
+
+/** Public: list of hospitals a patient can sign up under (active, or on a trial that hasn't ended). */
 async function listSignupHospitals(req, res) {
   try {
-    const hospitals = await Hospital.find({ status: { $in: ["active", "trial"] } })
+    const hospitals = await Hospital.find({
+      $or: [{ status: "active" }, { status: "trial", trialEndDate: { $gt: new Date() } }],
+    })
       .select("name")
       .sort({ name: 1 });
     res.json(hospitals);
@@ -26,17 +33,37 @@ function buildMrnPrefix(hospitalName) {
 }
 
 /**
+ * Matches a stored phone number or CNIC regardless of how staff typed it
+ * ("0300-1234567", "0300 1234567", "+92 300 1234567", "35201-1234567-1").
+ * Compares only the digits, ignoring every separator, so normalising BEFORE
+ * matching doesn't require rewriting existing records.
+ */
+function flexibleDigitsRegex(value) {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length < 7) return null;
+
+  // Drop the country code / trunk prefix; the regex makes them optional anyway.
+  const significant = digits.replace(/^92(?=\d{10}$)/, "").replace(/^0/, "");
+  if (significant.length < 7) return null;
+
+  const body = significant.split("").join("\\D?");
+  return new RegExp(`^(?:\\+?92|0)?${body}$`);
+}
+
+/**
  * Public patient self-signup. Runs inside a manually-established tenant
  * context (runWithTenantContext) since there's no logged-in user yet to
  * derive it from a JWT - this is the same pattern used when the Super
  * Admin creates a hospital's first admin account.
  *
- * Matching logic to avoid duplicate clinical records:
- *   1. Try to match an existing Patient in this hospital by CNIC.
- *   2. If no CNIC match, try matching by phone number.
- *   3. If still no match, create a brand new Patient record.
- * If a match IS found but it already has a linked account, signup is
- * rejected (they should log in or use "forgot password" instead).
+ * A matching existing Patient record is NEVER linked automatically: knowing
+ * someone's CNIC or phone number is not proof of owning their medical record.
+ *   - No matching record: a brand new Patient is created and linked.
+ *   - Matching record, no email on file: account is created unlinked; front
+ *     desk verifies identity and links it (POST /api/patients/:id/link-account).
+ *   - Matching record with an email: a one-time code is emailed to the address
+ *     already on that record; the patient links the record by entering it
+ *     (POST /api/patients/me/claim). No access before that.
  */
 async function patientSignup(req, res) {
   try {
@@ -45,21 +72,40 @@ async function patientSignup(req, res) {
     if (!hospitalId || !name || !email || !password) {
       return res.status(400).json({ message: "hospitalId, name, email and password are required." });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+      return res.status(400).json({ message: "Please select a valid hospital." });
+    }
+    if (String(password).length < MIN_PASSWORD_LENGTH) {
+      return res.status(400).json({ message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` });
     }
 
     const hospital = await Hospital.findById(hospitalId);
     if (!hospital) return res.status(404).json({ message: "Selected hospital not found." });
+    if (hospital.status === "suspended") {
+      return res.status(403).json({
+        code: "HOSPITAL_SUSPENDED",
+        message: "This hospital's account is suspended. Contact the platform administrator.",
+      });
+    }
+    if (hospital.status === "trial" && hospital.trialEndDate && new Date() > hospital.trialEndDate) {
+      return res.status(403).json({
+        code: "TRIAL_EXPIRED",
+        message: "This hospital's free trial has expired. Contact the platform administrator.",
+      });
+    }
 
     const result = await runWithTenantContext({ hospitalId }, async () => {
       let patient = null;
 
-      if (cnic) {
-        patient = await Patient.findOne({ cnic });
+      const cnicRegex = flexibleDigitsRegex(cnic);
+      if (cnicRegex) {
+        patient = await Patient.findOne({ cnic: cnicRegex }).sort({ createdAt: 1 });
       }
-      if (!patient && phone) {
-        patient = await Patient.findOne({ phone });
+      if (!patient) {
+        const phoneRegex = flexibleDigitsRegex(phone);
+        if (phoneRegex) {
+          patient = await Patient.findOne({ phone: phoneRegex }).sort({ createdAt: 1 });
+        }
       }
 
       if (patient && patient.userId) {
@@ -68,28 +114,67 @@ async function patientSignup(req, res) {
 
       const user = await User.create({ name, email, password, role: "patient", status: "active" });
 
-      if (patient) {
-        // Link the new account to the existing clinical record. Fill in
-        // any fields the existing record is missing, but never overwrite
-        // what staff already verified and entered.
-        patient.userId = user._id;
-        if (email && !patient.email) patient.email = email;
-        if (dob && !patient.dob) patient.dob = dob;
-        if (gender && !patient.gender) patient.gender = gender;
-        if (address && !patient.address) patient.address = address;
-        await patient.save();
-      } else {
-        const seq = await getNextSequence(hospitalId, "patient_mrn");
-        const mrn = `${buildMrnPrefix(hospital.name)}-${String(seq).padStart(6, "0")}`;
-        patient = await Patient.create({ mrn, name, phone, cnic, email, dob, gender, address, userId: user._id });
-      }
+      try {
+        if (!patient) {
+          const seq = await getNextSequence(hospitalId, "patient_mrn");
+          const mrn = `${buildMrnPrefix(hospital.name)}-${String(seq).padStart(6, "0")}`;
+          patient = await Patient.create({
+            mrn,
+            name,
+            phone,
+            cnic,
+            email,
+            dob,
+            gender,
+            address,
+            userId: user._id,
+          });
+          return { user, patient, linked: true };
+        }
 
-      return { user, patient };
+        // Existing clinical record: verify ownership before linking anything.
+        if (patient.email) {
+          const claimCode = generateNumericCode();
+          await User.updateOne(
+            { _id: user._id },
+            {
+              $set: {
+                pendingPatientId: patient._id,
+                claimCodeHash: hashToken(claimCode),
+                claimCodeExpiresAt: new Date(Date.now() + CLAIM_CODE_TTL_MS),
+                claimCodeAttempts: 0,
+              },
+            },
+            { skipTenantScope: true }
+          );
+          return { user, patient, linked: false, verificationRequired: true, claimCode };
+        }
+
+        // Record has no email on file - never guess ownership; front desk links it.
+        return { user, patient, linked: false, verificationRequired: false };
+      } catch (err) {
+        // Never leave a login account behind when the Patient write failed.
+        await User.deleteOne({ _id: user._id }, { skipTenantScope: true }).catch(() => {});
+        throw err;
+      }
     });
 
     if (result.conflict) {
       return res.status(409).json({
         message: "An account already exists for this patient. Please log in instead, or use 'forgot password'.",
+      });
+    }
+
+    if (result.verificationRequired) {
+      await sendEmail({
+        to: result.patient.email,
+        subject: "Verify your patient record on CareFlow HMS",
+        html: `
+          <p>Someone signed up for portal access using details that match the patient record held by ${escapeHtml(hospital.name)}.</p>
+          <p>If that was you, enter this code in the patient portal to link the record to your new account:</p>
+          <p style="font-size: 22px; font-weight: bold; letter-spacing: 4px;">${escapeHtml(result.claimCode)}</p>
+          <p>The code expires in 15 minutes. If this wasn't you, ignore this email - nobody gets access to this record without the code.</p>
+        `,
       });
     }
 
@@ -103,7 +188,15 @@ async function patientSignup(req, res) {
         role: result.user.role,
         hospitalId,
         hospitalName: hospital.name,
+        mustChangePassword: false,
       },
+      recordLinked: result.linked,
+      verificationRequired: Boolean(result.verificationRequired),
+      message: result.verificationRequired
+        ? "Account created. Enter the verification code emailed to the address on your hospital record to link it."
+        : result.linked
+          ? "Account created."
+          : "Account created. Your front desk will link your existing hospital record after verifying your identity.",
     });
   } catch (err) {
     if (err.code === 11000) {
@@ -112,16 +205,6 @@ async function patientSignup(req, res) {
     console.error(err);
     res.status(500).json({ message: "Server error during signup." });
   }
-}
-
-/** Escapes text dropped into an HTML email body - this is public, unauthenticated input. */
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
 }
 
 /**

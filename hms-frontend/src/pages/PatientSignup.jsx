@@ -35,7 +35,7 @@ const signupSchema = z.object({
   hospitalId: z.string().min(1, 'Please select your hospital'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   phone: z.string().optional(),
   cnic: z.string().optional(),
   dob: z.string().optional(),
@@ -105,7 +105,7 @@ export default function PatientSignup() {
 
     if (result.success) {
       toast.success('Account created successfully!', {
-        description: 'Welcome to your patient portal.',
+        description: result.message || 'Welcome to your patient portal.',
       });
       navigate('/portal', { replace: true });
     }
@@ -137,7 +137,7 @@ export default function PatientSignup() {
           <CardHeader className="space-y-1 text-center pb-5">
             <CardTitle className="text-xl font-bold text-foreground">Self Patient Registration</CardTitle>
             <CardDescription className="text-muted-foreground">
-              Enter your details to register or link with your existing hospital record
+              Enter your details to create your patient portal account
             </CardDescription>
           </CardHeader>
 
@@ -263,7 +263,9 @@ export default function PatientSignup() {
               <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground">
                 <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                 <span>
-                  <strong>Tip:</strong> Providing your CNIC helps link your account directly to any existing medical record already on file at this hospital, avoiding duplicate records.
+                  <strong>Tip:</strong> If the hospital already has a record under this CNIC or phone, we send a
+                  verification code to the email on that record. Entering the code in your portal links the history to
+                  your new account - nobody gets access just by typing someone else's numbers.
                 </span>
               </div>
 
@@ -361,7 +363,7 @@ export default function PatientSignup() {
                   </div>
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="At least 6 characters"
+                    placeholder="At least 8 characters"
                     className={`pl-10 pr-10 h-11 bg-card border-border text-foreground ${
                       errors.password ? 'border-destructive focus-visible:ring-destructive' : ''
                     }`}
@@ -412,7 +414,7 @@ export default function PatientSignup() {
           <CardFooter className="flex justify-center border-t border-border pt-4 pb-4 bg-muted/20 rounded-b-2xl">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <span>HIPAA Compliant &amp; End-to-End Encrypted</span>
+              <span>Role-based access control</span>
             </div>
           </CardFooter>
         </Card>

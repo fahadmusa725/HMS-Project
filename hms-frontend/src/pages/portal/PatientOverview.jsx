@@ -85,6 +85,78 @@ function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/1
   );
 }
 
+function ClaimRecordCard({ onLinked }) {
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(null);
+
+  const mutation = useMutation({
+    mutationFn: (value) => api.post('/api/patients/me/claim', { code: value }),
+    onSuccess: (res) => {
+      toast.success(res.data.message || 'Your hospital record is now linked.');
+      onLinked();
+    },
+    onError: (err) => {
+      setError(err.response?.data?.message || 'Could not verify the code. Please try again.');
+    },
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError(null);
+    mutation.mutate(code.trim());
+  };
+
+  return (
+    <Card className="p-6 sm:p-8 max-w-xl mx-auto border-primary/20">
+      <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+        <Shield className="h-6 w-6" />
+      </div>
+      <h3 className="text-base font-bold text-foreground text-center">Link your hospital record</h3>
+      <p className="text-sm text-muted-foreground mt-1.5 mb-5 text-center">
+        This account is not linked to a patient record yet. If the hospital already had your CNIC or phone on file, we
+        emailed a 6-digit code to the address on that record. Enter it to link your history.
+      </p>
+
+      {error && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-xs text-destructive font-medium">
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+        <Input
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="6-digit code"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          disabled={mutation.isPending}
+          className="h-11 text-center tracking-[0.4em] font-mono"
+        />
+        <Button
+          type="submit"
+          disabled={mutation.isPending || code.length !== 6}
+          className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold sm:min-w-[140px]"
+        >
+          {mutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Verifying...
+            </>
+          ) : (
+            'Verify & Link'
+          )}
+        </Button>
+      </form>
+
+      <p className="text-xs text-muted-foreground mt-4 text-center">
+        No email on file, or the code expired? Ask the front desk to link your record in person.
+      </p>
+    </Card>
+  );
+}
+
 function EditProfileModal({ patient, onClose }) {
   const queryClient = useQueryClient();
 
@@ -373,16 +445,20 @@ export default function PatientOverview() {
           </div>
         </div>
       ) : isError ? (
-        <Card className="p-8 text-center border-destructive/20 bg-destructive/5">
-          <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
-          <h3 className="text-base font-bold text-foreground">Unable to load patient profile</h3>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">
-            {error?.response?.data?.message || 'There was an issue fetching your patient record.'}
-          </p>
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            Try Again
-          </Button>
-        </Card>
+        error?.response?.status === 404 ? (
+          <ClaimRecordCard onLinked={() => refetch()} />
+        ) : (
+          <Card className="p-8 text-center border-destructive/20 bg-destructive/5">
+            <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
+            <h3 className="text-base font-bold text-foreground">Unable to load patient profile</h3>
+            <p className="text-sm text-muted-foreground mt-1 mb-4">
+              {error?.response?.data?.message || 'There was an issue fetching your patient record.'}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              Try Again
+            </Button>
+          </Card>
+        )
       ) : (
         <>
           <Card className="border-border bg-card shadow-soft overflow-hidden">

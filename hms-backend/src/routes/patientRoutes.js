@@ -8,6 +8,8 @@ const {
   getPatientById,
   updatePatient,
   enablePortalAccess,
+  claimPatientRecord,
+  linkPortalAccount,
   getMyPatientRecord,
   updateMyProfile,
 } = require("../controllers/patientController");
@@ -23,11 +25,13 @@ const canManagePatients = allowRoles("hospital_admin", "receptionist", "doctor",
 // Must come before "/:id" so it isn't swallowed by the param route.
 router.get("/me", allowRoles("patient"), getMyPatientRecord);
 router.patch("/me", allowRoles("patient"), updateMyProfile);
+router.post("/me/claim", allowRoles("patient"), claimPatientRecord);
 
 router.post("/", canManagePatients, registerPatient);
 router.get("/", canManagePatients, listPatients);
 router.get("/:id", canManagePatients, getPatientById);
 router.patch("/:id", canManagePatients, updatePatient);
 router.post("/:id/enable-portal", allowRoles("hospital_admin", "receptionist"), enablePortalAccess);
+router.post("/:id/link-account", allowRoles("hospital_admin", "receptionist"), linkPortalAccount);
 
 module.exports = router;
