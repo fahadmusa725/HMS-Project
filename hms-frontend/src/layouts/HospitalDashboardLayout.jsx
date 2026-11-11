@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   LogOut,
   Building2,
@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Menu,
   X,
+  KeyRound,
 } from 'lucide-react';
 
 export default function HospitalDashboardLayout() {
@@ -129,6 +130,17 @@ export default function HospitalDashboardLayout() {
             <UserIdentityBlock />
             <div className="h-6 w-px bg-border mx-1" />
             <ThemeToggle />
+            <Link
+              to="/change-password"
+              className={buttonVariants({
+                variant: 'outline',
+                size: 'sm',
+                className: 'flex items-center gap-1.5 text-muted-foreground',
+              })}
+            >
+              <KeyRound className="h-4 w-4" />
+              <span className="hidden sm:inline">Password</span>
+            </Link>
             <Button
               variant="outline"
               size="sm"

@@ -31,7 +31,7 @@ const createHospitalSchema = z.object({
   hospitalName: z.string().min(2, 'Hospital name must be at least 2 characters'),
   adminName: z.string().min(2, 'Admin name must be at least 2 characters'),
   adminEmail: z.string().email('Please enter a valid email address'),
-  adminPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  adminPassword: z.string().min(8, 'Password must be at least 8 characters'),
   trialDays: z.coerce.number().min(0, 'Trial days cannot be negative').default(14),
 });
 

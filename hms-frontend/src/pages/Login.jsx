@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,6 +28,16 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, isLoading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  // Seconds left on a server-side lockout. Purely a UI hint: the API keeps
+  // refusing logins until lockUntil passes, whether or not this is running.
+  const [lockSeconds, setLockSeconds] = useState(0);
+  // Set by the API interceptor when the server ends a session (account disabled,
+  // hospital suspended, trial expired). Read once, then cleared so it doesn't stick around.
+  const [sessionMessage] = useState(() => {
+    const stored = sessionStorage.getItem('careflow-auth-error');
+    if (stored) sessionStorage.removeItem('careflow-auth-error');
+    return stored;
+  });
 
   const {
     register,
@@ -41,11 +51,23 @@ export default function Login() {
     },
   });
 
+  useEffect(() => {
+    if (lockSeconds <= 0) return undefined;
+    const timer = setTimeout(() => setLockSeconds((seconds) => Math.max(seconds - 1, 0)), 1000);
+    return () => clearTimeout(timer);
+  }, [lockSeconds]);
+
+  const lockLabel = `${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, '0')}`;
+
   const onSubmit = async (data) => {
     clearError();
     const result = await login(data.email, data.password);
 
     if (result.success && result.user) {
+      if (result.user.mustChangePassword) {
+        navigate('/change-password', { replace: true });
+        return;
+      }
       const { role } = result.user;
       if (role === 'platform_super_admin') {
         navigate('/super-admin/dashboard', { replace: true });
@@ -54,6 +76,8 @@ export default function Login() {
       } else {
         navigate('/dashboard', { replace: true });
       }
+    } else if (result.retryAfter > 0) {
+      setLockSeconds(result.retryAfter);
     }
   };
 
@@ -88,10 +112,27 @@ export default function Login() {
           </CardHeader>
 
           <CardContent>
+            {sessionMessage && (
+              <div className="mb-5 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-sm text-warning-foreground animate-slide-up">
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="flex-1 font-medium">{sessionMessage}</div>
+              </div>
+            )}
+
             {error && (
               <div className="mb-5 flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-3.5 text-sm text-destructive animate-slide-up">
                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
-                <div className="flex-1 font-medium">{error}</div>
+                <div className="flex-1 font-medium">
+                  {error}
+                  {lockSeconds > 0 && (
+                    <div className="mt-1.5 text-xs font-semibold text-destructive/90">
+                      Retry in {lockLabel}{' '}
+                      <Link to="/forgot-password" className="underline font-medium">
+                        Forgot password?
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -125,6 +166,9 @@ export default function Login() {
                   <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Password
                   </label>
+                  <Link to="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                    Forgot password?
+                  </Link>
                 </div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted-foreground">
@@ -157,9 +201,11 @@ export default function Login() {
               <Button
                 type="submit"
                 className="w-full h-11 text-base font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all duration-200 mt-2"
-                disabled={isLoading}
+                disabled={isLoading || lockSeconds > 0}
               >
-                {isLoading ? (
+                {lockSeconds > 0 ? (
+                  `Try again in ${lockLabel}`
+                ) : isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Signing in...
@@ -181,7 +227,7 @@ export default function Login() {
           <CardFooter className="flex justify-center border-t border-border pt-4 pb-4 bg-muted/20 rounded-b-2xl">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              <span>HIPAA Compliant &amp; End-to-End Encrypted</span>
+              <span>Role-based access control</span>
             </div>
           </CardFooter>
         </Card>

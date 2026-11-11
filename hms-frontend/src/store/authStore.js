@@ -35,6 +35,7 @@ export const useAuthStore = create(
             err.response?.data?.message ||
             err.message ||
             'Authentication failed. Please check your credentials.';
+          const retryAfter = err.response?.data?.retryAfter ?? null;
           set({
             token: null,
             user: null,
@@ -42,7 +43,9 @@ export const useAuthStore = create(
             isLoading: false,
             error: errorMessage,
           });
-          return { success: false, error: errorMessage };
+          // retryAfter is set only when the server locked the account (429), so the
+          // login form can count down instead of letting the user keep hammering it.
+          return { success: false, error: errorMessage, retryAfter };
         }
       },
 
@@ -50,7 +53,7 @@ export const useAuthStore = create(
         set({ isLoading: true, error: null });
         try {
           const response = await axios.post(`${API_BASE_URL}/api/public/patient-signup`, signupData);
-          const { token, user } = response.data;
+          const { token, user, verificationRequired, recordLinked, message } = response.data;
           set({
             token,
             user,
@@ -58,7 +61,7 @@ export const useAuthStore = create(
             isLoading: false,
             error: null,
           });
-          return { success: true, user, token };
+          return { success: true, user, token, verificationRequired, recordLinked, message };
         } catch (err) {
           const errorMessage =
             err.response?.data?.message ||
@@ -98,7 +101,13 @@ export const useAuthStore = create(
           set({ user, isAuthenticated: true });
           return user;
         } catch (err) {
-          if (err.response?.status === 401) {
+          const status = err.response?.status;
+          const code = err.response?.data?.code;
+          const blocked = status === 403 && ['ACCOUNT_DISABLED', 'HOSPITAL_SUSPENDED', 'TRIAL_EXPIRED'].includes(code);
+          if (blocked && err.response.data.message) {
+            sessionStorage.setItem('careflow-auth-error', err.response.data.message);
+          }
+          if (status === 401 || blocked) {
             get().logout();
           }
           return null;

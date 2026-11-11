@@ -10,6 +10,12 @@ export function ProtectedRoute({ allowedRoles = [], children }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Forced password change (admin-generated / temporary password) - the API blocks
+  // everything else anyway, so send them straight to the one page that works.
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
+
   if (allowedRoles.length > 0 && user && !allowedRoles.includes(user.role)) {
     if (user.role === 'platform_super_admin') {
       return <Navigate to="/super-admin/dashboard" replace />;

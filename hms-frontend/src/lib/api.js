@@ -23,17 +23,38 @@ api.interceptors.request.use(
   }
 );
 
+const BLOCKED_SESSION_CODES = ['ACCOUNT_DISABLED', 'HOSPITAL_SUSPENDED', 'TRIAL_EXPIRED'];
+
 api.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
-    if (error.response && error.response.status === 401) {
+    const status = error.response?.status;
+    const code = error.response?.data?.code;
+
+    if (status === 401) {
       useAuthStore.getState().logout();
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+    } else if (status === 403 && code === 'PASSWORD_CHANGE_REQUIRED') {
+      // Keep the session, just move the user to the one page the API still allows.
+      if (window.location.pathname !== '/change-password') {
+        window.location.href = '/change-password';
+      }
+    } else if (status === 403 && BLOCKED_SESSION_CODES.includes(code)) {
+      // Hospital suspended / trial expired / account disabled: end the session and
+      // carry the server's explanation over to the login screen.
+      useAuthStore.getState().logout();
+      if (error.response.data.message) {
+        sessionStorage.setItem('careflow-auth-error', error.response.data.message);
+      }
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -4,6 +4,9 @@ import { useAuthStore } from '@/store/authStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
+import ChangePassword from '@/pages/ChangePassword';
 import PatientSignup from '@/pages/PatientSignup';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 
@@ -75,6 +78,19 @@ export function AppRoutes() {
         path="/signup"
         element={
           isAuthenticated ? getHomeRedirect() : <PatientSignup />
+        }
+      />
+
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      <Route path="/reset-password" element={<ResetPassword />} />
+
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute allowedRoles={[]}>
+            <ChangePassword />
+          </ProtectedRoute>
         }
       />
 
