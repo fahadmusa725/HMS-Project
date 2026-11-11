@@ -1,6 +1,7 @@
 const Hospital = require("../models/Hospital");
 const User = require("../models/User");
 const { sendEmail } = require("../utils/mailer");
+const { escapeHtml } = require("../utils/security");
 
 const REMINDER_WINDOW_DAYS = 3;
 
@@ -29,7 +30,7 @@ async function checkTrialsEndingSoon() {
   });
 
   const listHtml = endingSoon
-    .map((h) => `<li>${h.name}, trial ends ${h.trialEndDate.toDateString()}</li>`)
+    .map((h) => `<li>${escapeHtml(h.name)}, trial ends ${escapeHtml(h.trialEndDate.toDateString())}</li>`)
     .join("");
 
   const subject = `${endingSoon.length} hospital trial(s) ending within ${REMINDER_WINDOW_DAYS} days`;

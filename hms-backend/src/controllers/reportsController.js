@@ -13,12 +13,11 @@ const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { hospitalDate } = require("../utils/scheduleSlots");
 
 /**
- * CRITICAL: Mongoose's tenantPlugin hooks into Query middleware (find,
- * findOne, etc.) - it does NOT hook into .aggregate(), which uses a
- * completely different code path. Every aggregation pipeline in this file
- * therefore starts with an EXPLICIT $match on hospitalId, built from the
- * current tenant context, so a report can never silently leak another
- * hospital's data. Never remove this $match stage from any pipeline below.
+ * tenantPlugin cannot inject a filter into an aggregation pipeline - it can only
+ * refuse a pipeline whose first stage is not a $match on the current hospitalId.
+ * Every pipeline in this file therefore starts with an EXPLICIT $match on
+ * hospitalId, built from the current tenant context, so a report can never leak
+ * another hospital's data. Never remove this $match stage from any pipeline below.
  */
 function tenantMatch() {
   const hospitalId = getCurrentHospitalId();

@@ -2,6 +2,7 @@ const Medicine = require("../models/Medicine");
 const PharmacySale = require("../models/PharmacySale");
 const User = require("../models/User");
 const { sendEmail } = require("../utils/mailer");
+const { escapeHtml } = require("../utils/security");
 
 // How many times deductFefo() will re-read and re-plan a dispense if a concurrent request
 // touched the exact same batch(es) between the read and the atomic write.
@@ -81,11 +82,16 @@ async function checkNearExpiryAlerts() {
       if (expiringBatches.length === 0) continue;
 
       const rows = expiringBatches
-        .map((b) => `<li>${b.batchNumber || "Unlabeled batch"} - ${b.quantity} units, expires ${b.expiryDate.toDateString()}</li>`)
+        .map(
+          (b) =>
+            `<li>${escapeHtml(b.batchNumber || "Unlabeled batch")} - ${escapeHtml(b.quantity)} units, expires ${escapeHtml(
+              b.expiryDate.toDateString()
+            )}</li>`
+        )
         .join("");
       const subject = `Near-Expiry Alert: ${medicine.name}`;
       const html = `
-        <p><strong>${medicine.name}</strong> has batches expiring within ${NEAR_EXPIRY_DAYS} days:</p>
+        <p><strong>${escapeHtml(medicine.name)}</strong> has batches expiring within ${NEAR_EXPIRY_DAYS} days:</p>
         <ul>${rows}</ul>
         <p>Please prioritize dispensing these batches or arrange a return.</p>
       `;
@@ -191,8 +197,8 @@ async function sendLowStockAlert(medicine) {
 
     const subject = `Low Stock Alert: ${medicine.name}`;
     const html = `
-      <p><strong>${medicine.name}</strong> has dropped to <strong>${medicine.stock}</strong> units,
-      at or below its threshold of ${medicine.lowStockThreshold}.</p>
+      <p><strong>${escapeHtml(medicine.name)}</strong> has dropped to <strong>${escapeHtml(medicine.stock)}</strong> units,
+      at or below its threshold of ${escapeHtml(medicine.lowStockThreshold)}.</p>
       <p>Please restock soon to avoid running out.</p>
     `;
 

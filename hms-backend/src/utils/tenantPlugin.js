@@ -9,13 +9,19 @@ const { getCurrentHospitalId } = require("./tenantContext");
  *
  *  1. Adds a `hospitalId` field to the schema automatically.
  *  2. On every read (find, findOne, findOneAndUpdate, countDocuments,
- *     aggregate's first $match, etc.) it injects hospitalId into the
- *     filter - so a query simply CANNOT return another hospital's data.
+ *     distinct, etc.) it injects hospitalId into the filter - so a query
+ *     simply CANNOT return another hospital's data.
  *  3. On every write (save/create) it auto-sets hospitalId from the
  *     current request context if not explicitly provided.
- *  4. If there is no tenant context at all (e.g. a background script,
+ *  4. Aggregations are NOT rewritten (a pipeline can't be safely patched);
+ *     instead every aggregate on a tenant-owned model must start with a
+ *     $match on the current hospitalId, or the hook throws.
+ *  5. If there is no tenant context at all (e.g. a background script,
  *     or the Platform Super Admin's own request), it throws rather
  *     than silently returning unscoped data - fail loud, not leaky.
+ *     Genuinely cross-tenant work opts out explicitly with
+ *     `.setOptions({ skipTenantScope: true })` (queries) or
+ *     `.option({ skipTenantScope: true })` (aggregates).
  *
  * Usage in a model file:
  *   const schema = new mongoose.Schema({ ... });
@@ -27,8 +33,11 @@ const QUERY_HOOKS = [
   "findOne",
   "findOneAndUpdate",
   "findOneAndDelete",
+  "findOneAndReplace",
+  "replaceOne",
   "count",
   "countDocuments",
+  "distinct",
   "updateMany",
   "updateOne",
   "deleteMany",
@@ -75,6 +84,42 @@ function tenantPlugin(schema, options = {}) {
       this.where({ hospitalId });
       next();
     });
+  });
+
+  // Aggregations run through a different code path where a filter cannot be
+  // injected safely, so the rule is inverted: the pipeline itself must start by
+  // matching this hospital, otherwise the whole aggregate is refused.
+  schema.pre("aggregate", function (next) {
+    if (this.options && this.options.skipTenantScope) {
+      return next();
+    }
+
+    const hospitalId = getCurrentHospitalId();
+
+    if (!hospitalId) {
+      if (strict) {
+        return next(
+          new Error(
+            "Tenant context missing: refusing to run an unscoped aggregate on a tenant-owned collection. " +
+              "Use .option({ skipTenantScope: true }) for an intentional cross-tenant job."
+          )
+        );
+      }
+      return next();
+    }
+
+    const firstStage = this.pipeline()[0];
+    const matchedHospitalId = firstStage && firstStage.$match && firstStage.$match.hospitalId;
+
+    if (!matchedHospitalId || String(matchedHospitalId) !== String(hospitalId)) {
+      return next(
+        new Error(
+          "Tenant-scoped aggregate must start with { $match: { hospitalId } } for the current hospital."
+        )
+      );
+    }
+
+    next();
   });
 
   // Auto-stamp hospitalId BEFORE validation runs. Mongoose's document
