@@ -21,9 +21,45 @@ cp .env.example .env
 # fill in .env with your own values (see "Environment variables" below)
 
 npm run seed:superadmin   # creates your one Platform Super Admin account
-npm run seed:demo -- <hospitalAdminEmail> <hospitalAdminPassword>   # optional: fills a hospital with sample data
+npm run seed:demo         # optional: builds the "CareFlow Demo Hospital" tenant with 12 months of sample data
 npm run dev                # starts local server on http://localhost:5000
 ```
+
+## Demo data
+
+`npm run seed:demo` builds one standalone tenant, **CareFlow Demo Hospital**, with 12 months of
+activity for screenshots and sales demos: staff and doctor schedules, 250 patients, ~900
+appointments (including today's live OPD queue and the consultations behind it), wards and beds
+with current and past admissions, bills with paid/partial/unpaid balances, lab orders, pharmacy
+stock and dispensing, and the audit trail behind the dashboard's recent-activity feed.
+
+Every write is scoped to that hospital's own `hospitalId` - no other hospital is read, modified or
+deleted, and the script aborts rather than reusing an email that already belongs to another tenant.
+It is idempotent: re-running it wipes and rebuilds only the demo hospital's data. Every date is
+generated relative to "now", so the data always looks current whenever it is run.
+
+```bash
+npm run seed:demo                # build / rebuild the demo hospital
+npm run seed:demo -- --dry-run   # build the dataset in memory and print counts, write nothing
+npm run seed:demo -- --force     # allow the run when NODE_ENV=production
+```
+
+The script refuses to run with `NODE_ENV=production` unless `--force` is passed. At the end it
+prints the counts it created (plus billed/collected/outstanding totals and today's queue) and a
+login for every role. All demo accounts use the password `CareFlow@123`:
+
+| Role | Email |
+| --- | --- |
+| Hospital admin | `admin@careflowdemo.pk` |
+| Doctor | `kamran.ahmed@careflowdemo.pk` |
+| Receptionist | `sadia.imtiaz@careflowdemo.pk` |
+| Nurse | `rabia.aslam@careflowdemo.pk` |
+| Lab technician | `farhan.ali@careflowdemo.pk` |
+| Pharmacist | `mariam.zafar@careflowdemo.pk` |
+| Patient portal | `ahmed.hassan@careflowdemo.pk`, `fatima.sheikh@careflowdemo.pk`, `ayesha.malik@careflowdemo.pk` |
+
+The other doctors and staff accounts follow the same `firstname.lastname@careflowdemo.pk` pattern
+and are printed at the end of the run.
 
 ## Environment variables
 
