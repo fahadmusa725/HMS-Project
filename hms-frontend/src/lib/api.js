@@ -23,6 +23,16 @@ api.interceptors.request.use(
   }
 );
 
+/**
+ * Fire-and-forget GET /api/health. A serverless backend can be cold (function boot plus a
+ * fresh Mongo connection), so the landing and login screens start it on mount - by the time
+ * the user has typed their credentials, the submit is talking to a warm instance.
+ * Never throws, never blocks rendering, no extra cost beyond the request itself.
+ */
+export function warmUpServer() {
+  api.get('/api/health', { timeout: 15000 }).catch(() => {});
+}
+
 const BLOCKED_SESSION_CODES = ['ACCOUNT_DISABLED', 'HOSPITAL_SUSPENDED', 'TRIAL_EXPIRED'];
 
 api.interceptors.response.use(

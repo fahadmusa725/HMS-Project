@@ -1,37 +1,41 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import Landing from '@/pages/Landing';
-import Login from '@/pages/Login';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
-import ChangePassword from '@/pages/ChangePassword';
-import PatientSignup from '@/pages/PatientSignup';
-import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
+import RouteFallback from '@/components/RouteFallback';
 
-import PatientPortalLayout from '@/layouts/PatientPortalLayout';
-import PatientOverview from '@/pages/portal/PatientOverview';
-import PatientAppointments from '@/pages/portal/PatientAppointments';
-import PatientHistory from '@/pages/portal/PatientHistory';
-import PatientBills from '@/pages/portal/PatientBills';
+// Every page is its own chunk: the landing page no longer ships the dashboard, the
+// patient portal, or recharts (which only the report pages import).
+const Landing = lazy(() => import('@/pages/Landing'));
+const Login = lazy(() => import('@/pages/Login'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+const ChangePassword = lazy(() => import('@/pages/ChangePassword'));
+const PatientSignup = lazy(() => import('@/pages/PatientSignup'));
+const SuperAdminDashboard = lazy(() => import('@/pages/SuperAdminDashboard'));
 
-import HospitalDashboardLayout from '@/layouts/HospitalDashboardLayout';
-import HospitalOverview from '@/pages/hospital/HospitalOverview';
-import StaffManagement from '@/components/hospital/StaffManagement';
-import PatientDirectory from '@/components/hospital/PatientDirectory';
-import AppointmentsQueue from '@/components/hospital/AppointmentsQueue';
-import WardsBeds from '@/components/hospital/WardsBeds';
-import LabModule from '@/components/hospital/LabModule';
-import PharmacyModule from '@/components/hospital/PharmacyModule';
-import BillingModule from '@/components/hospital/BillingModule';
-import AuditLogViewer from '@/components/hospital/AuditLogViewer';
+const PatientPortalLayout = lazy(() => import('@/layouts/PatientPortalLayout'));
+const PatientOverview = lazy(() => import('@/pages/portal/PatientOverview'));
+const PatientAppointments = lazy(() => import('@/pages/portal/PatientAppointments'));
+const PatientHistory = lazy(() => import('@/pages/portal/PatientHistory'));
+const PatientBills = lazy(() => import('@/pages/portal/PatientBills'));
 
-import ReportsLayout from '@/pages/hospital/reports/ReportsLayout';
-import ReportsOverview from '@/pages/hospital/reports/ReportsOverview';
-import FinancialReport from '@/pages/hospital/reports/FinancialReport';
-import ClinicalReport from '@/pages/hospital/reports/ClinicalReport';
-import OperationsReport from '@/pages/hospital/reports/OperationsReport';
+const HospitalDashboardLayout = lazy(() => import('@/layouts/HospitalDashboardLayout'));
+const HospitalOverview = lazy(() => import('@/pages/hospital/HospitalOverview'));
+const StaffManagement = lazy(() => import('@/components/hospital/StaffManagement'));
+const PatientDirectory = lazy(() => import('@/components/hospital/PatientDirectory'));
+const AppointmentsQueue = lazy(() => import('@/components/hospital/AppointmentsQueue'));
+const WardsBeds = lazy(() => import('@/components/hospital/WardsBeds'));
+const LabModule = lazy(() => import('@/components/hospital/LabModule'));
+const PharmacyModule = lazy(() => import('@/components/hospital/PharmacyModule'));
+const BillingModule = lazy(() => import('@/components/hospital/BillingModule'));
+const AuditLogViewer = lazy(() => import('@/components/hospital/AuditLogViewer'));
+
+const ReportsLayout = lazy(() => import('@/pages/hospital/reports/ReportsLayout'));
+const ReportsOverview = lazy(() => import('@/pages/hospital/reports/ReportsOverview'));
+const FinancialReport = lazy(() => import('@/pages/hospital/reports/FinancialReport'));
+const ClinicalReport = lazy(() => import('@/pages/hospital/reports/ClinicalReport'));
+const OperationsReport = lazy(() => import('@/pages/hospital/reports/OperationsReport'));
 
 export function AppRoutes() {
   const { isAuthenticated, user } = useAuthStore();
@@ -63,202 +67,204 @@ export function AppRoutes() {
   };
 
   return (
-    <Routes>
-      {/* Public landing page for logged-out visitors; authenticated users are sent to their workspace */}
-      <Route path="/" element={isAuthenticated ? getHomeRedirect() : <Landing />} />
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        {/* Public landing page for logged-out visitors; authenticated users are sent to their workspace */}
+        <Route path="/" element={isAuthenticated ? getHomeRedirect() : <Landing />} />
 
-      <Route
-        path="/login"
-        element={
-          isAuthenticated ? getHomeRedirect() : <Login />
-        }
-      />
+        <Route
+          path="/login"
+          element={
+            isAuthenticated ? getHomeRedirect() : <Login />
+          }
+        />
 
-      <Route
-        path="/signup"
-        element={
-          isAuthenticated ? getHomeRedirect() : <PatientSignup />
-        }
-      />
+        <Route
+          path="/signup"
+          element={
+            isAuthenticated ? getHomeRedirect() : <PatientSignup />
+          }
+        />
 
-      <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
-      <Route
-        path="/change-password"
-        element={
-          <ProtectedRoute allowedRoles={[]}>
-            <ChangePassword />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute allowedRoles={[]}>
+              <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route element={<ProtectedRoute allowedRoles={['platform_super_admin']} />}>
-        <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
-      </Route>
+        <Route element={<ProtectedRoute allowedRoles={['platform_super_admin']} />}>
+          <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
+        </Route>
 
-      <Route
-        element={
-          <ProtectedRoute
-            allowedRoles={[
-              'hospital_admin',
-              'doctor',
-              'receptionist',
-              'nurse',
-              'lab_technician',
-              'pharmacist',
-              'accountant',
-            ]}
-          />
-        }
-      >
-        <Route path="/dashboard" element={<HospitalDashboardLayout />}>
-          <Route
-            index
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin']}>
-                <HospitalOverview />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="staff"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin']}>
-                <StaffManagement />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="patients"
-            element={
-              <ProtectedRoute
-                allowedRoles={[
-                  'hospital_admin',
-                  'doctor',
-                  'receptionist',
-                  'nurse',
-                  'lab_technician',
-                  'pharmacist',
-                  'accountant',
-                ]}
-              >
-                <PatientDirectory />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="appointments"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'receptionist']}>
-                <AppointmentsQueue />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="wards"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'receptionist', 'nurse']}>
-                <WardsBeds />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="lab"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'nurse', 'lab_technician']}>
-                <LabModule />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="pharmacy"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'pharmacist']}>
-                <PharmacyModule />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="billing"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'accountant', 'receptionist']}>
-                <BillingModule />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="audit-logs"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin']}>
-                <AuditLogViewer />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="reports"
-            element={
-              <ProtectedRoute allowedRoles={['hospital_admin', 'accountant']}>
-                <ReportsLayout />
-              </ProtectedRoute>
-            }
-          >
+        <Route
+          element={
+            <ProtectedRoute
+              allowedRoles={[
+                'hospital_admin',
+                'doctor',
+                'receptionist',
+                'nurse',
+                'lab_technician',
+                'pharmacist',
+                'accountant',
+              ]}
+            />
+          }
+        >
+          <Route path="/dashboard" element={<HospitalDashboardLayout />}>
             <Route
               index
               element={
                 <ProtectedRoute allowedRoles={['hospital_admin']}>
-                  <ReportsOverview />
+                  <HospitalOverview />
                 </ProtectedRoute>
               }
             />
+
             <Route
-              path="financial"
+              path="staff"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <StaffManagement />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="patients"
+              element={
+                <ProtectedRoute
+                  allowedRoles={[
+                    'hospital_admin',
+                    'doctor',
+                    'receptionist',
+                    'nurse',
+                    'lab_technician',
+                    'pharmacist',
+                    'accountant',
+                  ]}
+                >
+                  <PatientDirectory />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="appointments"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'receptionist']}>
+                  <AppointmentsQueue />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="wards"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'receptionist', 'nurse']}>
+                  <WardsBeds />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="lab"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'doctor', 'nurse', 'lab_technician']}>
+                  <LabModule />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="pharmacy"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'pharmacist']}>
+                  <PharmacyModule />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="billing"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin', 'accountant', 'receptionist']}>
+                  <BillingModule />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="audit-logs"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <AuditLogViewer />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="reports"
               element={
                 <ProtectedRoute allowedRoles={['hospital_admin', 'accountant']}>
-                  <FinancialReport />
+                  <ReportsLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path="clinical"
-              element={
-                <ProtectedRoute allowedRoles={['hospital_admin']}>
-                  <ClinicalReport />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="operations"
-              element={
-                <ProtectedRoute allowedRoles={['hospital_admin']}>
-                  <OperationsReport />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route
+                index
+                element={
+                  <ProtectedRoute allowedRoles={['hospital_admin']}>
+                    <ReportsOverview />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="financial"
+                element={
+                  <ProtectedRoute allowedRoles={['hospital_admin', 'accountant']}>
+                    <FinancialReport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="clinical"
+                element={
+                  <ProtectedRoute allowedRoles={['hospital_admin']}>
+                    <ClinicalReport />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="operations"
+                element={
+                  <ProtectedRoute allowedRoles={['hospital_admin']}>
+                    <OperationsReport />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
-        <Route path="/portal" element={<PatientPortalLayout />}>
-          <Route index element={<PatientOverview />} />
-          <Route path="appointments" element={<PatientAppointments />} />
-          <Route path="history" element={<PatientHistory />} />
-          <Route path="bills" element={<PatientBills />} />
+        <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
+          <Route path="/portal" element={<PatientPortalLayout />}>
+            <Route index element={<PatientOverview />} />
+            <Route path="appointments" element={<PatientAppointments />} />
+            <Route path="history" element={<PatientHistory />} />
+            <Route path="bills" element={<PatientBills />} />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

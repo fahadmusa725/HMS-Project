@@ -73,7 +73,11 @@ function useDashboardData() {
   return {
     overview: useQuery({ queryKey: ['reports-overview'], queryFn: () => get('/api/reports/overview') }),
     financial: useQuery({ queryKey: ['dashboard-financial'], queryFn: () => get('/api/reports/financial') }),
-    queue: useQuery({ queryKey: ['opd-queue', 'dashboard-today'], queryFn: () => get('/api/appointments/queue') }),
+    queue: useQuery({
+      queryKey: ['opd-queue', 'dashboard-today'],
+      queryFn: () => get('/api/appointments/queue'),
+      staleTime: 0,
+    }),
     admissions: useQuery({ queryKey: ['admissions', 'admitted'], queryFn: () => get('/api/admissions', { status: 'admitted' }) }),
     lowStock: useQuery({ queryKey: ['dashboard-low-stock'], queryFn: () => get('/api/pharmacy/medicines', { lowStock: 'true' }) }),
     activity: useQuery({ queryKey: ['dashboard-activity'], queryFn: () => get('/api/audit-logs', { limit: 8 }) }),

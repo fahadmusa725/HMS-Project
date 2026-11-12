@@ -6,11 +6,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CareFlow HMS: Hospital Management SaaS</title>
     <meta name="description" content="Next-generation multi-tenant Hospital Management System SaaS" />
-    
-    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Applies the saved theme before first paint, so a dark-mode user never sees a light flash. -->
+    <script>
+      try {
+        if (localStorage.getItem('careflow-theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
+
+    <!--
+      One family, only the weights the UI actually uses (400-800). The stylesheet is
+      fetched off the critical path: `media="print"` stops it blocking first paint and the
+      onload flips it to `all`. The Google CSS already declares font-display: swap, so text
+      paints immediately in the fallback and swaps when the font arrives.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      />
+    </noscript>
   </head>
   <body class="bg-background text-foreground antialiased min-h-screen selection:bg-primary/20 selection:text-primary">
     <div id="root"></div>

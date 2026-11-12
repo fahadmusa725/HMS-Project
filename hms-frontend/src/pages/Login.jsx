@@ -14,6 +14,7 @@ import {
   HeartPulse
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { warmUpServer } from '@/lib/api';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +57,12 @@ export default function Login() {
     const timer = setTimeout(() => setLockSeconds((seconds) => Math.max(seconds - 1, 0)), 1000);
     return () => clearTimeout(timer);
   }, [lockSeconds]);
+
+  // Wake the serverless backend (and its Mongo connection) while the user types, so the
+  // login POST itself does not pay for a cold start.
+  useEffect(() => {
+    warmUpServer();
+  }, []);
 
   const lockLabel = `${Math.floor(lockSeconds / 60)}:${String(lockSeconds % 60).padStart(2, '0')}`;
 

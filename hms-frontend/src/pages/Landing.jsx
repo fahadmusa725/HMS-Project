@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,7 +20,7 @@ import {
   Loader2,
   CheckCircle2,
 } from 'lucide-react';
-import api from '@/lib/api';
+import api, { warmUpServer } from '@/lib/api';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -159,6 +159,12 @@ function DemoRequestForm() {
 }
 
 export default function Landing() {
+  // Warm the serverless backend while the visitor reads the page, so their first
+  // authenticated request does not pay the cold start.
+  useEffect(() => {
+    warmUpServer();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-sm">

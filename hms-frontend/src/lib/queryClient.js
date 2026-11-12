@@ -5,7 +5,10 @@ export const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      // Deliberately short: most of this app is operational data (queue, stock, bills) that
+      // changes while the tab is open. Screens that can live with staler data set a longer
+      // staleTime themselves.
+      staleTime: 30 * 1000,
     },
   },
 });

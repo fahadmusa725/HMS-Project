@@ -136,6 +136,8 @@ export default function AppointmentsQueue() {
       const response = await api.get('/api/appointments/queue', { params });
       return response.data;
     },
+    // A waiting-room queue is live by definition - always refetch on mount.
+    staleTime: 0,
   });
 
   const bookMutation = useMutation({
