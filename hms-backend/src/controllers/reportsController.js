@@ -10,7 +10,7 @@ const Bed = require("../models/Bed");
 const Admission = require("../models/Admission");
 const User = require("../models/User");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
-const { hospitalDate } = require("../utils/scheduleSlots");
+const { hospitalDate, APP_TIMEZONE } = require("../utils/scheduleSlots");
 
 /**
  * tenantPlugin cannot inject a filter into an aggregation pipeline - it can only
@@ -35,6 +35,122 @@ function dateRangeMatch(startDate, endDate, field = "createdAt") {
     if (endDate) match[field].$lte = new Date(`${endDate}T23:59:59.999Z`);
   }
   return match;
+}
+
+/** Day bucket in the hospital timezone, so a late-night bill lands on the same day the staff saw. */
+function hospitalDay(field) {
+  return { $dateToString: { format: "%Y-%m-%d", date: field, timezone: APP_TIMEZONE } };
+}
+
+/**
+ * One round trip for the admin dashboard: current totals, 2x-window daily series for
+ * trends/sparklines, and the department split for the donut. Every pipeline starts with
+ * the tenant $match so nothing can cross hospitals, and each one is served by an
+ * existing (hospitalId, date/createdAt) index.
+ */
+async function getDashboard(req, res) {
+  try {
+    const match = tenantMatch();
+    const windowDays = Math.min(90, Math.max(7, Number(req.query.days) || 30));
+    const seriesDays = windowDays * 2;
+    const today = hospitalDate(0);
+    const seriesStartDate = hospitalDate(-(seriesDays - 1));
+    const seriesStart = new Date(`${seriesStartDate}T00:00:00Z`);
+    const departmentStartDate = hospitalDate(-(windowDays - 1));
+
+    const [
+      totalPatients,
+      patientsOverTime,
+      appointmentsToday,
+      appointmentsOverTime,
+      departments,
+      currentAdmissions,
+      admissionsOverTime,
+      billTotals,
+      revenueOverTime,
+      beds,
+    ] = await Promise.all([
+      Patient.countDocuments(match),
+      Patient.aggregate([
+        { $match: { ...match, createdAt: { $gte: seriesStart } } },
+        { $group: { _id: hospitalDay("$createdAt"), count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Appointment.countDocuments({ ...match, date: today }),
+      Appointment.aggregate([
+        { $match: { ...match, date: { $gte: seriesStartDate, $lte: today } } },
+        { $group: { _id: "$date", count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Appointment.aggregate([
+        {
+          $match: {
+            ...match,
+            date: { $gte: departmentStartDate, $lte: today },
+            status: { $nin: ["cancelled", "no_show"] },
+          },
+        },
+        { $group: { _id: "$doctorId", count: { $sum: 1 } } },
+        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "doctor" } },
+        { $unwind: { path: "$doctor", preserveNullAndEmptyArrays: true } },
+        { $group: { _id: { $ifNull: ["$doctor.department", "Unassigned"] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
+      Admission.countDocuments({ ...match, status: "admitted" }),
+      Admission.aggregate([
+        { $match: { ...match, admitDate: { $gte: seriesStart } } },
+        { $group: { _id: hospitalDay("$admitDate"), count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      Bill.aggregate([
+        { $match: match },
+        { $group: { _id: null, invoiced: { $sum: "$totalAmount" }, collected: { $sum: "$amountPaid" } } },
+      ]),
+      Bill.aggregate([
+        { $match: { ...match, createdAt: { $gte: seriesStart } } },
+        {
+          $group: {
+            _id: hospitalDay("$createdAt"),
+            invoiced: { $sum: "$totalAmount" },
+            collected: { $sum: "$amountPaid" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+      Bed.aggregate([{ $match: match }, { $group: { _id: "$status", count: { $sum: 1 } } }]),
+    ]);
+
+    const totalBeds = beds.reduce((sum, bed) => sum + bed.count, 0);
+    const occupiedBeds = beds.find((bed) => bed._id === "occupied")?.count || 0;
+    const invoiced = billTotals[0]?.invoiced || 0;
+    const collected = billTotals[0]?.collected || 0;
+
+    res.json({
+      windowDays,
+      today,
+      totals: {
+        patients: totalPatients,
+        appointmentsToday,
+        admissions: currentAdmissions,
+        invoiced,
+        collected,
+        outstanding: Math.max(0, invoiced - collected),
+        totalBeds,
+        occupiedBeds,
+        bedOccupancyPercent: totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0,
+      },
+      departments: departments.map((row) => ({ name: row._id, count: row.count })),
+      series: {
+        patients: patientsOverTime,
+        appointments: appointmentsOverTime,
+        admissions: admissionsOverTime,
+        revenue: revenueOverTime,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while generating the dashboard summary." });
+  }
 }
 
 
@@ -326,4 +442,4 @@ async function getOperationsReport(req, res) {
   }
 }
 
-module.exports = { getOverview, getFinancialReport, getClinicalReport, getOperationsReport };
+module.exports = { getOverview, getDashboard, getFinancialReport, getClinicalReport, getOperationsReport };
