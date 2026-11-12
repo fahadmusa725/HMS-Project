@@ -125,7 +125,7 @@ export function SlotPicker({ date, doctorId, time, onDoctorChange, onTimeChange,
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading open slots...
             </div>
           ) : slots.length === 0 ? (
-            <div className="p-3 rounded-lg border border-warning/30 bg-warning/10 text-xs text-warning-foreground font-medium">
+            <div className="p-3 rounded-lg border border-warning/30 bg-warning/10 text-xs text-warning font-medium">
               {slotData?.message || 'No open slots for this doctor on this date.'}
             </div>
           ) : (

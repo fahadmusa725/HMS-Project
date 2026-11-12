@@ -112,7 +112,7 @@ export default function PatientSignup() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-background overflow-hidden selection:bg-primary/20 selection:text-primary">
+    <div className="relative min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-background overflow-hidden">
       <div className="absolute top-6 right-6 z-20">
         <ThemeToggle />
       </div>
@@ -159,7 +159,7 @@ export default function PatientSignup() {
             )}
 
             {hospitalsError && (
-              <div className="mb-5 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-sm text-warning-foreground animate-slide-up">
+              <div className="mb-5 flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-sm text-warning animate-slide-up">
                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
                 <div className="flex-1 font-medium">{hospitalsError}</div>
               </div>

@@ -21,20 +21,28 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 
+const CHART_TOOLTIP = {
+  backgroundColor: 'hsl(var(--popover))',
+  borderColor: 'hsl(var(--border))',
+  borderRadius: '0.75rem',
+  fontSize: '12px',
+  color: 'hsl(var(--popover-foreground))',
+};
+
 const CATEGORY_COLORS = {
-  OPD: 'hsl(175, 77%, 26%)',      // Primary teal
-  IPD: 'hsl(173, 80%, 40%)',      // Secondary teal
-  Lab: 'hsl(199, 89%, 48%)',      // Cyan / Blue
-  Pharmacy: 'hsl(38, 92%, 50%)',  // Warning amber
-  Other: 'hsl(215, 16%, 47%)',    // Muted slate
+  OPD: 'hsl(var(--chart-1))',
+  IPD: 'hsl(var(--chart-2))',
+  Lab: 'hsl(var(--chart-3))',
+  Pharmacy: 'hsl(var(--chart-4))',
+  Other: 'hsl(var(--chart-5))',
 };
 
 const DEFAULT_CHART_COLORS = [
-  'hsl(175, 77%, 26%)',
-  'hsl(173, 80%, 40%)',
-  'hsl(199, 89%, 48%)',
-  'hsl(38, 92%, 50%)',
-  'hsl(215, 16%, 47%)',
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
 ];
 
 export default function FinancialReport() {
@@ -122,7 +130,7 @@ export default function FinancialReport() {
         </div>
 
         <div className="p-4 sm:p-5">
-          <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-warning tracking-tight">
             {isLoading ? '—' : formatCurrency(report?.totalOutstanding || 0)}
           </div>
           <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
@@ -157,12 +165,12 @@ export default function FinancialReport() {
                   <AreaChart data={revenueOverTime} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="invoicedGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(175, 77%, 26%)" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="hsl(175, 77%, 26%)" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.0} />
                       </linearGradient>
                       <linearGradient id="collectedGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(173, 80%, 40%)" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="hsl(173, 80%, 40%)" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
@@ -179,13 +187,10 @@ export default function FinancialReport() {
                       tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`}
                     />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: '0.75rem',
-                        fontSize: '12px',
-                        color: 'hsl(var(--foreground))',
-                      }}
+                      contentStyle={CHART_TOOLTIP}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                      cursor={{ stroke: 'hsl(var(--border-strong))', strokeWidth: 1 }}
                       formatter={(value, name) => [
                         formatCurrency(value),
                         name === 'invoiced' ? 'Invoiced' : 'Collected',
@@ -204,7 +209,7 @@ export default function FinancialReport() {
                     <Area
                       type="monotone"
                       dataKey="invoiced"
-                      stroke="hsl(175, 77%, 26%)"
+                      stroke="hsl(var(--chart-1))"
                       strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#invoicedGradient)"
@@ -212,7 +217,7 @@ export default function FinancialReport() {
                     <Area
                       type="monotone"
                       dataKey="collected"
-                      stroke="hsl(173, 80%, 40%)"
+                      stroke="hsl(var(--chart-2))"
                       strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#collectedGradient)"
@@ -256,13 +261,9 @@ export default function FinancialReport() {
                       ))}
                     </Pie>
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: '0.75rem',
-                        fontSize: '12px',
-                        color: 'hsl(var(--foreground))',
-                      }}
+                      contentStyle={CHART_TOOLTIP}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                       formatter={(val) => [formatCurrency(val), 'Revenue']}
                     />
                   </PieChart>
@@ -315,7 +316,7 @@ export default function FinancialReport() {
                     partial: {
                       border: 'border-warning/30',
                       bg: 'bg-warning/10',
-                      text: 'text-warning-foreground',
+                      text: 'text-warning',
                       label: 'Partial Payments',
                     },
                     unpaid: {

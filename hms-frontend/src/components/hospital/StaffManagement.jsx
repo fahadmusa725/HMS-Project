@@ -375,7 +375,7 @@ export default function StaffManagement() {
                         {staff.status === 'disabled' ? 'Disabled' : 'Active'}
                       </span>
                       {staff.mustChangePassword && (
-                        <div className="text-[10px] font-medium text-warning-foreground mt-1">Temp password</div>
+                        <div className="text-[10px] font-medium text-warning mt-1">Temp password</div>
                       )}
                     </td>
                     <td className="py-4 px-4 text-xs text-muted-foreground">

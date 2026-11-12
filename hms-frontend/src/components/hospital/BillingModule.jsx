@@ -65,7 +65,7 @@ function IpdBalanceCell({ admission }) {
       {balance === null ? (
         <span className="text-muted-foreground font-normal">…</span>
       ) : balance > 0 ? (
-        <span className="text-warning-foreground">{formatCurrency(balance)}</span>
+        <span className="text-warning">{formatCurrency(balance)}</span>
       ) : (
         <span className="text-muted-foreground font-normal">PKR 0</span>
       )}
@@ -301,7 +301,7 @@ export default function BillingModule({ initialPatient = null }) {
         </div>
 
         <div className="p-4 sm:p-5 border-r border-border">
-          <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-warning tracking-tight">
             {isBillsLoading ? '—' : formatCurrency(stats.totalOutstanding)}
           </div>
           <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
@@ -529,7 +529,7 @@ export default function BillingModule({ initialPatient = null }) {
 
                       <td className="py-4 px-4 font-bold text-xs">
                         {balanceDue > 0 ? (
-                          <span className="text-warning-foreground">{formatCurrency(balanceDue)}</span>
+                          <span className="text-warning">{formatCurrency(balanceDue)}</span>
                         ) : (
                           <span className="text-muted-foreground font-normal">PKR 0</span>
                         )}
@@ -926,7 +926,7 @@ export default function BillingModule({ initialPatient = null }) {
               </div>
               <div>
                 <span className="text-[10px] text-muted-foreground block font-medium">Remaining Due</span>
-                <span className="font-bold text-warning-foreground">
+                <span className="font-bold text-warning">
                   {formatCurrency(Math.max(0, paymentBillTarget.totalAmount - paymentBillTarget.amountPaid))}
                 </span>
               </div>
@@ -1065,7 +1065,7 @@ export default function BillingModule({ initialPatient = null }) {
                 </div>
                 <div className="flex items-center justify-between font-bold">
                   <span>Balance Remaining:</span>
-                  <span className="text-warning-foreground">
+                  <span className="text-warning">
                     {formatCurrency(Math.max(0, selectedBillForDetails.totalAmount - selectedBillForDetails.amountPaid))}
                   </span>
                 </div>

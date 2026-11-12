@@ -2,13 +2,13 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = ({ variant = "default", size = "default", className = "" } = {}) => {
-  const base = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
-  
+  const base = "inline-flex items-center justify-center whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:shadow-none disabled:active:scale-100 active:scale-[0.98]";
+
   const variants = {
     default: "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md",
     destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-    outline: "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-    secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90 hover:shadow-md",
+    outline: "border border-input bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground hover:border-primary/40",
+    secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 hover:shadow-md",
     ghost: "hover:bg-accent hover:text-accent-foreground",
     link: "text-primary underline-offset-4 hover:underline",
   };

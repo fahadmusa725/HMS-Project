@@ -28,6 +28,14 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 
+const CHART_TOOLTIP = {
+  backgroundColor: 'hsl(var(--popover))',
+  borderColor: 'hsl(var(--border))',
+  borderRadius: '0.75rem',
+  fontSize: '12px',
+  color: 'hsl(var(--popover-foreground))',
+};
+
 export default function OperationsReport() {
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date();
@@ -192,28 +200,25 @@ export default function OperationsReport() {
                       <AreaChart data={pharmacy.revenueOverTime} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                         <defs>
                           <linearGradient id="pharmacyGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="hsl(175, 77%, 26%)" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="hsl(175, 77%, 26%)" stopOpacity={0.0} />
+                            <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
                         <XAxis dataKey="_id" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} tickFormatter={(val) => `${val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}`} />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            borderColor: 'hsl(var(--border))',
-                            borderRadius: '0.75rem',
-                            fontSize: '12px',
-                            color: 'hsl(var(--foreground))',
-                          }}
+                          contentStyle={CHART_TOOLTIP}
+                          labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                          itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                          cursor={{ stroke: 'hsl(var(--border-strong))', strokeWidth: 1 }}
                           formatter={(val) => [formatCurrency(val), 'Pharmacy Revenue']}
                           labelFormatter={(label) => `Date: ${label}`}
                         />
                         <Area
                           type="monotone"
                           dataKey="total"
-                          stroke="hsl(175, 77%, 26%)"
+                          stroke="hsl(var(--chart-1))"
                           strokeWidth={2}
                           fillOpacity={1}
                           fill="url(#pharmacyGradient)"
@@ -228,10 +233,10 @@ export default function OperationsReport() {
                 <div>
                   <div className="flex items-center justify-between pb-3 border-b border-border">
                     <div className="flex items-center gap-1.5">
-                      <AlertTriangle className="h-4 w-4 text-warning-foreground" />
+                      <AlertTriangle className="h-4 w-4 text-warning" />
                       <span className="text-xs font-bold text-foreground">Low Stock Alert</span>
                     </div>
-                    <span className="text-lg font-extrabold text-warning-foreground">
+                    <span className="text-lg font-extrabold text-warning">
                       {pharmacy.lowStockCount || 0} items
                     </span>
                   </div>
@@ -304,7 +309,7 @@ export default function OperationsReport() {
                               {w.occupied || 0} occupied
                             </span>
                             {w.reserved > 0 && (
-                              <span className="flex items-center gap-1 text-warning-foreground">
+                              <span className="flex items-center gap-1 text-warning">
                                 <span className="h-2 w-2 rounded-full bg-warning" />
                                 {w.reserved} reserved
                               </span>
@@ -338,17 +343,14 @@ export default function OperationsReport() {
                         <XAxis dataKey="_id" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} allowDecimals={false} />
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            borderColor: 'hsl(var(--border))',
-                            borderRadius: '0.75rem',
-                            fontSize: '12px',
-                            color: 'hsl(var(--foreground))',
-                          }}
+                          contentStyle={CHART_TOOLTIP}
+                          labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                          itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                          cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.5 }}
                           formatter={(val) => [`${val} patients`, 'Admissions']}
                           labelFormatter={(label) => `Date: ${label}`}
                         />
-                        <Bar dataKey="count" fill="hsl(173, 80%, 40%)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

@@ -318,7 +318,7 @@ export function FinalBillModal({ result, onClose }) {
             The advance exceeded the bill. Refund {formatCurrency(refundDue)} to the patient.
           </div>
         ) : bill && bill.paymentStatus !== 'paid' ? (
-          <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground font-medium">
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning font-medium">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             {formatCurrency(bill.totalAmount - bill.amountPaid)} is still outstanding. Collect it from Billing &amp; Invoices.
           </div>

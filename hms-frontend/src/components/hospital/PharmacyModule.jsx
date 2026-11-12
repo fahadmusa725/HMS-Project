@@ -440,7 +440,7 @@ export default function PharmacyModule() {
             </div>
 
             <div className="p-4 sm:p-5 border-r border-border">
-              <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+              <div className="text-2xl sm:text-3xl font-extrabold text-warning tracking-tight">
                 {isMedsLoading ? '—' : stats.lowStock}
               </div>
               <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
@@ -477,11 +477,11 @@ export default function PharmacyModule() {
                   onClick={() => setLowStockOnly(!lowStockOnly)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors ${
                     lowStockOnly
-                      ? 'bg-warning/20 text-warning-foreground border border-warning/30 font-bold'
+                      ? 'bg-warning/20 text-warning border border-warning/30 font-bold'
                       : 'bg-muted/60 text-muted-foreground hover:text-foreground border border-border'
                   }`}
                 >
-                  <AlertTriangle className="h-3.5 w-3.5 text-warning-foreground" />
+                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
                   <span>Show Low Stock Only</span>
                 </button>
 
@@ -564,14 +564,14 @@ export default function PharmacyModule() {
                                   isOutOfStock
                                     ? 'bg-destructive/15 text-destructive border-destructive/30'
                                     : isLowStock
-                                    ? 'bg-warning/15 text-warning-foreground border-warning/30'
+                                    ? 'bg-warning/15 text-warning border-warning/30'
                                     : 'bg-primary/10 text-primary border-primary/20'
                                 }`}
                               >
                                 {med.stock} {med.unit || 'units'}
                               </span>
                               {isLowStock && (
-                                <span className="text-[10px] text-warning-foreground font-semibold flex items-center gap-0.5">
+                                <span className="text-[10px] text-warning font-semibold flex items-center gap-0.5">
                                   <AlertTriangle className="h-3 w-3" />
                                   {isOutOfStock ? 'Empty' : 'Low'}
                                 </span>
@@ -605,7 +605,7 @@ export default function PharmacyModule() {
                                           isExpired
                                             ? 'bg-destructive/15 text-destructive border-destructive/30'
                                             : isNearExpiry
-                                            ? 'bg-warning/15 text-warning-foreground border-warning/30'
+                                            ? 'bg-warning/15 text-warning border-warning/30'
                                             : 'bg-muted/60 text-muted-foreground border-border'
                                         }`}
                                       >

@@ -320,7 +320,7 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             </div>
 
             <div className="p-4 sm:p-5 border-r border-border">
-              <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+              <div className="text-2xl sm:text-3xl font-extrabold text-warning tracking-tight">
                 {isOrdersLoading ? '—' : stats.collected + stats.inProgress}
               </div>
               <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
@@ -485,7 +485,7 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
                                     })
                                   }
                                   disabled={updateStatusMutation.isPending}
-                                  className="h-7 text-xs font-semibold text-warning-foreground border-warning/30 hover:bg-warning/10"
+                                  className="h-7 text-xs font-semibold text-warning border-warning/30 hover:bg-warning/10"
                                 >
                                   Collect Sample
                                 </Button>

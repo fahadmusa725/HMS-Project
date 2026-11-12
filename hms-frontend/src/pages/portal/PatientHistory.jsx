@@ -128,7 +128,7 @@ export default function PatientHistory() {
                             <Stethoscope className="h-3.5 w-3.5 text-primary" />
                             {doctorName(c.doctorId.name)}
                             {c.doctorId.department && (
-                              <span className="text-muted-foreground/70">· {c.doctorId.department}</span>
+                              <span className="text-muted-foreground">· {c.doctorId.department}</span>
                             )}
                           </div>
                         )}
@@ -213,7 +213,7 @@ export default function PatientHistory() {
 
                     {c.notes && (
                       <div className="text-xs text-muted-foreground italic border-t border-border/50 pt-2.5">
-                        <span className="font-semibold text-foreground/70 not-italic">Doctor's Clinical Notes:</span> {c.notes}
+                        <span className="font-semibold text-foreground not-italic">Doctor's Clinical Notes:</span> {c.notes}
                       </div>
                     )}
                   </div>

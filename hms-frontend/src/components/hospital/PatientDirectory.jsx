@@ -117,7 +117,7 @@ function PatientEMRTimeline({ patientId }) {
                     <Stethoscope className="h-3 w-3" />
                     {doctorName(c.doctorId.name)}
                     {c.doctorId.department && (
-                      <span className="text-muted-foreground/60">· {c.doctorId.department}</span>
+                      <span className="text-muted-foreground">· {c.doctorId.department}</span>
                     )}
                   </div>
                 )}
@@ -896,7 +896,7 @@ export default function PatientDirectory() {
                 {regConditions.map((item, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning border border-warning/30"
                   >
                     {item}
                     <button
@@ -1128,7 +1128,7 @@ export default function PatientDirectory() {
                       {selectedPatient.chronicConditions.map((cond, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30"
+                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning border border-warning/30"
                         >
                           {cond}
                         </span>
@@ -1277,7 +1277,7 @@ export default function PatientDirectory() {
                     {detailConditions.map((item, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning border border-warning/30"
                       >
                         {item}
                         <button

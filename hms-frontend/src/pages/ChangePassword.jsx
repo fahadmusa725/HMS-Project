@@ -88,7 +88,7 @@ export default function ChangePassword() {
 
           <CardContent>
             {forced && (
-              <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-xs text-warning-foreground">
+              <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3.5 text-xs text-warning">
                 <KeyRound className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>
                   Temporary passwords are known to whoever created your account. Everything else stays locked until

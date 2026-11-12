@@ -19,6 +19,14 @@ import { Badge } from '@/components/ui/badge';
 import { DateRangePicker } from '@/components/reports/DateRangePicker';
 import { doctorName } from '@/lib/utils';
 
+const CHART_TOOLTIP = {
+  backgroundColor: 'hsl(var(--popover))',
+  borderColor: 'hsl(var(--border))',
+  borderRadius: '0.75rem',
+  fontSize: '12px',
+  color: 'hsl(var(--popover-foreground))',
+};
+
 function formatDiagnosis(str) {
   if (!str) return '—';
   return str
@@ -105,17 +113,14 @@ export default function ClinicalReport() {
                     <XAxis dataKey="_id" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: '0.75rem',
-                        fontSize: '12px',
-                        color: 'hsl(var(--foreground))',
-                      }}
+                      contentStyle={CHART_TOOLTIP}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                      cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.5 }}
                       formatter={(val) => [`${val} consultations`, 'Appointments']}
                       labelFormatter={(label) => `Date: ${label}`}
                     />
-                    <Bar dataKey="count" fill="hsl(175, 77%, 26%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -185,28 +190,25 @@ export default function ClinicalReport() {
                   <AreaChart data={newPatientsOverTime} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <defs>
                       <linearGradient id="patientGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(173, 80%, 40%)" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="hsl(173, 80%, 40%)" stopOpacity={0.0} />
+                        <stop offset="5%" stopColor="hsl(var(--chart-2))" stopOpacity={0.4} />
+                        <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0.0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.6} />
                     <XAxis dataKey="_id" stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} />
                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickLine={false} allowDecimals={false} />
                     <Tooltip
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        borderColor: 'hsl(var(--border))',
-                        borderRadius: '0.75rem',
-                        fontSize: '12px',
-                        color: 'hsl(var(--foreground))',
-                      }}
+                      contentStyle={CHART_TOOLTIP}
+                      labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+                      itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                      cursor={{ stroke: 'hsl(var(--border-strong))', strokeWidth: 1 }}
                       formatter={(val) => [`${val} patients`, 'New Registrations']}
                       labelFormatter={(label) => `Date: ${label}`}
                     />
                     <Area
                       type="monotone"
                       dataKey="count"
-                      stroke="hsl(173, 80%, 40%)"
+                      stroke="hsl(var(--chart-2))"
                       strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#patientGradient)"

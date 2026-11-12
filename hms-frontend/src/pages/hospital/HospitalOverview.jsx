@@ -95,7 +95,7 @@ function StatSegment({ value, label, sub, loading, emphasis, className = '' }) {
         {loading ? '—' : value}
       </div>
       <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">{label}</div>
-      {sub && !loading && <div className="text-[11px] text-muted-foreground/80 mt-0.5">{sub}</div>}
+      {sub && !loading && <div className="text-[11px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -169,7 +169,7 @@ export default function HospitalOverview() {
   }
 
   const toneClass = {
-    warning: 'border-warning/30 bg-warning/10 text-warning-foreground',
+    warning: 'border-warning/30 bg-warning/10 text-warning',
     destructive: 'border-destructive/25 bg-destructive/10 text-destructive',
     muted: 'border-border bg-muted/40 text-foreground',
   };

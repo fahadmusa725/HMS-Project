@@ -179,7 +179,7 @@ export default function SuperAdminDashboard() {
       return <span className="text-destructive font-semibold">Expired today</span>;
     }
     return (
-      <span className="text-warning-foreground font-medium">
+      <span className="text-warning font-medium">
         Ends in {diffDays} day{diffDays === 1 ? '' : 's'}
       </span>
     );
@@ -208,7 +208,7 @@ export default function SuperAdminDashboard() {
   ];
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col">
       <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -324,7 +324,7 @@ export default function SuperAdminDashboard() {
             </div>
 
             <div className="p-4 sm:p-5 border-r border-border">
-              <div className="text-2xl sm:text-3xl font-extrabold text-warning-foreground tracking-tight">
+              <div className="text-2xl sm:text-3xl font-extrabold text-warning tracking-tight">
                 {isLoading ? '—' : stats.trial}
               </div>
               <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">

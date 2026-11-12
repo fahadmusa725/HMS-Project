@@ -347,7 +347,7 @@ function EditProfileModal({ patient, onClose }) {
               tags={form.chronicConditions}
               onChange={(tags) => setForm((f) => ({ ...f, chronicConditions: tags }))}
               placeholder="e.g. Diabetes, Hypertension..."
-              colorClass="bg-warning/15 text-warning-foreground border-warning/30"
+              colorClass="bg-warning/15 text-warning border-warning/30"
             />
           </div>
       </form>
@@ -585,7 +585,7 @@ export default function PatientOverview() {
                       {patient.chronicConditions.map((condition, i) => (
                         <span
                           key={i}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning-foreground border border-warning/30"
+                          className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/15 text-warning border border-warning/30"
                         >
                           {condition}
                         </span>

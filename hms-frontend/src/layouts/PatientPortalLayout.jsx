@@ -57,7 +57,7 @@ export default function PatientPortalLayout() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
+    <div className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col">
       <header className="border-b border-border bg-card z-30 shadow-soft-sm shrink-0">
         <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -121,7 +121,7 @@ export default function PatientPortalLayout() {
       <div className="flex-1 overflow-hidden flex flex-row relative">
         {isSidebarOpen && (
           <div
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-30 bg-overlay/50 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}

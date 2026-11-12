@@ -35,7 +35,7 @@ import { formatCurrency, doctorName } from '@/lib/utils';
 const BED_STYLES = {
   vacant:   'bg-primary/10 border-primary/40 text-primary',
   occupied: 'bg-muted/60 border-border text-foreground',
-  reserved: 'bg-warning/15 border-warning/40 text-warning-foreground',
+  reserved: 'bg-warning/15 border-warning/40 text-warning',
 };
 const BED_ICON = {
   vacant:   <CheckCircle2 className="h-4 w-4" />,
@@ -1043,7 +1043,7 @@ export default function WardsBeds() {
                           {ward.dailyRate > 0 ? (
                             `${formatCurrency(ward.dailyRate)} / day`
                           ) : (
-                            <span className="text-warning-foreground">Daily rate not set</span>
+                            <span className="text-warning">Daily rate not set</span>
                           )}
                         </p>
                       </div>
@@ -1303,7 +1303,7 @@ export default function WardsBeds() {
         }
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning-foreground font-medium">
+          <div className="flex items-start gap-2.5 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning font-medium">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
             This will discharge the patient, free the bed, and raise the final itemized bill (bed charges,
             lab and pharmacy during the stay, less any advance paid). This action cannot be undone.

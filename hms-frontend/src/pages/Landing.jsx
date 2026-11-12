@@ -140,7 +140,7 @@ function DemoRequestForm() {
           placeholder="Tell us a bit about your hospital and what you're looking for..."
           {...register('message')}
           disabled={isSubmitting}
-          className="flex w-full rounded-lg border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary resize-none disabled:opacity-50"
+          className="flex w-full rounded-lg border border-input bg-background/50 px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none disabled:bg-muted disabled:text-muted-foreground disabled:border-border disabled:shadow-none"
         />
       </div>
 
@@ -166,7 +166,7 @@ export default function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
