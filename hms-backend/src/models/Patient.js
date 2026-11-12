@@ -3,7 +3,7 @@ const tenantPlugin = require("../utils/tenantPlugin");
 
 const patientSchema = new mongoose.Schema(
   {
-    mrn: { type: String, required: true, index: true }, // e.g. "CTH-000042"
+    mrn: { type: String, required: true }, // e.g. "CTH-000042"
     name: { type: String, required: true, trim: true },
     dob: { type: Date },
     gender: { type: String, enum: ["male", "female", "other"] },
@@ -39,6 +39,10 @@ patientSchema.index(
   { unique: true, partialFilterExpression: { cnic: { $type: "string" } } }
 );
 
-patientSchema.index({ name: "text", mrn: "text", phone: "text" });
+// Portal lookups resolve the logged-in account to its record (Patient.findOne({ userId })).
+patientSchema.index({ hospitalId: 1, userId: 1 });
+
+// Patient directory list, newest first.
+patientSchema.index({ hospitalId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Patient", patientSchema);

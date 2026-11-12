@@ -36,6 +36,7 @@ const medicineSchema = new mongoose.Schema(
 );
 
 medicineSchema.plugin(tenantPlugin);
-medicineSchema.index({ name: "text", category: "text" });
+// Inventory list is always tenant-scoped and sorted by name.
+medicineSchema.index({ hospitalId: 1, name: 1 });
 
 module.exports = mongoose.model("Medicine", medicineSchema);

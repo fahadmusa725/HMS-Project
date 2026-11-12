@@ -70,7 +70,12 @@ const billSchema = new mongoose.Schema(
 
 billSchema.plugin(tenantPlugin);
 billSchema.index({ hospitalId: 1, patientId: 1, createdAt: -1 });
-billSchema.index({ hospitalId: 1, paymentStatus: 1 });
+// The OPD queue looks up each appointment's fee bill by appointmentId.
+billSchema.index({ hospitalId: 1, appointmentId: 1 });
+// Invoice list and report summaries: filter by status, newest first.
+billSchema.index({ hospitalId: 1, paymentStatus: 1, createdAt: -1 });
+// Unfiltered invoice list, newest first (avoids the blocking in-memory sort).
+billSchema.index({ hospitalId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Bill", billSchema);
 module.exports.PAYMENT_METHODS = PAYMENT_METHODS;

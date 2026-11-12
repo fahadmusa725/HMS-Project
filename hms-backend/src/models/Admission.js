@@ -33,6 +33,7 @@ const admissionSchema = new mongoose.Schema(
 
 admissionSchema.plugin(tenantPlugin);
 
-admissionSchema.index({ hospitalId: 1, status: 1 });
+// Admissions list: filtered by status, newest admission first.
+admissionSchema.index({ hospitalId: 1, status: 1, admitDate: -1 });
 
 module.exports = mongoose.model("Admission", admissionSchema);

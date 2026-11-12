@@ -1,9 +1,9 @@
 /**
- * One-off: brings the Patient collection's indexes in line with the schema.
- * Needed once on databases created before the CNIC index changed from
- * `sparse` to a partial index - Mongoose won't replace an existing index
- * with the same keys on its own, so the old one (which only allows ONE
- * patient without a CNIC per hospital) stays until dropped here.
+ * One-off: brings every collection's indexes in line with the schemas.
+ * Needed whenever an index's keys change - Mongoose won't replace an existing
+ * index with the same keys on its own, so the old one stays until it is dropped here.
+ * Current reasons: Patient MRN/CNIC indexes, and the list/dashboard indexes added
+ * for Bill, LabOrder, Medicine and Admission.
  *
  * Usage: npm run sync:indexes
  */
@@ -11,11 +11,22 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 const Patient = require("../models/Patient");
+const Bill = require("../models/Bill");
+const LabOrder = require("../models/LabOrder");
+const Medicine = require("../models/Medicine");
+const Admission = require("../models/Admission");
+
+const MODELS = [Patient, Bill, LabOrder, Medicine, Admission];
 
 async function main() {
   await connectDB();
-  const dropped = await Patient.syncIndexes();
-  console.log("✅ Patient indexes synced.", dropped.length ? `Dropped: ${dropped.join(", ")}` : "Nothing to drop.");
+  for (const model of MODELS) {
+    const dropped = await model.syncIndexes();
+    console.log(
+      `✅ ${model.modelName} indexes synced.`,
+      dropped.length ? `Dropped: ${dropped.join(", ")}` : "Nothing to drop."
+    );
+  }
   await mongoose.disconnect();
 }
 

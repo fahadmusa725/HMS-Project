@@ -32,7 +32,9 @@ const labOrderSchema = new mongoose.Schema(
 );
 
 labOrderSchema.plugin(tenantPlugin);
-labOrderSchema.index({ hospitalId: 1, status: 1 });
+// Lab worklist: newest first, optionally filtered by status.
+labOrderSchema.index({ hospitalId: 1, status: 1, createdAt: -1 });
+labOrderSchema.index({ hospitalId: 1, createdAt: -1 });
 labOrderSchema.index({ hospitalId: 1, patientId: 1, createdAt: -1 });
 
 module.exports = mongoose.model("LabOrder", labOrderSchema);
