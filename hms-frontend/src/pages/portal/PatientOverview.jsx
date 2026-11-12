@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import {
   User,
   Shield,
+  ShieldCheck,
   Building2,
   ArrowRight,
   AlertCircle,
@@ -15,6 +16,10 @@ import {
   CreditCard,
   MapPin,
   Calendar,
+  CalendarDays,
+  ClipboardList,
+  Receipt,
+  HeartPulse,
   Pencil,
   X,
   ChevronDown,
@@ -22,10 +27,13 @@ import {
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
-import { Button } from '@/components/ui/button';
+import { doctorName, formatCurrency, formatSlotTime, localDateStr } from '@/lib/utils';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
+import { StatCard } from '@/components/ui/stat-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 function TagInput({ tags = [], onChange, placeholder, colorClass = 'bg-primary/10 text-primary border-primary/20' }) {
   const [inputValue, setInputValue] = useState('');
@@ -355,6 +363,20 @@ function EditProfileModal({ patient, onClose }) {
   );
 }
 
+function InfoTile({ icon: Icon, label, value, className = '' }) {
+  return (
+    <div className={`rounded-xl border border-border bg-muted/25 p-3 ${className}`}>
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-bright/10 text-primary-bright">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <span className="text-[11px] font-medium text-muted-foreground">{label}</span>
+      </div>
+      <div className="mt-2 truncate text-xs font-semibold text-foreground sm:text-sm">{value}</div>
+    </div>
+  );
+}
+
 export default function PatientOverview() {
   const { user } = useAuthStore();
   const [showEditModal, setShowEditModal] = useState(false);
@@ -374,21 +396,83 @@ export default function PatientOverview() {
     },
   });
 
+  // Same query keys and endpoints as the dedicated portal pages, so navigating between them
+  // reuses the cache instead of refetching.
+  const appointmentsQuery = useQuery({
+    queryKey: ['patient-appointments-mine'],
+    queryFn: async () => {
+      const res = await api.get('/api/appointments/mine');
+      return res.data;
+    },
+    enabled: Boolean(patient),
+  });
+
+  const billsQuery = useQuery({
+    queryKey: ['patient-bills-mine'],
+    queryFn: async () => {
+      const res = await api.get('/api/billing/mine');
+      return res.data;
+    },
+    enabled: Boolean(patient),
+  });
+
+  const historyQuery = useQuery({
+    queryKey: ['patient-emr-mine'],
+    queryFn: async () => {
+      const res = await api.get('/api/consultations/mine');
+      return res.data;
+    },
+    enabled: Boolean(patient),
+  });
+
+  const appointments = Array.isArray(appointmentsQuery.data) ? appointmentsQuery.data : [];
+  const todayStr = localDateStr();
+  const upcoming = appointments
+    .filter(
+      (appointment) =>
+        ['scheduled', 'checked_in', 'in_consultation'].includes(appointment.status) && appointment.date >= todayStr
+    )
+    .sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
+  const nextAppointment = upcoming[0];
+
+  const bills = Array.isArray(billsQuery.data) ? billsQuery.data : [];
+  const openBills = bills.filter((bill) => bill.paymentStatus !== 'paid');
+  const outstanding = openBills.reduce(
+    (sum, bill) => sum + Math.max(0, (bill.totalAmount || 0) - (bill.amountPaid || 0)),
+    0
+  );
+  const visitCount = Array.isArray(historyQuery.data) ? historyQuery.data.length : 0;
+
+  const refreshing =
+    isRefetching || appointmentsQuery.isRefetching || billsQuery.isRefetching || historyQuery.isRefetching;
+  const refreshAll = () => {
+    refetch();
+    appointmentsQuery.refetch();
+    billsQuery.refetch();
+    historyQuery.refetch();
+  };
+
   const portalQuickLinks = [
     {
       path: '/portal/appointments',
-      title: 'Appointments & Consultations',
-      desc: 'View scheduled doctor visits, review token numbers, and book new appointments.',
+      title: 'Appointments',
+      desc: 'Book a visit, review tokens and consultation status.',
+      Icon: CalendarDays,
+      tile: 'bg-info/10 text-info',
     },
     {
       path: '/portal/history',
-      title: 'Medical History & Clinical Notes',
-      desc: 'Access your electronic medical record (EMR), doctor notes, vitals, and prescriptions.',
+      title: 'Medical history',
+      desc: 'Doctor notes, vitals and prescriptions in one timeline.',
+      Icon: ClipboardList,
+      tile: 'bg-primary-bright/10 text-primary-bright',
     },
     {
       path: '/portal/bills',
-      title: 'Billing & Invoices',
-      desc: 'Review itemized hospital invoices, payment histories, and outstanding balances.',
+      title: 'Bills & invoices',
+      desc: 'Itemised invoices and outstanding balances.',
+      Icon: Receipt,
+      tile: 'bg-success/10 text-success',
     },
   ];
 
@@ -423,11 +507,11 @@ export default function PatientOverview() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
-            disabled={isRefetching || isLoading}
+            onClick={refreshAll}
+            disabled={refreshing || isLoading}
             className="h-9 px-3 text-muted-foreground hover:text-foreground text-xs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isRefetching ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -487,72 +571,26 @@ export default function PatientOverview() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-5 sm:p-6 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-                <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <Building2 className="h-3 w-3 text-primary" /> Hospital
-                  </span>
-                  <span className="font-semibold text-foreground text-xs sm:text-sm mt-0.5 block truncate">
-                    {user?.hospitalName || 'CareFlow Network'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <Calendar className="h-3 w-3 text-primary" /> Date of Birth
-                  </span>
-                  <span className="font-semibold text-foreground text-xs sm:text-sm mt-0.5 block">
-                    {patient.dob ? new Date(patient.dob).toLocaleDateString() : '—'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <User className="h-3 w-3 text-primary" /> Gender
-                  </span>
-                  <span className="font-semibold text-foreground text-xs sm:text-sm mt-0.5 block capitalize">
-                    {patient.gender || '—'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <CreditCard className="h-3 w-3 text-primary" /> CNIC / ID
-                  </span>
-                  <span className="font-semibold text-foreground text-xs sm:text-sm mt-0.5 block">
-                    {patient.cnic || '—'}
-                  </span>
-                </div>
+            <CardContent className="p-4 sm:p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <InfoTile icon={Building2} label="Hospital" value={user?.hospitalName || 'CareFlow Network'} />
+                <InfoTile
+                  icon={Calendar}
+                  label="Date of birth"
+                  value={patient.dob ? new Date(patient.dob).toLocaleDateString() : '—'}
+                />
+                <InfoTile
+                  icon={User}
+                  label="Gender"
+                  value={patient.gender ? patient.gender.charAt(0).toUpperCase() + patient.gender.slice(1) : '—'}
+                />
+                <InfoTile icon={CreditCard} label="CNIC / ID" value={patient.cnic || '—'} />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-                <div className="p-3 bg-muted/20 rounded-xl border border-border/40">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <Phone className="h-3 w-3 text-primary" /> Phone
-                  </span>
-                  <span className="font-medium text-foreground text-xs sm:text-sm mt-0.5 block">
-                    {patient.phone || '—'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-muted/20 rounded-xl border border-border/40">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <Mail className="h-3 w-3 text-primary" /> Email
-                  </span>
-                  <span className="font-medium text-foreground text-xs sm:text-sm mt-0.5 block truncate">
-                    {patient.email || user?.email || '—'}
-                  </span>
-                </div>
-
-                <div className="p-3 bg-muted/20 rounded-xl border border-border/40">
-                  <span className="text-[11px] text-muted-foreground block font-medium flex items-center gap-1">
-                    <MapPin className="h-3 w-3 text-primary" /> Address
-                  </span>
-                  <span className="font-medium text-foreground text-xs sm:text-sm mt-0.5 block truncate">
-                    {patient.address || '—'}
-                  </span>
-                </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <InfoTile icon={Phone} label="Phone" value={patient.phone || '—'} />
+                <InfoTile icon={Mail} label="Email" value={patient.email || user?.email || '—'} />
+                <InfoTile icon={MapPin} label="Address" value={patient.address || '—'} />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
@@ -572,7 +610,10 @@ export default function PatientOverview() {
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No recorded allergies.</span>
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong/35 bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
+                      <ShieldCheck className="h-4 w-4 shrink-0 text-success" />
+                      No known allergies on file. Add any from Edit profile.
+                    </div>
                   )}
                 </div>
 
@@ -592,33 +633,95 @@ export default function PatientOverview() {
                       ))}
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No chronic conditions listed.</span>
+                    <div className="flex items-center gap-2 rounded-lg border border-dashed border-border-strong/35 bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground">
+                      <HeartPulse className="h-4 w-4 shrink-0 text-primary" />
+                      No chronic conditions listed. Keep this current from Edit profile.
+                    </div>
                   )}
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <div className="pt-2">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              Patient Services &amp; Portal Sections
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Next appointment"
+              icon={CalendarDays}
+              tone="bright"
+              loading={appointmentsQuery.isLoading}
+              value={
+                nextAppointment
+                  ? new Date(`${nextAppointment.date}T00:00:00`).toLocaleDateString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                    })
+                  : 'None'
+              }
+              sub={
+                nextAppointment
+                  ? `${doctorName(nextAppointment.doctorId?.name, 'Doctor')} · ${formatSlotTime(nextAppointment.time)} · Token #${nextAppointment.tokenNumber}`
+                  : 'Book a visit from Appointments'
+              }
+            />
+            <StatCard
+              label="Outstanding balance"
+              icon={Receipt}
+              tone={outstanding > 0 ? 'warning' : 'success'}
+              loading={billsQuery.isLoading}
+              value={formatCurrency(outstanding)}
+              sub={
+                openBills.length > 0
+                  ? `${openBills.length} open invoice${openBills.length === 1 ? '' : 's'}`
+                  : 'No open invoices'
+              }
+            />
+            <StatCard
+              label="Consultation records"
+              icon={ClipboardList}
+              tone="info"
+              loading={historyQuery.isLoading}
+              value={visitCount}
+              sub={visitCount > 0 ? 'Notes, vitals and prescriptions' : 'No visits recorded yet'}
+            />
+          </div>
+
+          {!appointmentsQuery.isLoading &&
+            !billsQuery.isLoading &&
+            appointments.length === 0 &&
+            bills.length === 0 && (
+              <EmptyState
+                icon={HeartPulse}
+                title="Your health record is ready"
+                description="Book an appointment or visit the front desk. Visits, prescriptions and invoices will appear here automatically."
+                action={
+                  <Link to="/portal/appointments" className={buttonVariants({ size: 'sm' })}>
+                    Book an appointment
+                  </Link>
+                }
+              />
+            )}
+
+          <div className="space-y-3">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Patient services
             </div>
-            <div className="divide-y divide-border border border-border rounded-xl bg-card overflow-hidden shadow-soft">
-              {portalQuickLinks.map((item) => (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {portalQuickLinks.map(({ path, title, desc, Icon, tile }) => (
                 <Link
-                  key={item.path}
-                  to={item.path}
-                  className="flex items-center justify-between p-4 hover:bg-muted/40 transition-colors group"
+                  key={path}
+                  to={path}
+                  className="group rounded-xl border border-border bg-card p-4 shadow-soft-sm transition-colors hover:border-primary-bright/40 hover:bg-primary-bright/[0.03]"
                 >
-                  <div className="min-w-0 pr-4">
-                    <span className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors block">
-                      {item.title}
+                  <div className="flex items-center justify-between">
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${tile}`}>
+                      <Icon className="h-[18px] w-[18px]" />
                     </span>
-                    <span className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                      {item.desc}
-                    </span>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-transform group-hover:translate-x-0.5 shrink-0" />
+                  <div className="mt-3 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+                    {title}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{desc}</div>
                 </Link>
               ))}
             </div>

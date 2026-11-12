@@ -44,7 +44,7 @@ function StatusDot({ code }) {
     <span
       className={`inline-flex items-center gap-1.5 text-xs font-medium px-2 py-0.5 rounded-full ${
         isOk
-          ? 'bg-success/12 text-success'
+          ? 'bg-success/10 text-success'
           : 'bg-destructive/10 text-destructive'
       }`}
     >

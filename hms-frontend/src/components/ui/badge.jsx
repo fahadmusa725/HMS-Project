@@ -7,9 +7,9 @@ const badgeVariants = ({ variant = "default", className = "" } = {}) => {
   // Status families: tinted surface + the matching status ink. Filled variants use the
   // `*-foreground` ink, which is what those tokens are tuned for.
   const primarySoft = "bg-primary/10 text-primary border border-primary/25";
-  const infoSoft = "bg-info/12 text-info border border-info/30";
-  const successSoft = "bg-success/12 text-success border border-success/30";
-  const warningSoft = "bg-warning/12 text-warning border border-warning/30";
+  const infoSoft = "bg-info/10 text-info border border-info/30";
+  const successSoft = "bg-success/10 text-success border border-success/30";
+  const warningSoft = "bg-warning/10 text-warning border border-warning/30";
   const dangerSoft = "bg-destructive/10 text-destructive border border-destructive/25";
   const neutral = "bg-muted text-muted-foreground border border-border";
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -219,6 +220,21 @@ export default function PatientDirectory() {
   const [detailTab, setDetailTab] = useState('profile'); // 'profile' | 'history'
   const [formError, setFormError] = useState(null);
 
+  // Deep link from the dashboard quick actions (`?new=1`). Opening is derived from the URL
+  // instead of an effect, and the param is cleared on close so it does not reopen.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const registerDeepLink = searchParams.get('new') === '1';
+  const closeRegisterDeepLink = () => {
+    if (!registerDeepLink) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('new');
+    setSearchParams(next, { replace: true });
+  };
+  const closeRegisterModal = () => {
+    setIsRegisterOpen(false);
+    closeRegisterDeepLink();
+  };
+
   const canViewHistory = ['doctor', 'nurse', 'hospital_admin', 'receptionist'].includes(user?.role);
 
   const [regAllergies, setRegAllergies] = useState([]);
@@ -303,7 +319,7 @@ export default function PatientDirectory() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['hospital-patients'] });
-      setIsRegisterOpen(false);
+      closeRegisterModal();
       reset();
       setRegAllergies([]);
       setRegConditions([]);
@@ -700,9 +716,9 @@ export default function PatientDirectory() {
       </Card>
 
       <Modal
-        isOpen={isRegisterOpen}
+        isOpen={isRegisterOpen || registerDeepLink}
         onClose={() => {
-          if (!registerMutation.isPending) setIsRegisterOpen(false);
+          if (!registerMutation.isPending) closeRegisterModal();
         }}
         title="Register New Patient"
         description="Create patient demographic record and auto-assign unique hospital MRN."
@@ -711,7 +727,7 @@ export default function PatientDirectory() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => setIsRegisterOpen(false)}
+              onClick={closeRegisterModal}
               disabled={registerMutation.isPending}
             >
               Cancel

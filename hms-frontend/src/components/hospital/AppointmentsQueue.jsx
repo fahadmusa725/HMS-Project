@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -72,6 +73,17 @@ export default function AppointmentsQueue() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentReference, setPaymentReference] = useState('');
 
+  // Deep link from the dashboard quick actions (`?book=1`). Opening is derived from the URL
+  // instead of an effect, and the param is cleared on close so it does not reopen.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const bookDeepLink = searchParams.get('book') === '1';
+  const closeBookDeepLink = () => {
+    if (!bookDeepLink) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('book');
+    setSearchParams(next, { replace: true });
+  };
+
   const REFERENCE_REQUIRED_METHODS = ['jazzcash', 'easypaisa', 'bank_transfer'];
 
   const {
@@ -115,7 +127,7 @@ export default function AppointmentsQueue() {
       });
       return response.data;
     },
-    enabled: isBookOpen && patientSearch.trim().length > 0,
+    enabled: (isBookOpen || bookDeepLink) && patientSearch.trim().length > 0,
   });
 
   const {
@@ -150,6 +162,7 @@ export default function AppointmentsQueue() {
       queryClient.invalidateQueries({ queryKey: ['available-slots'] });
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setIsBookOpen(false);
+      closeBookDeepLink();
       reset();
       setPatientSearch('');
       setFormError(null);
@@ -204,6 +217,7 @@ export default function AppointmentsQueue() {
 
   const closeBookModal = () => {
     setIsBookOpen(false);
+    closeBookDeepLink();
     setConsultationFee(0);
     setCollectPaymentNow(false);
     setPaymentAmount(0);
@@ -587,7 +601,7 @@ export default function AppointmentsQueue() {
       </Card>
 
       <Modal
-        isOpen={isBookOpen}
+        isOpen={isBookOpen || bookDeepLink}
         onClose={() => {
           if (!bookMutation.isPending) closeBookModal();
         }}
