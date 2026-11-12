@@ -41,13 +41,15 @@ async function listAuditLogs(req, res) {
     const filter = {};
     if (userId) filter.userId = userId;
 
-    const logs = await AuditLog.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit))
-      .populate("userId", "name role");
-
-    const total = await AuditLog.countDocuments(filter);
+    const [logs, total] = await Promise.all([
+      AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((Number(page) - 1) * Number(limit))
+        .limit(Number(limit))
+        .populate("userId", "name role")
+        .lean(),
+      AuditLog.countDocuments(filter),
+    ]);
 
     const withLabels = logs.map((log) => ({
       id: log._id,

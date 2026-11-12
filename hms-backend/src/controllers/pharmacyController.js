@@ -2,7 +2,7 @@ const Medicine = require("../models/Medicine");
 const PharmacySale = require("../models/PharmacySale");
 const User = require("../models/User");
 const { sendEmail } = require("../utils/mailer");
-const { escapeHtml } = require("../utils/security");
+const { escapeHtml, escapeRegex } = require("../utils/security");
 
 // How many times deductFefo() will re-read and re-plan a dispense if a concurrent request
 // touched the exact same batch(es) between the read and the atomic write.
@@ -112,14 +112,17 @@ async function listMedicines(req, res) {
     const filter = {};
 
     if (search) {
-      filter.$or = [{ name: { $regex: search, $options: "i" } }, { category: { $regex: search, $options: "i" } }];
+      const term = escapeRegex(String(search).trim());
+      filter.$or = [{ name: { $regex: term, $options: "i" } }, { category: { $regex: term, $options: "i" } }];
     }
 
-    let medicines = await Medicine.find(filter).sort({ name: 1 });
-
+    // Low stock is a field-to-field comparison, so filter it in Mongo instead of
+    // shipping the whole inventory over the wire and filtering it in Node.
     if (lowStock === "true") {
-      medicines = medicines.filter((m) => m.stock <= m.lowStockThreshold);
+      filter.$expr = { $lte: ["$stock", "$lowStockThreshold"] };
     }
+
+    const medicines = await Medicine.find(filter).sort({ name: 1 }).lean();
 
     // Fire-and-forget: don't make the list view wait on the expiry sweep or its emails.
     checkNearExpiryAlerts();
@@ -357,7 +360,8 @@ async function listSales(req, res) {
     const sales = await PharmacySale.find({})
       .sort({ createdAt: -1 })
       .populate("patientId", "name mrn")
-      .populate("dispensedBy", "name");
+      .populate("dispensedBy", "name")
+      .lean();
     res.json(sales);
   } catch (err) {
     console.error(err);

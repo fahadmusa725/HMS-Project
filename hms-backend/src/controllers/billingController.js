@@ -62,7 +62,8 @@ async function listBills(req, res) {
     const filter = {};
     if (paymentStatus) filter.paymentStatus = paymentStatus;
 
-    const bills = await Bill.find(filter).sort({ createdAt: -1 }).populate("patientId", "name mrn phone");
+    // .lean(): the invoice list only ever reads these fields, so skip hydrating documents.
+    const bills = await Bill.find(filter).sort({ createdAt: -1 }).populate("patientId", "name mrn phone").lean();
     res.json(bills);
   } catch (err) {
     console.error(err);
@@ -72,7 +73,7 @@ async function listBills(req, res) {
 
 async function getPatientBills(req, res) {
   try {
-    const bills = await Bill.find({ patientId: req.params.patientId }).sort({ createdAt: -1 });
+    const bills = await Bill.find({ patientId: req.params.patientId }).sort({ createdAt: -1 }).lean();
     res.json(bills);
   } catch (err) {
     console.error(err);

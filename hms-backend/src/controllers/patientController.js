@@ -4,9 +4,12 @@ const User = require("../models/User");
 const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { sendEmail } = require("../utils/mailer");
-const { escapeHtml, generateTempPassword, hashToken, safeCompare } = require("../utils/security");
+const { escapeHtml, escapeRegex, generateTempPassword, hashToken, safeCompare } = require("../utils/security");
 
 const MAX_CLAIM_ATTEMPTS = 5;
+
+// Patient directory pages are small; anything larger is a client bug, not a use case.
+const MAX_PAGE_SIZE = 100;
 
 /** Builds a short prefix from the hospital name for readable MRNs, e.g. "City Hospital" -> "CTH" */
 function buildMrnPrefix(hospitalName) {
@@ -72,24 +75,30 @@ async function registerPatient(req, res) {
 async function listPatients(req, res) {
   try {
     const { search, page = 1, limit = 20 } = req.query;
+    const pageNumber = Math.max(1, Number(page) || 1);
+    const pageSize = Math.min(Math.max(1, Number(limit) || 20), MAX_PAGE_SIZE);
     const filter = {};
 
     if (search) {
+      const term = escapeRegex(String(search).trim());
       filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { mrn: { $regex: search, $options: "i" } },
-        { phone: { $regex: search, $options: "i" } },
+        { name: { $regex: term, $options: "i" } },
+        { mrn: { $regex: term, $options: "i" } },
+        { phone: { $regex: term, $options: "i" } },
       ];
     }
 
-    const patients = await Patient.find(filter)
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+    // find + count used to be awaited one after the other - two Atlas round trips.
+    const [patients, total] = await Promise.all([
+      Patient.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((pageNumber - 1) * pageSize)
+        .limit(pageSize)
+        .lean(),
+      Patient.countDocuments(filter),
+    ]);
 
-    const total = await Patient.countDocuments(filter);
-
-    res.json({ patients, total, page: Number(page), limit: Number(limit) });
+    res.json({ patients, total, page: pageNumber, limit: pageSize });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while listing patients." });

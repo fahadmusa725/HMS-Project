@@ -15,6 +15,14 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * Escapes a user-supplied search term before it goes into a MongoDB $regex, so
+ * characters like `.` `*` `(` `[` match literally instead of acting as operators.
+ */
+function escapeRegex(value) {
+  return String(value == null ? "" : value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // No 0/O/1/l/I lookalikes - these passwords get read off a screen or printed email.
 const TEMP_PASSWORD_ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -47,6 +55,7 @@ function safeCompare(a, b) {
 
 module.exports = {
   escapeHtml,
+  escapeRegex,
   generateTempPassword,
   generateNumericCode,
   hashToken,

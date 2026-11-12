@@ -72,7 +72,8 @@ async function listLabOrders(req, res) {
     const orders = await LabOrder.find(filter)
       .sort({ createdAt: -1 })
       .populate("patientId", "name mrn phone")
-      .populate("doctorId", "name");
+      .populate("doctorId", "name")
+      .lean();
 
     res.json(orders);
   } catch (err) {

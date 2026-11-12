@@ -45,6 +45,11 @@ const CHECK_IN_GRACE_MINUTES = 30;
 // auto-flagged as a no-show - see autoFlagNoShows() below.
 const NO_SHOW_GRACE_MINUTES = 45;
 
+// Reading the queue is the hot path, so the sweep behind it runs at most once per minute per
+// hospital instead of on every GET. A sweep is cheap but it is still a write on a read request.
+const NO_SHOW_SWEEP_INTERVAL_MS = 60 * 1000;
+const lastNoShowSweepByHospital = new Map();
+
 /** "14:30" -> "2:30 PM" for printed output. Legacy free-text times pass through unchanged. */
 function formatSlotTime(time) {
   const match = /^(\d{2}):(\d{2})$/.exec(time || "");
@@ -62,16 +67,26 @@ function formatSlotTime(time) {
  * bookings included); today's are only flagged once NO_SHOW_GRACE_MINUTES has passed their slot.
  * Never touches anything already checked_in or beyond.
  */
-async function autoFlagNoShows() {
+function autoFlagNoShows({ force = false } = {}) {
+  const key = String(getCurrentHospitalId());
+  if (!force && Date.now() - (lastNoShowSweepByHospital.get(key) || 0) < NO_SHOW_SWEEP_INTERVAL_MS) {
+    return Promise.resolve();
+  }
+
   const now = hospitalNow();
   const cutoffTime = toHHMM(Math.max(toMinutes(now.time) - NO_SHOW_GRACE_MINUTES, 0));
-  await Appointment.updateMany(
+  lastNoShowSweepByHospital.set(key, Date.now());
+  return Appointment.updateMany(
     {
       status: "scheduled",
       $or: [{ date: { $lt: now.date } }, { date: now.date, time: { $regex: HHMM_REGEX, $lte: cutoffTime } }],
     },
     { $set: { status: "no_show" } }
-  );
+  ).catch((err) => {
+    // Don't let one failed sweep silence the next minute's attempt.
+    lastNoShowSweepByHospital.delete(key);
+    throw err;
+  });
 }
 
 /**
@@ -143,7 +158,8 @@ async function createAppointmentWithBilling({
       throw { status: 400, message: "That time slot has already passed today. Please pick a later slot." };
     }
     // A stale "scheduled" appointment sitting on this exact slot should free it up, not block it.
-    await autoFlagNoShows();
+    // Booking is a write path where the answer has to be current, so it bypasses the read throttle.
+    await autoFlagNoShows({ force: true });
     const clash = await Appointment.findOne({ doctorId, date, time, status: { $nin: ["cancelled", "no_show"] } });
     if (clash) {
       throw { status: 409, message: "This slot was just booked by someone else. Please pick another time." };
@@ -260,18 +276,19 @@ async function getQueue(req, res) {
     const appointments = await Appointment.find(filter)
       .sort({ tokenNumber: 1 })
       .populate("patientId", "name mrn phone")
-      .populate("doctorId", "name department");
+      .populate("doctorId", "name department")
+      .lean();
 
-    const bills = await Bill.find({ appointmentId: { $in: appointments.map((a) => a._id) } }).select(
-      "appointmentId totalAmount amountPaid paymentStatus"
-    );
+    const bills = await Bill.find({ appointmentId: { $in: appointments.map((a) => a._id) } })
+      .select("appointmentId totalAmount amountPaid paymentStatus")
+      .lean();
     const billByAppointment = new Map(bills.map((b) => [String(b.appointmentId), b]));
 
     res.json(
       appointments.map((a) => {
         const bill = billByAppointment.get(String(a._id));
         return {
-          ...a.toObject(),
+          ...a,
           bill: bill
             ? { _id: bill._id, totalAmount: bill.totalAmount, amountPaid: bill.amountPaid, paymentStatus: bill.paymentStatus }
             : null,
