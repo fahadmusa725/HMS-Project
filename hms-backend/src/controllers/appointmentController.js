@@ -404,11 +404,11 @@ async function getAppointmentSlipPdf(req, res) {
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#000").text(hospital ? hospital.name : "Hospital", { align: "center" });
     doc.font("Helvetica").fontSize(9).fillColor("#555").text("OPD Token Slip", { align: "center" });
     doc.moveDown(0.6);
-    doc.strokeColor("#0F766E").lineWidth(1).moveTo(18, doc.y).lineTo(265, doc.y).stroke();
+    doc.strokeColor("#1F5F5B").lineWidth(1).moveTo(18, doc.y).lineTo(265, doc.y).stroke();
     doc.moveDown(0.6);
 
     doc.font("Helvetica").fontSize(8).fillColor("#555").text("TOKEN NO.", { align: "center" });
-    doc.font("Helvetica-Bold").fontSize(40).fillColor("#0F766E").text(String(appointment.tokenNumber), { align: "center" });
+    doc.font("Helvetica-Bold").fontSize(40).fillColor("#1F5F5B").text(String(appointment.tokenNumber), { align: "center" });
     doc.moveDown(0.4);
 
     const row = (label, value) => {

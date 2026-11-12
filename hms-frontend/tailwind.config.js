@@ -9,24 +9,15 @@ export default {
     extend: {
       colors: {
         border: "hsl(var(--border))",
+        "border-strong": "hsl(var(--border-strong))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
+        overlay: "hsl(var(--overlay))",
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          50: '#f0fdfa',
-          100: '#ccfbf1',
-          200: '#99f6e4',
-          300: '#5eead4',
-          400: '#2dd4bf',
-          500: '#14b8a6',
-          600: '#0d9488',
-          700: '#0f766e',
-          800: '#115e59',
-          900: '#134e4a',
-          950: '#042f2e',
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -35,6 +26,14 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
@@ -56,6 +55,17 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+        },
+        scrollbar: {
+          DEFAULT: "hsl(var(--scrollbar-thumb))",
+          hover: "hsl(var(--scrollbar-thumb-hover))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -66,12 +76,12 @@ export default {
         sans: ['"Plus Jakarta Sans"', '"Inter"', 'sans-serif'],
       },
       boxShadow: {
-        'soft-sm': '0 1px 2px 0 rgba(15, 118, 110, 0.04), 0 1px 3px 0 rgba(15, 118, 110, 0.02)',
-        'soft': '0 4px 6px -1px rgba(15, 118, 110, 0.05), 0 2px 4px -2px rgba(15, 118, 110, 0.03)',
-        'soft-md': '0 10px 15px -3px rgba(15, 118, 110, 0.06), 0 4px 6px -4px rgba(15, 118, 110, 0.03)',
-        'soft-lg': '0 20px 25px -5px rgba(15, 118, 110, 0.06), 0 8px 10px -6px rgba(15, 118, 110, 0.03)',
-        'soft-xl': '0 25px 50px -12px rgba(15, 118, 110, 0.10)',
-        'glow': '0 0 25px -5px rgba(15, 118, 110, 0.25)',
+        'soft-sm': '0 1px 2px 0 hsl(var(--shadow-color) / 0.06), 0 1px 3px 0 hsl(var(--shadow-color) / 0.04)',
+        'soft': '0 4px 6px -1px hsl(var(--shadow-color) / 0.07), 0 2px 4px -2px hsl(var(--shadow-color) / 0.05)',
+        'soft-md': '0 10px 15px -3px hsl(var(--shadow-color) / 0.08), 0 4px 6px -4px hsl(var(--shadow-color) / 0.05)',
+        'soft-lg': '0 20px 25px -5px hsl(var(--shadow-color) / 0.08), 0 8px 10px -6px hsl(var(--shadow-color) / 0.05)',
+        'soft-xl': '0 25px 50px -12px hsl(var(--shadow-color) / 0.14)',
+        'glow': '0 0 25px -5px hsl(var(--shadow-color) / 0.3)',
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out forwards',

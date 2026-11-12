@@ -6,14 +6,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CareFlow HMS: Hospital Management SaaS</title>
     <meta name="description" content="Next-generation multi-tenant Hospital Management System SaaS" />
+    <meta name="theme-color" content="#F0EEE9" />
 
-    <!-- Applies the saved theme before first paint, so a dark-mode user never sees a light flash. -->
+    <!--
+      Resolves the theme before the first paint so a dark-mode visitor never sees a
+      light flash: stored choice first, otherwise the OS preference. Mirrors
+      `src/lib/theme.js`, which owns every later change.
+    -->
     <script>
-      try {
-        if (localStorage.getItem('careflow-theme') === 'dark') {
-          document.documentElement.classList.add('dark');
+      (function () {
+        var LIGHT = '#F0EEE9';
+        var DARK = '#0E1A19';
+        var preference;
+        try {
+          preference = localStorage.getItem('careflow-theme');
+        } catch (e) {}
+        if (preference !== 'light' && preference !== 'dark') {
+          preference = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
-      } catch (e) {}
+        document.documentElement.classList.toggle('dark', preference === 'dark');
+        document.documentElement.style.colorScheme = preference;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', preference === 'dark' ? DARK : LIGHT);
+      })();
     </script>
 
     <!--
@@ -42,7 +57,7 @@
       />
     </noscript>
   </head>
-  <body class="bg-background text-foreground antialiased min-h-screen selection:bg-primary/20 selection:text-primary">
+  <body class="bg-background text-foreground antialiased min-h-screen">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

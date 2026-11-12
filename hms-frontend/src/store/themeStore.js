@@ -1,41 +1,21 @@
 import { create } from 'zustand';
+import { applyTheme, getInitialTheme, persistTheme } from '@/lib/theme';
 
-const getInitialTheme = () => {
-  try {
-    const saved = localStorage.getItem('careflow-theme');
-    if (saved === 'dark' || saved === 'light') return saved;
-  } catch {
-    // fallback if localStorage not accessible
-  }
-  return 'light';
-};
+export const useThemeStore = create((set, get) => {
+  const initialTheme = getInitialTheme();
+  // index.html already resolved this before paint; re-applying keeps the DOM and the
+  // store in step when the module loads.
+  applyTheme(initialTheme);
 
-export const useThemeStore = create((set) => ({
-  theme: getInitialTheme(),
-  toggleTheme: () =>
-    set((state) => {
-      const nextTheme = state.theme === 'light' ? 'dark' : 'light';
-      try {
-        localStorage.setItem('careflow-theme', nextTheme);
-      } catch {}
-
-      if (nextTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-      return { theme: nextTheme };
-    }),
-  setTheme: (theme) => {
-    try {
-      localStorage.setItem('careflow-theme', theme);
-    } catch {}
-
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+  const commit = (theme) => {
+    persistTheme(theme);
+    applyTheme(theme);
     set({ theme });
-  },
-}));
+  };
+
+  return {
+    theme: initialTheme,
+    toggleTheme: () => commit(get().theme === 'dark' ? 'light' : 'dark'),
+    setTheme: (theme) => commit(theme),
+  };
+});

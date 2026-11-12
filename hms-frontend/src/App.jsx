@@ -17,14 +17,6 @@ function App() {
     }
   }, [token, fetchMe]);
 
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [theme]);
-
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
@@ -39,8 +31,8 @@ function App() {
             className:
               'font-sans rounded-xl border shadow-soft-xl px-4 py-3 text-sm flex items-center gap-3',
             style: {
-              background: 'hsl(var(--card))',
-              color: 'hsl(var(--card-foreground))',
+              background: 'hsl(var(--popover))',
+              color: 'hsl(var(--popover-foreground))',
               borderColor: 'hsl(var(--border))',
             },
           }}

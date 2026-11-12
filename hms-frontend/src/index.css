@@ -2,114 +2,223 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Colour tokens are HSL triplets (no hsl() wrapper) so Tailwind can append the
+ * opacity of utilities like `bg-primary/10`. Every colour in the app resolves
+ * through one of these variables - components never carry raw hex/palette values.
+ *
+ * Brand: Cloud White (#F0EEE9) canvas, Teal (#1F5F5B) primary.
+ * Contrast pairs are verified by `npm run check:contrast`.
+ */
 @layer base {
   :root {
-    /* --- Light Mode (Default) --- */
-    /* Background: #F0FDFA -> hsl(166, 76%, 97%) */
-    --background: 166 76% 97%;
-    /* Text / Foreground: #134E4A -> hsl(176, 61%, 19%) */
-    --foreground: 176 61% 19%;
+    --background: 43 19% 93%;
+    --foreground: 176 41% 13%;
 
-    /* Card background: #FFFFFF */
-    --card: 0 0% 100%;
-    --card-foreground: 176 61% 19%;
+    --card: 45 29% 97%;
+    --card-foreground: 176 41% 13%;
+    --popover: 45 29% 97%;
+    --popover-foreground: 176 41% 13%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 176 61% 19%;
-
-    /* Primary: #0F766E -> hsl(175, 77%, 26%) */
-    --primary: 175 77% 26%;
+    --primary: 176 51% 25%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary: #14B8A6 -> hsl(173, 80%, 40%) */
-    --secondary: 173 80% 40%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 160 20% 91%;
+    --secondary-foreground: 176 51% 25%;
 
-    /* Warning / Alert: #F59E0B -> hsl(38, 92%, 50%) */
-    --warning: 38 92% 50%;
-    --warning-foreground: 28 85% 35%;
+    --muted: 42 17% 88%;
+    --muted-foreground: 166 7% 36%;
 
-    /* Muted & borders tailored to teal tint */
-    --muted: 166 50% 93%;
-    --muted-foreground: 176 35% 38%;
+    --accent: 160 21% 89%;
+    --accent-foreground: 176 41% 13%;
 
-    --accent: 166 60% 92%;
-    --accent-foreground: 176 61% 19%;
-
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 4 76% 40%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 166 40% 88%;
-    --input: 166 40% 88%;
-    --ring: 175 77% 26%;
+    /* Status colours are text/icon inks in light mode; painted fills only carry
+       the matching `*-foreground` (near-white) ink. */
+    --warning: 31 89% 29%;
+    --warning-foreground: 0 0% 100%;
+    --success: 149 56% 27%;
+    --success-foreground: 0 0% 100%;
+    --info: 205 65% 33%;
+    --info-foreground: 0 0% 100%;
+
+    /* `border` is decorative (dividers, card rims). `border-strong` is for
+       interactive outlines - form controls and their focus rings. */
+    --border: 43 15% 81%;
+    --border-strong: 164 7% 45%;
+    --input: 164 7% 45%;
+    --ring: 176 51% 25%;
+
+    --overlay: 176 15% 10%;
+
+    --chart-1: 176 51% 25%;
+    --chart-2: 174 51% 37%;
+    --chart-3: 205 65% 33%;
+    --chart-4: 31 89% 29%;
+    --chart-5: 166 7% 36%;
+
+    --scrollbar-thumb: 42 13% 75%;
+    --scrollbar-thumb-hover: 43 10% 64%;
+
+    --shadow-color: 176 51% 25%;
 
     --radius: 0.75rem;
+    color-scheme: light;
   }
 
   .dark {
-    /* --- Dark Mode --- */
-    /* Background: #0F172A -> hsl(222.2, 47.4%, 11.2%) */
-    --background: 222.2 47.4% 11.2%;
-    /* Text / Foreground: #F0FDFA -> hsl(166, 76%, 97%) */
-    --foreground: 166 76% 97%;
+    --background: 175 30% 8%;
+    --foreground: 45 18% 91%;
 
-    /* Card background: #1E293B -> hsl(217.2, 32.6%, 17.5%) */
-    --card: 217.2 32.6% 17.5%;
-    --card-foreground: 166 76% 97%;
+    --card: 173 31% 11%;
+    --card-foreground: 45 18% 91%;
+    --popover: 173 31% 11%;
+    --popover-foreground: 45 18% 91%;
 
-    --popover: 217.2 32.6% 17.5%;
-    --popover-foreground: 166 76% 97%;
+    --primary: 175 40% 51%;
+    --primary-foreground: 175 30% 8%;
 
-    /* Primary: #14B8A6 (Brighter teal for contrast) -> hsl(173, 80%, 40%) */
-    --primary: 173 80% 40%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 173 32% 20%;
+    --secondary-foreground: 168 33% 88%;
 
-    /* Secondary: #0F766E -> hsl(175, 77%, 26%) */
-    --secondary: 175 77% 26%;
-    --secondary-foreground: 0 0% 100%;
+    --muted: 174 28% 15%;
+    --muted-foreground: 167 11% 65%;
 
-    /* Warning / Alert: #F59E0B */
-    --warning: 38 92% 50%;
-    --warning-foreground: 45 93% 58%;
+    --accent: 173 30% 17%;
+    --accent-foreground: 45 18% 91%;
 
-    /* Muted text: #94A3B8 -> hsl(215.4, 16.3%, 65.3%) */
-    --muted: 217.2 32.6% 22%;
-    --muted-foreground: 215.4 16.3% 65.3%;
+    --destructive: 4 92% 69%;
+    --destructive-foreground: 175 30% 8%;
 
-    --accent: 217.2 32.6% 24%;
-    --accent-foreground: 166 76% 97%;
+    --warning: 36 89% 65%;
+    --warning-foreground: 175 30% 8%;
+    --success: 148 47% 56%;
+    --success-foreground: 175 30% 8%;
+    --info: 206 70% 70%;
+    --info-foreground: 175 30% 8%;
 
-    --destructive: 0 62.8% 45%;
-    --destructive-foreground: 0 0% 100%;
+    --border: 173 27% 20%;
+    --border-strong: 170 19% 41%;
+    --input: 170 19% 41%;
+    --ring: 175 40% 51%;
 
-    --border: 217.2 32.6% 25%;
-    --input: 217.2 32.6% 25%;
-    --ring: 173 80% 40%;
+    --overlay: 0 0% 0%;
+
+    --chart-1: 175 40% 51%;
+    --chart-2: 173 47% 66%;
+    --chart-3: 206 70% 70%;
+    --chart-4: 36 89% 65%;
+    --chart-5: 167 11% 65%;
+
+    --scrollbar-thumb: 172 25% 23%;
+    --scrollbar-thumb-hover: 171 25% 31%;
+
+    --shadow-color: 175 30% 3%;
+    color-scheme: dark;
   }
 }
 
 @layer base {
-  * {
+  *,
+  ::before,
+  ::after {
     @apply border-border;
+    /* Tailwind ships #fff; a white offset halo is wrong on the dark canvas. */
+    --tw-ring-offset-color: hsl(var(--background));
   }
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  ::selection {
+    background-color: hsl(var(--primary) / 0.24);
+    color: hsl(var(--foreground));
+  }
+  :disabled {
+    cursor: not-allowed;
+  }
+  /* Chrome paints autofilled credentials from its own palette; keep them on the
+     active surface so the login form stays legible in dark mode. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: hsl(var(--foreground));
+    -webkit-box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
+    caret-color: hsl(var(--foreground));
+  }
 }
 
-/* Custom scrollbar */
+/* Scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--scrollbar-thumb)) transparent;
+}
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary) / 0.2);
+  background: hsl(var(--scrollbar-thumb));
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.4);
+  background: hsl(var(--scrollbar-thumb-hover));
+}
+
+/*
+ * Sonner ships its own light palette defaults. These selectors are prefixed with
+ * `html` so they win over the sheet it injects at runtime.
+ */
+html [data-sonner-toaster] {
+  --normal-bg: hsl(var(--popover));
+  --normal-text: hsl(var(--popover-foreground));
+  --normal-border: hsl(var(--border));
+  --success-bg: hsl(var(--popover));
+  --success-text: hsl(var(--success));
+  --success-border: hsl(var(--border));
+  --error-bg: hsl(var(--popover));
+  --error-text: hsl(var(--destructive));
+  --error-border: hsl(var(--border));
+  --warning-bg: hsl(var(--popover));
+  --warning-text: hsl(var(--warning));
+  --warning-border: hsl(var(--border));
+  --info-bg: hsl(var(--popover));
+  --info-text: hsl(var(--info));
+  --info-border: hsl(var(--border));
+}
+html [data-sonner-toast] [data-description] {
+  color: hsl(var(--muted-foreground));
+}
+html [data-sonner-toast] [data-icon] {
+  color: hsl(var(--primary));
+}
+html [data-sonner-toast][data-type="success"] [data-icon] {
+  color: hsl(var(--success));
+}
+html [data-sonner-toast][data-type="error"] [data-icon] {
+  color: hsl(var(--destructive));
+}
+html [data-sonner-toast][data-type="warning"] [data-icon] {
+  color: hsl(var(--warning));
+}
+html [data-sonner-toast][data-type="info"] [data-icon] {
+  color: hsl(var(--info));
+}
+html [data-sonner-toast] [data-button] {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+html [data-sonner-toast] [data-cancel] {
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+}
+html [data-sonner-toast] [data-close-button] {
+  background: hsl(var(--popover));
+  border-color: hsl(var(--border));
+  color: hsl(var(--muted-foreground));
 }
