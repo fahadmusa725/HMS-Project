@@ -477,7 +477,7 @@ export default function SuperAdminDashboard() {
                                   setExtendDays(14);
                                 }}
                                 disabled={updateStatusMutation.isPending || deleteHospitalMutation.isPending}
-                                className="h-8 text-xs font-semibold text-secondary hover:bg-secondary/10 hover:border-secondary/40"
+                                className="h-8 text-xs font-semibold text-primary hover:bg-primary/10 hover:border-primary/40"
                               >
                                 Extend Trial
                               </Button>

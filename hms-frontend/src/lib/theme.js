@@ -6,7 +6,7 @@
 export const THEME_STORAGE_KEY = 'careflow-theme';
 
 const THEME_COLOR_META = {
-  light: '#F0EEE9',
+  light: '#F5F9F8',
   dark: '#0E1A19',
 };
 

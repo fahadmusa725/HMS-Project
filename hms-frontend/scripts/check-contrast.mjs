@@ -71,7 +71,7 @@ function blend(top, bottom, alpha) {
 
 // --- pair specs -----------------------------------------------------------------
 const solid = (token) => ({ token });
-/** A colour drawn at `alpha` over another token - e.g. `bg-warning/12` on a card. */
+/** A colour drawn at `alpha` over another token - e.g. `bg-warning/10` on a card. */
 const tinted = (token, alpha, over) => ({ token, alpha, over });
 /** A foreground colour drawn at `alpha` over whatever surface it lands on. */
 const faded = (token, alpha) => ({ token, alpha, fade: true });
@@ -115,10 +115,18 @@ const PAIRS = [
   { label: 'primary ink on card', fg: solid('primary'), bg: solid('card'), min: TEXT_MIN },
   { label: 'primary ink on accent', fg: solid('primary'), bg: solid('accent'), min: TEXT_MIN },
   { label: 'primary ink on primary/10 badge', fg: solid('primary'), bg: tinted('primary', 0.1, 'card'), min: TEXT_MIN },
-  { label: 'primary label on primary fill', fg: solid('primary-foreground'), bg: solid('primary'), min: TEXT_MIN },
+  { label: 'secondary ink on card (stat numbers)', fg: solid('secondary-foreground'), bg: solid('card'), min: TEXT_MIN },
+  { label: 'primary label on primary fill (nav, buttons)', fg: solid('primary-foreground'), bg: solid('primary'), min: TEXT_MIN },
   { label: 'primary label on primary hover (90%)', fg: solid('primary-foreground'), bg: tinted('primary', 0.9, 'background'), min: TEXT_MIN },
   { label: 'secondary label on secondary fill', fg: solid('secondary-foreground'), bg: solid('secondary'), min: TEXT_MIN },
   { label: 'accent text on accent fill', fg: solid('accent-foreground'), bg: solid('accent'), min: TEXT_MIN },
+
+  // Bright teal: icon tiles, chart series and the dark-mode active nav fill (light mode
+  // uses `primary` with white text). It is deliberately not used for small text on white,
+  // because it only clears non-text contrast there.
+  { label: 'bright icon on primary-bright/10 tile', fg: solid('primary-bright'), bg: tinted('primary-bright', 0.1, 'card'), min: UI_MIN },
+  { label: 'bright icon on canvas', fg: solid('primary-bright'), bg: solid('background'), min: UI_MIN },
+  { label: 'bright ink on primary-bright fill (active nav, dark)', fg: solid('primary-bright-foreground'), bg: solid('primary-bright'), min: TEXT_MIN },
 
   // Destructive
   { label: 'danger ink on canvas', fg: solid('destructive'), bg: solid('background'), min: TEXT_MIN },
@@ -129,7 +137,7 @@ const PAIRS = [
   // Warning
   { label: 'warning ink on canvas', fg: solid('warning'), bg: solid('background'), min: TEXT_MIN },
   { label: 'warning ink on card', fg: solid('warning'), bg: solid('card'), min: TEXT_MIN },
-  { label: 'warning ink on warning/12 badge', fg: solid('warning'), bg: tinted('warning', 0.12, 'card'), min: TEXT_MIN },
+  { label: 'warning ink on warning/10 badge', fg: solid('warning'), bg: tinted('warning', 0.1, 'card'), min: TEXT_MIN },
   { label: 'warning ink on warning/15 chip', fg: solid('warning'), bg: tinted('warning', 0.15, 'card'), min: TEXT_MIN },
   { label: 'warning ink on muted', fg: solid('warning'), bg: solid('muted'), min: TEXT_MIN },
   { label: 'warning label on warning fill', fg: solid('warning-foreground'), bg: solid('warning'), min: TEXT_MIN },
@@ -137,13 +145,13 @@ const PAIRS = [
   // Success
   { label: 'success ink on canvas', fg: solid('success'), bg: solid('background'), min: TEXT_MIN },
   { label: 'success ink on card', fg: solid('success'), bg: solid('card'), min: TEXT_MIN },
-  { label: 'success ink on success/12 badge', fg: solid('success'), bg: tinted('success', 0.12, 'card'), min: TEXT_MIN },
+  { label: 'success ink on success/10 badge', fg: solid('success'), bg: tinted('success', 0.1, 'card'), min: TEXT_MIN },
   { label: 'success label on success fill', fg: solid('success-foreground'), bg: solid('success'), min: TEXT_MIN },
 
   // Info
   { label: 'info ink on canvas', fg: solid('info'), bg: solid('background'), min: TEXT_MIN },
   { label: 'info ink on card', fg: solid('info'), bg: solid('card'), min: TEXT_MIN },
-  { label: 'info ink on info/12 badge', fg: solid('info'), bg: tinted('info', 0.12, 'card'), min: TEXT_MIN },
+  { label: 'info ink on info/10 badge', fg: solid('info'), bg: tinted('info', 0.1, 'card'), min: TEXT_MIN },
   { label: 'info label on info fill', fg: solid('info-foreground'), bg: solid('info'), min: TEXT_MIN },
 
   // Controls and focus

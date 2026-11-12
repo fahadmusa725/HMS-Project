@@ -7,29 +7,34 @@
  * opacity of utilities like `bg-primary/10`. Every colour in the app resolves
  * through one of these variables - components never carry raw hex/palette values.
  *
- * Brand: Cloud White (#F0EEE9) canvas, Teal (#1F5F5B) primary.
+ * Brand: cool near-white (#F5F9F8) canvas, white cards, Teal (#1F5F5B) primary.
+ * `primary-bright` is the saturated accent for icon tiles, chart series and the
+ * dark-mode active nav fill; `primary` is the ink and filled-button teal that carries
+ * white text (including the light-mode active nav).
  * Contrast pairs are verified by `npm run check:contrast`.
  */
 @layer base {
   :root {
-    --background: 43 19% 93%;
+    --background: 165 25% 97%;
     --foreground: 176 41% 13%;
 
-    --card: 45 29% 97%;
+    --card: 0 0% 100%;
     --card-foreground: 176 41% 13%;
-    --popover: 45 29% 97%;
+    --popover: 0 0% 100%;
     --popover-foreground: 176 41% 13%;
 
     --primary: 176 51% 25%;
     --primary-foreground: 0 0% 100%;
+    --primary-bright: 174 75% 34%;
+    --primary-bright-foreground: 176 55% 9%;
 
-    --secondary: 160 20% 91%;
+    --secondary: 168 24% 94%;
     --secondary-foreground: 176 51% 25%;
 
-    --muted: 42 17% 88%;
-    --muted-foreground: 166 7% 36%;
+    --muted: 168 20% 94%;
+    --muted-foreground: 168 11% 34%;
 
-    --accent: 160 21% 89%;
+    --accent: 170 30% 93%;
     --accent-foreground: 176 41% 13%;
 
     --destructive: 4 76% 40%;
@@ -46,23 +51,23 @@
 
     /* `border` is decorative (dividers, card rims). `border-strong` is for
        interactive outlines - form controls and their focus rings. */
-    --border: 43 15% 81%;
-    --border-strong: 164 7% 45%;
-    --input: 164 7% 45%;
+    --border: 168 20% 89%;
+    --border-strong: 172 12% 42%;
+    --input: 172 12% 42%;
     --ring: 176 51% 25%;
 
     --overlay: 176 15% 10%;
 
-    --chart-1: 176 51% 25%;
-    --chart-2: 174 51% 37%;
+    --chart-1: 174 75% 34%;
+    --chart-2: 176 51% 25%;
     --chart-3: 205 65% 33%;
-    --chart-4: 31 89% 29%;
-    --chart-5: 166 7% 36%;
+    --chart-4: 31 89% 33%;
+    --chart-5: 190 10% 38%;
 
-    --scrollbar-thumb: 42 13% 75%;
-    --scrollbar-thumb-hover: 43 10% 64%;
+    --scrollbar-thumb: 168 15% 82%;
+    --scrollbar-thumb-hover: 168 12% 70%;
 
-    --shadow-color: 176 51% 25%;
+    --shadow-color: 176 40% 22%;
 
     --radius: 0.75rem;
     color-scheme: light;
@@ -79,6 +84,8 @@
 
     --primary: 175 40% 51%;
     --primary-foreground: 175 30% 8%;
+    --primary-bright: 172 62% 55%;
+    --primary-bright-foreground: 175 35% 8%;
 
     --secondary: 173 32% 20%;
     --secondary-foreground: 168 33% 88%;
@@ -106,7 +113,7 @@
 
     --overlay: 0 0% 0%;
 
-    --chart-1: 175 40% 51%;
+    --chart-1: 172 62% 55%;
     --chart-2: 173 47% 66%;
     --chart-3: 206 70% 70%;
     --chart-4: 36 89% 65%;

@@ -203,7 +203,7 @@ export default function HospitalDashboardLayout() {
                   className={({ isActive }) =>
                     `w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                       isActive
-                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        ? 'bg-primary text-primary-foreground shadow-sm dark:bg-primary-bright dark:text-primary-bright-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
                     }`
                   }

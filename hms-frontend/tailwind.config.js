@@ -18,6 +18,8 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          bright: "hsl(var(--primary-bright))",
+          "bright-foreground": "hsl(var(--primary-bright-foreground))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -76,9 +78,9 @@ export default {
         sans: ['"Plus Jakarta Sans"', '"Inter"', 'sans-serif'],
       },
       boxShadow: {
-        'soft-sm': '0 1px 2px 0 hsl(var(--shadow-color) / 0.06), 0 1px 3px 0 hsl(var(--shadow-color) / 0.04)',
-        'soft': '0 4px 6px -1px hsl(var(--shadow-color) / 0.07), 0 2px 4px -2px hsl(var(--shadow-color) / 0.05)',
-        'soft-md': '0 10px 15px -3px hsl(var(--shadow-color) / 0.08), 0 4px 6px -4px hsl(var(--shadow-color) / 0.05)',
+        'soft-sm': '0 1px 2px 0 hsl(var(--shadow-color) / 0.05), 0 1px 2px 0 hsl(var(--shadow-color) / 0.03)',
+        'soft': '0 2px 4px -1px hsl(var(--shadow-color) / 0.06), 0 1px 2px -1px hsl(var(--shadow-color) / 0.04)',
+        'soft-md': '0 8px 16px -4px hsl(var(--shadow-color) / 0.07), 0 2px 4px -2px hsl(var(--shadow-color) / 0.04)',
         'soft-lg': '0 20px 25px -5px hsl(var(--shadow-color) / 0.08), 0 8px 10px -6px hsl(var(--shadow-color) / 0.05)',
         'soft-xl': '0 25px 50px -12px hsl(var(--shadow-color) / 0.14)',
         'glow': '0 0 25px -5px hsl(var(--shadow-color) / 0.3)',

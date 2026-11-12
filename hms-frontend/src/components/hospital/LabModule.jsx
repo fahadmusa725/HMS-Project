@@ -311,7 +311,7 @@ export default function LabModule({ initialPatient = null, initialTab = 'worklis
             </div>
 
             <div className="p-4 sm:p-5 border-b lg:border-b-0 lg:border-r border-border">
-              <div className="text-2xl sm:text-3xl font-extrabold text-secondary tracking-tight">
+              <div className="text-2xl sm:text-3xl font-extrabold text-secondary-foreground tracking-tight">
                 {isOrdersLoading ? '—' : stats.ordered}
               </div>
               <div className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
