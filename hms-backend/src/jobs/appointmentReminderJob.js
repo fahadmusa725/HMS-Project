@@ -4,6 +4,12 @@ const doctorName = require("../utils/doctorName");
 const { hospitalDate } = require("../utils/scheduleSlots");
 const { escapeHtml } = require("../utils/security");
 
+// Sending one email at a time made this job's runtime grow linearly with the day's appointments,
+// which eventually runs past the Vercel function limit. A few in flight at once is still gentle on
+// Gmail SMTP; the deadline makes the job stop cleanly instead of being killed mid-send.
+const SEND_CONCURRENCY = 5;
+const TIME_BUDGET_MS = 25 * 1000;
+
 /**
  * Finds all appointments scheduled for TOMORROW (across every hospital)
  * and emails a reminder to any patient who has an email on file - this
@@ -29,22 +35,40 @@ async function sendAppointmentReminders() {
   ]).option({ skipTenantScope: true });
 
   let sent = 0;
-  for (const appt of upcoming) {
-    const result = await sendEmail({
-      to: appt.patient.email,
-      subject: `Appointment Reminder: ${tomorrow}`,
-      html: `
-        <p>Hello ${escapeHtml(appt.patient.name)},</p>
-        <p>This is a reminder of your appointment <strong>tomorrow (${escapeHtml(tomorrow)})</strong>
-        ${appt.time ? `at <strong>${escapeHtml(appt.time)}</strong>` : ""} with ${escapeHtml(doctorName(appt.doctor.name))}.</p>
-        <p>Your token number will be: <strong>#${escapeHtml(appt.tokenNumber)}</strong></p>
-        <p>Please arrive a little early. If you need to reschedule, please contact the hospital.</p>
-      `,
-    });
-    if (result.sent || result.reason === "Email credentials not configured in .env") sent++;
+  let attempted = 0;
+  const queue = upcoming.slice();
+  const deadline = Date.now() + TIME_BUDGET_MS;
+
+  const worker = async () => {
+    while (Date.now() < deadline) {
+      const appt = queue.shift();
+      if (!appt) return;
+      attempted++;
+      const result = await sendEmail({
+        to: appt.patient.email,
+        subject: `Appointment Reminder: ${tomorrow}`,
+        html: `
+          <p>Hello ${escapeHtml(appt.patient.name)},</p>
+          <p>This is a reminder of your appointment <strong>tomorrow (${escapeHtml(tomorrow)})</strong>
+          ${appt.time ? `at <strong>${escapeHtml(appt.time)}</strong>` : ""} with ${escapeHtml(doctorName(appt.doctor.name))}.</p>
+          <p>Your token number will be: <strong>#${escapeHtml(appt.tokenNumber)}</strong></p>
+          <p>Please arrive a little early. If you need to reschedule, please contact the hospital.</p>
+        `,
+      });
+      if (result.sent || result.reason === "Email credentials not configured in .env") sent++;
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, queue.length) }, worker));
+
+  const timedOut = attempted < upcoming.length;
+  if (timedOut) {
+    console.warn(
+      `[Cron] Appointment reminders hit the ${TIME_BUDGET_MS / 1000}s budget after ${attempted}/${upcoming.length} emails; the rest go out on the next run.`
+    );
   }
 
-  return { checked: true, appointmentsFound: upcoming.length, remindersSent: sent };
+  return { checked: true, appointmentsFound: upcoming.length, remindersSent: sent, timedOut };
 }
 
 module.exports = { sendAppointmentReminders };
