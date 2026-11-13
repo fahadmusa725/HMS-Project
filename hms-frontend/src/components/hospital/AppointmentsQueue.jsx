@@ -26,6 +26,8 @@ import {
   Star,
   TriangleAlert,
   Tv,
+  Activity,
+  ClipboardList,
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -35,6 +37,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import ConsultationForm from '@/components/hospital/ConsultationForm';
+import StaffVitalsModal from '@/components/precheck/StaffVitalsModal';
 import WalkInTokenModal from '@/components/hospital/WalkInTokenModal';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
 import { cn, formatCurrency, formatSlotTime, localDateStr } from '@/lib/utils';
@@ -90,6 +93,8 @@ export default function AppointmentsQueue() {
   const canCallNext = ['doctor', 'hospital_admin', 'receptionist'].includes(role);
   // Mirrors the roles allowed on GET /api/appointments/display-link (the queue audience).
   const canOpenDisplay = ['hospital_admin', 'receptionist', 'doctor', 'nurse'].includes(role);
+  // Desk vitals: the same roles the pre-check API lets record them.
+  const canRecordVitals = ['hospital_admin', 'receptionist', 'nurse', 'doctor'].includes(role);
   const can = (status) => STATUS_TRANSITION_ROLES[status]?.includes(role);
 
   const todayStr = localDateStr();
@@ -102,6 +107,7 @@ export default function AppointmentsQueue() {
   const [callNextDoctorId, setCallNextDoctorId] = useState(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [consultationAppointment, setConsultationAppointment] = useState(null);
+  const [vitalsTarget, setVitalsTarget] = useState(null);
   const [formError, setFormError] = useState(null);
   const [consultationFee, setConsultationFee] = useState(0);
   const [collectPaymentNow, setCollectPaymentNow] = useState(false);
@@ -523,6 +529,27 @@ export default function AppointmentsQueue() {
             <Star className="h-3.5 w-3.5" />
           </Button>
         )}
+        {canRecordVitals && !['cancelled', 'no_show'].includes(status) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            title={
+              appointment.preCheck?.staffVitalsRecorded
+                ? 'Desk vitals recorded - update them'
+                : 'Record vitals at the desk'
+            }
+            onClick={() => setVitalsTarget(appointment)}
+            disabled={busy}
+            className={cn(
+              'h-8 px-2',
+              appointment.preCheck?.staffVitalsRecorded
+                ? 'text-success hover:text-success'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Activity className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -786,6 +813,19 @@ export default function AppointmentsQueue() {
                           <span className="ml-1.5 font-sans">· {item.patientAge} yrs</span>
                         )}
                       </div>
+                      {/* The patient filled in symptoms/vitals at home - worth knowing at the desk. */}
+                      {item.preCheck?.submitted && (
+                        <div className="mt-1">
+                          <Badge
+                            variant="precheck"
+                            className="gap-1"
+                            title="Patient submitted the digital pre-check before arriving"
+                          >
+                            <ClipboardList className="h-2.5 w-2.5" />
+                            Pre-check done
+                          </Badge>
+                        </div>
+                      )}
                       {/* Age only ever produces a suggestion - staff must confirm it (and give a reason). */}
                       {item.suggestedPriority && canSetPriority && (
                         <button
@@ -1253,6 +1293,10 @@ export default function AppointmentsQueue() {
           appointment={consultationAppointment}
           onClose={() => setConsultationAppointment(null)}
         />
+      )}
+
+      {vitalsTarget && (
+        <StaffVitalsModal appointment={vitalsTarget} onClose={() => setVitalsTarget(null)} />
       )}
     </div>
   );

@@ -37,6 +37,11 @@ const badgeVariants = ({ variant = "default", className = "" } = {}) => {
     partial: warningSoft,
     unpaid: dangerSoft,
 
+    // Digital pre-check: submitted by the patient, still waiting, or closed for editing.
+    precheck: successSoft,
+    precheck_pending: neutral,
+    precheck_locked: neutral,
+
     in_stock: successSoft,
     low_stock: warningSoft,
     out_of_stock: dangerSoft,

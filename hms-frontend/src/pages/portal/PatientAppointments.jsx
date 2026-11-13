@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   CalendarDays,
@@ -19,6 +20,8 @@ import {
   Users,
   XCircle,
   Radio,
+  ClipboardList,
+  Lock,
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,8 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
+import PreCheckForm from '@/components/precheck/PreCheckForm';
+import { fetchMyPreCheckSummaries } from '@/lib/precheck';
 import { formatCurrency, formatSlotTime, doctorName, localDateStr } from '@/lib/utils';
 
 const bookingSchema = z.object({
@@ -73,6 +78,11 @@ export default function PatientAppointments() {
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [lastBooked, setLastBooked] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [preCheckTarget, setPreCheckTarget] = useState(null);
+
+  // The reminder email links straight to this page with ?precheck=<appointmentId>.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const precheckParam = searchParams.get('precheck');
 
   const {
     register,
@@ -124,6 +134,17 @@ export default function PatientAppointments() {
   });
 
   const selfCheckInAllowed = live?.selfCheckInAllowed === true;
+
+  // Pre-check status for every appointment the patient owns, in one request.
+  const { data: preCheckSummaries = [] } = useQuery({
+    queryKey: ['my-pre-checks'],
+    queryFn: fetchMyPreCheckSummaries,
+  });
+
+  const preCheckByAppointment = useMemo(() => {
+    const list = Array.isArray(preCheckSummaries) ? preCheckSummaries : [];
+    return Object.fromEntries(list.map((row) => [String(row.appointmentId), row]));
+  }, [preCheckSummaries]);
 
   const bookMutation = useMutation({
     mutationFn: async (payload) => {
@@ -189,6 +210,32 @@ export default function PatientAppointments() {
   });
 
   const todayStr = localDateStr();
+
+  // Deep link from the reminder email: open that appointment's pre-check once the list has
+  // loaded, then drop the param so closing the modal (or a refresh) does not reopen it.
+  useEffect(() => {
+    if (!precheckParam) return;
+    const match = (Array.isArray(appointments) ? appointments : []).find(
+      (apt) => String(apt._id) === precheckParam
+    );
+    if (!match) return;
+
+    setPreCheckTarget(match);
+    const next = new URLSearchParams(searchParams);
+    next.delete('precheck');
+    setSearchParams(next, { replace: true });
+  }, [appointments, precheckParam, searchParams, setSearchParams]);
+
+  // The pre-check belongs to a visit that is still ahead (or has just arrived).
+  const isPreCheckRelevant = (apt) =>
+    (apt.status === 'scheduled' || apt.status === 'checked_in') && apt.date >= todayStr;
+
+  const preCheckView = (apt) => {
+    const summary = preCheckByAppointment[String(apt._id)];
+    if (apt.status !== 'scheduled') return { variant: 'precheck_locked', label: 'Locked' };
+    if (summary?.submittedAt) return { variant: 'precheck', label: 'Submitted' };
+    return { variant: 'precheck_pending', label: 'Not started' };
+  };
 
   const filteredAppointments = useMemo(() => {
     const list = Array.isArray(appointments) ? appointments : [];
@@ -515,6 +562,36 @@ export default function PatientAppointments() {
                     </div>
                   )}
 
+                  {/* Digital pre-check: fill it in from home, editable until check-in. */}
+                  {isPreCheckRelevant(apt) && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/60 px-2.5 py-2">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ClipboardList className="h-3.5 w-3.5 shrink-0 text-primary" />
+                        <span className="text-xs font-semibold text-foreground">Pre-check</span>
+                        <Badge variant={preCheckView(apt).variant} className="gap-1">
+                          {preCheckView(apt).label === 'Locked' && <Lock className="h-2.5 w-2.5" />}
+                          {preCheckView(apt).label}
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={preCheckView(apt).label === 'Not started' ? 'default' : 'outline'}
+                        onClick={() => setPreCheckTarget(apt)}
+                        className={
+                          preCheckView(apt).label === 'Not started'
+                            ? 'h-8 shrink-0 bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90'
+                            : 'h-8 shrink-0 text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary'
+                        }
+                      >
+                        {preCheckView(apt).label === 'Locked'
+                          ? 'View'
+                          : preCheckView(apt).label === 'Submitted'
+                            ? 'Edit'
+                            : 'Fill in'}
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2 sm:flex-row">
                     {canCheckInNow(apt) &&
                       (selfCheckInAllowed ? (
@@ -687,6 +764,10 @@ export default function PatientAppointments() {
           book a new appointment afterwards - that slot may already be taken by then.
         </p>
       </Modal>
+
+      {preCheckTarget && (
+        <PreCheckForm appointment={preCheckTarget} onClose={() => setPreCheckTarget(null)} />
+      )}
     </div>
   );
 }
