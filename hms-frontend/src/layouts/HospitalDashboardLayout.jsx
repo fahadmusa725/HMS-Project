@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   KeyRound,
+  Settings,
 } from 'lucide-react';
 
 export default function HospitalDashboardLayout() {
@@ -48,6 +49,7 @@ export default function HospitalDashboardLayout() {
           { path: '/dashboard/lab', label: 'Lab & Diagnostics', icon: FlaskConical },
           { path: '/dashboard/pharmacy', label: 'Pharmacy & Stock', icon: Pill },
           { path: '/dashboard/billing', label: 'Billing & Invoices', icon: Receipt },
+          { path: '/dashboard/settings', label: 'Settings', icon: Settings },
         ];
       case 'doctor':
         return [

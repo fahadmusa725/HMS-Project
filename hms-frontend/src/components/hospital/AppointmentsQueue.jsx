@@ -20,7 +20,11 @@ import {
   FileText,
   Printer,
   XCircle,
-  UserX
+  UserX,
+  Megaphone,
+  Plus,
+  Star,
+  TriangleAlert,
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -30,8 +34,9 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
 import ConsultationForm from '@/components/hospital/ConsultationForm';
+import WalkInTokenModal from '@/components/hospital/WalkInTokenModal';
 import { SlotPicker } from '@/components/hospital/SlotPicker';
-import { formatCurrency, formatSlotTime, localDateStr } from '@/lib/utils';
+import { cn, formatCurrency, formatSlotTime, localDateStr } from '@/lib/utils';
 
 const appointmentSchema = z.object({
   patientId: z.string().min(1, 'Please select a patient'),
@@ -51,6 +56,27 @@ const STATUS_TRANSITION_ROLES = {
   completed: ['doctor'],
 };
 
+// Priority controls who is called next (see utils/queueOrder.js on the server).
+// Patients are deliberately absent - only staff may change it.
+const CAN_SET_PRIORITY = ['receptionist', 'hospital_admin', 'doctor'];
+
+const PRIORITY_OPTIONS = [
+  { value: 'normal', label: 'Normal', hint: 'Standard arrival order' },
+  { value: 'senior', label: 'Senior', hint: 'Elderly or mobility-limited patient' },
+  { value: 'emergency', label: 'Emergency', hint: 'Called ahead of everyone else' },
+];
+
+const PRIORITY_CHIP = {
+  normal: 'bg-muted text-muted-foreground border-border',
+  senior: 'bg-info/10 text-info border-info/30',
+  emergency: 'bg-destructive/10 text-destructive border-destructive/30',
+};
+
+// Live queue polling: 12s while the tab is visible, never in the background.
+// Returning false stops the interval entirely instead of polling a hidden tab.
+const LIVE_QUEUE_INTERVAL_MS = 12 * 1000;
+const liveQueueInterval = () => (document.visibilityState === 'visible' ? LIVE_QUEUE_INTERVAL_MS : false);
+
 export default function AppointmentsQueue() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
@@ -58,12 +84,19 @@ export default function AppointmentsQueue() {
   const role = user?.role;
   const isDoctor = role === 'doctor';
   const canBook = role === 'hospital_admin' || role === 'receptionist';
+  const canWalkIn = role === 'hospital_admin' || role === 'receptionist';
+  const canSetPriority = CAN_SET_PRIORITY.includes(role);
+  const canCallNext = ['doctor', 'hospital_admin', 'receptionist'].includes(role);
   const can = (status) => STATUS_TRANSITION_ROLES[status]?.includes(role);
 
   const todayStr = localDateStr();
   const [selectedDate, setSelectedDate] = useState(todayStr);
   const [doctorFilter, setDoctorFilter] = useState(isDoctor ? user?.id : 'all');
   const [isBookOpen, setIsBookOpen] = useState(false);
+  const [isWalkInOpen, setIsWalkInOpen] = useState(false);
+  const [priorityTarget, setPriorityTarget] = useState(null);
+  const [priorityDraft, setPriorityDraft] = useState({ priority: 'normal', reason: '' });
+  const [callNextDoctorId, setCallNextDoctorId] = useState(null);
   const [patientSearch, setPatientSearch] = useState('');
   const [consultationAppointment, setConsultationAppointment] = useState(null);
   const [formError, setFormError] = useState(null);
@@ -148,8 +181,11 @@ export default function AppointmentsQueue() {
       const response = await api.get('/api/appointments/queue', { params });
       return response.data;
     },
-    // A waiting-room queue is live by definition - always refetch on mount.
+    // A waiting-room queue is live by definition - always refetch on mount, then poll
+    // every 12s while the tab is visible (overrides the global 30s staleTime).
     staleTime: 0,
+    refetchInterval: liveQueueInterval,
+    refetchIntervalInBackground: false,
   });
 
   const bookMutation = useMutation({
@@ -214,6 +250,74 @@ export default function AppointmentsQueue() {
       toast.error(message);
     },
   });
+
+  // Only staff may change priority, and the server audits every change with a reason.
+  const priorityMutation = useMutation({
+    mutationFn: async ({ id, priority, reason }) => {
+      const res = await api.patch(`/api/appointments/${id}/priority`, {
+        priority,
+        priorityReason: priority === 'normal' ? undefined : reason.trim(),
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['opd-queue'] });
+      setPriorityTarget(null);
+      toast.success(`Token #${data.tokenNumber} priority set to "${data.priority}"`, {
+        description: data.priorityReason || undefined,
+      });
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not update priority.');
+    },
+  });
+
+  // Takes the next waiting patient (priority -> check-in time -> token) and moves them
+  // into the consultation. The server refuses when the doctor is already with someone.
+  const callNextMutation = useMutation({
+    mutationFn: async (doctorId) => {
+      const res = await api.post('/api/appointments/call-next', doctorId ? { doctorId } : {});
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['opd-queue'] });
+      setCallNextDoctorId(null);
+      toast.success(`Now serving token #${data.tokenNumber}`, {
+        description: data.patientId?.name ? `${data.patientId.name} has been called in.` : 'Patient called in.',
+      });
+    },
+    onError: (err) => {
+      setCallNextDoctorId(null);
+      toast.error(err.response?.data?.message || 'Could not call the next patient.');
+    },
+  });
+
+  const openPriorityModal = (appointment) => {
+    setPriorityDraft({
+      priority: appointment.suggestedPriority || appointment.priority || 'normal',
+      reason: appointment.priorityReason || '',
+    });
+    setPriorityTarget(appointment);
+  };
+
+  const submitPriority = (e) => {
+    e.preventDefault();
+    if (!priorityTarget) return;
+    if (priorityDraft.priority !== 'normal' && !priorityDraft.reason.trim()) {
+      toast.error('A reason is required for senior or emergency priority.');
+      return;
+    }
+    priorityMutation.mutate({ id: priorityTarget._id, ...priorityDraft });
+  };
+
+  // The room the "Call next" button acts on: a doctor's own room, or the doctor the
+  // front desk has filtered the queue to (never "all" - we can't guess who is free).
+  const activeRoomId = isDoctor ? user?.id : doctorFilter !== 'all' ? doctorFilter : null;
+  const activeRoomName =
+    staffList.find((doc) => String(doc._id) === String(activeRoomId))?.name ||
+    (isDoctor ? user?.name : null);
+  const nowServing = queue.find((item) => item.status === 'in_consultation') || null;
+  const waitingCount = queue.filter((item) => item.status === 'checked_in').length;
 
   const closeBookModal = () => {
     setIsBookOpen(false);
@@ -377,6 +481,23 @@ export default function AppointmentsQueue() {
     return (
       <div className="flex items-center justify-end gap-1.5">
         {buttons}
+        {canSetPriority && !['completed', 'cancelled', 'no_show'].includes(status) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            title="Set queue priority"
+            onClick={() => openPriorityModal(appointment)}
+            disabled={busy}
+            className={cn(
+              'h-8 px-2 hover:text-foreground',
+              (appointment.priority || 'normal') === 'normal'
+                ? 'text-muted-foreground'
+                : 'text-info'
+            )}
+          >
+            <Star className="h-3.5 w-3.5" />
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -402,7 +523,7 @@ export default function AppointmentsQueue() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Button
             variant="outline"
             size="sm"
@@ -413,6 +534,26 @@ export default function AppointmentsQueue() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          {canCallNext && activeRoomId && selectedDate === todayStr && (
+            <Button
+              onClick={() => setCallNextDoctorId(activeRoomId)}
+              disabled={callNextMutation.isPending}
+              className="h-10 bg-primary-bright text-primary-bright-foreground hover:bg-primary-bright/90 font-semibold flex items-center gap-2 shadow-sm"
+            >
+              <Megaphone className="h-4 w-4" />
+              <span>Call next</span>
+            </Button>
+          )}
+          {canWalkIn && (
+            <Button
+              variant="outline"
+              onClick={() => setIsWalkInOpen(true)}
+              className="h-10 border-primary/30 text-primary hover:bg-primary/10 hover:text-primary font-semibold flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Walk-in</span>
+            </Button>
+          )}
           {canBook && (
             <Button
               onClick={() => {
@@ -427,6 +568,35 @@ export default function AppointmentsQueue() {
           )}
         </div>
       </div>
+
+      {selectedDate === todayStr && activeRoomId && (
+        <Card className="border-border bg-card shadow-soft-sm p-4 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-primary">Now</span>
+                <span className="font-mono text-2xl font-extrabold leading-none text-primary">
+                  {nowServing ? nowServing.tokenNumber : '—'}
+                </span>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-foreground">
+                  {nowServing ? 'In consultation' : 'Room is free'}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {activeRoomName || 'This doctor'} ·{' '}
+                  <span className="font-semibold text-foreground">{waitingCount}</span> waiting ·
+                  updates every 12s
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Ticket className="h-3.5 w-3.5 text-primary" />
+              Tokens reset per doctor, per day
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="bg-card border-border shadow-soft overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/20">
@@ -545,12 +715,42 @@ export default function AppointmentsQueue() {
                     </td>
 
                     <td className="py-4 px-6">
-                      <div className="font-semibold text-foreground">
-                        {item.patientId?.name || 'Patient'}
+                      <div className="flex items-center gap-2 font-semibold text-foreground">
+                        <span className="truncate">{item.patientId?.name || 'Patient'}</span>
+                        {(item.priority || 'normal') !== 'normal' && (
+                          <span
+                            className={cn(
+                              'inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                              PRIORITY_CHIP[item.priority]
+                            )}
+                            title={item.priorityReason || ''}
+                          >
+                            {item.priority === 'emergency' ? (
+                              <TriangleAlert className="h-2.5 w-2.5" />
+                            ) : (
+                              <Star className="h-2.5 w-2.5" />
+                            )}
+                            {item.priority}
+                          </span>
+                        )}
                       </div>
-                      <div className="text-xs font-mono text-muted-foreground mt-0.5">
+                      <div className="mt-0.5 text-xs font-mono text-muted-foreground">
                         MRN: {item.patientId?.mrn || '—'}
+                        {item.patientAge !== null && item.patientAge !== undefined && (
+                          <span className="ml-1.5 font-sans">· {item.patientAge} yrs</span>
+                        )}
                       </div>
+                      {/* Age only ever produces a suggestion - staff must confirm it (and give a reason). */}
+                      {item.suggestedPriority && canSetPriority && (
+                        <button
+                          type="button"
+                          onClick={() => openPriorityModal(item)}
+                          className="mt-1 inline-flex items-center gap-1 rounded-full border border-info/40 bg-info/10 px-2 py-0.5 text-[10px] font-semibold text-info transition-colors hover:bg-info/20"
+                        >
+                          <Star className="h-2.5 w-2.5" />
+                          Suggested: {item.suggestedPriority} · confirm
+                        </button>
+                      )}
                     </td>
 
                     <td className="py-4 px-4 text-xs font-medium text-foreground">
@@ -801,6 +1001,172 @@ export default function AppointmentsQueue() {
           </div>
 
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(priorityTarget)}
+        onClose={() => {
+          if (!priorityMutation.isPending) setPriorityTarget(null);
+        }}
+        title="Queue priority"
+        description={
+          priorityTarget
+            ? `Token #${priorityTarget.tokenNumber} · ${priorityTarget.patientId?.name || 'Patient'}`
+            : undefined
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPriorityTarget(null)}
+              disabled={priorityMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              form="priority-form"
+              disabled={priorityMutation.isPending}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {priorityMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save priority'
+              )}
+            </Button>
+          </>
+        }
+      >
+        <form id="priority-form" onSubmit={submitPriority} className="space-y-4">
+          {priorityTarget?.suggestedPriority && (
+            <div className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 p-3 text-xs font-medium text-info">
+              <Star className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {priorityTarget.patientAge} years old - the hospital suggests senior priority. Confirm it
+                yourself, and add a short reason.
+              </span>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {PRIORITY_OPTIONS.map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors',
+                  priorityDraft.priority === option.value
+                    ? 'border-primary/50 bg-primary/5'
+                    : 'border-border hover:bg-muted/40'
+                )}
+              >
+                <input
+                  type="radio"
+                  name="priority"
+                  value={option.value}
+                  checked={priorityDraft.priority === option.value}
+                  onChange={() => setPriorityDraft((draft) => ({ ...draft, priority: option.value }))}
+                  disabled={priorityMutation.isPending}
+                  className="mt-0.5 h-4 w-4"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">{option.label}</span>
+                  <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {priorityDraft.priority !== 'normal' && (
+            <div className="space-y-1">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                Reason *
+              </label>
+              <Input
+                value={priorityDraft.reason}
+                onChange={(e) => setPriorityDraft((draft) => ({ ...draft, reason: e.target.value }))}
+                placeholder={
+                  priorityDraft.priority === 'emergency'
+                    ? 'e.g. chest pain, heavy bleeding'
+                    : 'e.g. 68 years old, uses a wheelchair'
+                }
+                disabled={priorityMutation.isPending}
+              />
+            </div>
+          )}
+
+          <p className="text-[11px] text-muted-foreground">
+            Call order: emergency first, then senior, then whoever checked in earliest. Every priority
+            change is recorded in the audit log.
+          </p>
+        </form>
+      </Modal>
+
+      {isWalkInOpen && (
+        <WalkInTokenModal
+          doctors={staffList}
+          defaultDoctorId={doctorFilter !== 'all' ? doctorFilter : ''}
+          onClose={() => setIsWalkInOpen(false)}
+          onIssued={() => queryClient.invalidateQueries({ queryKey: ['opd-queue'] })}
+        />
+      )}
+
+      <Modal
+        isOpen={Boolean(callNextDoctorId)}
+        onClose={() => {
+          if (!callNextMutation.isPending) setCallNextDoctorId(null);
+        }}
+        title="Call next patient"
+        description={activeRoomName ? `Room: ${activeRoomName}` : undefined}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCallNextDoctorId(null)}
+              disabled={callNextMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => callNextMutation.mutate(callNextDoctorId)}
+              disabled={callNextMutation.isPending}
+              className="bg-primary-bright text-primary-bright-foreground hover:bg-primary-bright/90 font-semibold"
+            >
+              {callNextMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Calling...
+                </>
+              ) : (
+                <>
+                  <Megaphone className="mr-2 h-4 w-4" />
+                  Call next
+                </>
+              )}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            The next patient for this room is{' '}
+            <span className="font-semibold text-foreground">
+              {queue.find((item) => item.status === 'checked_in')?.tokenNumber
+                ? `Token #${queue.find((item) => item.status === 'checked_in').tokenNumber}`
+                : 'nobody waiting'}
+            </span>
+            .
+          </p>
+          <p>
+            They move into consultation immediately, so the room must be free. A doctor can only have one
+            patient in consultation at a time.
+          </p>
+        </div>
       </Modal>
 
       {consultationAppointment && (

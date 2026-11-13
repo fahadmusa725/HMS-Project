@@ -15,7 +15,10 @@ import {
   RefreshCw,
   CheckCircle2,
   Printer,
-  LogIn
+  LogIn,
+  Users,
+  XCircle,
+  Radio,
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -40,6 +43,12 @@ const printSlip = (appointmentId) =>
 // this just decides when to show the button so patients aren't tapping it hours too early.
 const CHECK_IN_GRACE_MINUTES = 30;
 
+// "N patients ahead" is only useful while it's fresh: poll every 15s, and never in a
+// hidden tab (a background portal tab has no reason to query the queue).
+const LIVE_STATUS_INTERVAL_MS = 15 * 1000;
+const liveStatusInterval = () =>
+  document.visibilityState === 'visible' ? LIVE_STATUS_INTERVAL_MS : false;
+
 function canCheckInNow(apt) {
   if (apt.status !== 'scheduled') return false;
   const now = new Date();
@@ -53,11 +62,17 @@ function canCheckInNow(apt) {
   return nowMinutes >= apptMinutes - CHECK_IN_GRACE_MINUTES;
 }
 
+/** Cancelling is only possible before arrival, and never for a past date (same rule as the server). */
+function canCancel(apt) {
+  return apt.status === 'scheduled' && apt.date >= localDateStr();
+}
+
 export default function PatientAppointments() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState('upcoming'); // 'upcoming' | 'past' | 'all'
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [lastBooked, setLastBooked] = useState(null);
+  const [cancelTarget, setCancelTarget] = useState(null);
 
   const {
     register,
@@ -93,6 +108,22 @@ export default function PatientAppointments() {
       return res.data;
     },
   });
+
+  // Today's live position: how many checked-in patients are ahead, the token the doctor is
+  // serving right now, and an estimate from the hospital's average consultation minutes.
+  // Also carries allowPatientSelfCheckIn, so the button below follows the hospital setting.
+  const { data: live } = useQuery({
+    queryKey: ['patient-live-status'],
+    queryFn: async () => {
+      const res = await api.get('/api/appointments/mine/live');
+      return res.data;
+    },
+    staleTime: 0,
+    refetchInterval: liveStatusInterval,
+    refetchIntervalInBackground: false,
+  });
+
+  const selfCheckInAllowed = live?.selfCheckInAllowed === true;
 
   const bookMutation = useMutation({
     mutationFn: async (payload) => {
@@ -131,10 +162,29 @@ export default function PatientAppointments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patient-appointments-mine'] });
+      queryClient.invalidateQueries({ queryKey: ['patient-live-status'] });
       toast.success('Checked in! Please wait to be called.');
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Failed to check in.');
+    },
+  });
+
+  // Patients may cancel their own appointment only while it is still "scheduled" and not
+  // in the past - the server enforces both, this is just the UI path.
+  const cancelMutation = useMutation({
+    mutationFn: async (appointmentId) => {
+      const res = await api.patch(`/api/appointments/${appointmentId}/status`, { status: 'cancelled' });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patient-appointments-mine'] });
+      queryClient.invalidateQueries({ queryKey: ['patient-live-status'] });
+      setCancelTarget(null);
+      toast.success('Appointment cancelled.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not cancel the appointment.');
     },
   });
 
@@ -162,6 +212,19 @@ export default function PatientAppointments() {
     };
     return map[status] || status;
   };
+
+  // One line the patient can read at a glance, straight from the live payload.
+  const liveHeadline = (() => {
+    const apt = live?.appointment;
+    if (!apt) return '';
+    if (apt.status === 'in_consultation') return "It's your turn - please go in to the doctor.";
+    if (apt.status === 'completed') return 'Your consultation is complete.';
+    if (apt.status === 'checked_in') {
+      if (live.patientsAhead === 0) return "You're next - please stay close to the room.";
+      return `${live.patientsAhead} patient${live.patientsAhead === 1 ? '' : 's'} ahead of you.`;
+    }
+    return 'Not checked in yet.';
+  })();
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -235,6 +298,61 @@ export default function PatientAppointments() {
             </Button>
           </div>
         </div>
+      )}
+
+      {live?.appointment && (
+        <Card className="overflow-hidden border-primary/25 bg-card shadow-soft">
+          <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div className="flex items-center gap-4">
+              <div className="flex h-[74px] w-[74px] shrink-0 flex-col items-center justify-center rounded-2xl border border-primary/25 bg-primary/10">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-primary">Your token</span>
+                <span className="font-mono text-2xl font-extrabold leading-none text-primary">
+                  {live.appointment.tokenNumber}
+                </span>
+              </div>
+              <div className="min-w-0 space-y-1">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+                  <Radio className="h-3.5 w-3.5 animate-pulse" />
+                  Live queue · updates every 15s
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {doctorName(live.appointment.doctor?.name, 'Your doctor')}
+                  {live.appointment.doctor?.department ? ` · ${live.appointment.doctor.department}` : ''}
+                  {live.appointment.time ? ` · ${formatSlotTime(live.appointment.time)}` : ''}
+                </div>
+                <div className="text-sm font-semibold text-foreground">{liveHeadline}</div>
+                {live.appointment.status === 'checked_in' && live.estimatedWaitMinutes !== null && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 text-primary" />
+                    Estimated wait ~{live.estimatedWaitMinutes} min
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-3">
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-2 text-center">
+                <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Now serving
+                </div>
+                <div className="font-mono text-2xl font-extrabold leading-none text-foreground">
+                  {live.nowServingToken ?? '—'}
+                </div>
+              </div>
+              {live.appointment.status === 'checked_in' && live.patientsAhead !== null && (
+                <div className="rounded-xl border border-border bg-muted/30 px-4 py-2 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Users className="h-2.5 w-2.5" />
+                    Ahead
+                  </div>
+                  <div className="font-mono text-2xl font-extrabold leading-none text-foreground">
+                    {live.patientsAhead}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </Card>
       )}
 
       <Card className="border-border bg-card shadow-soft overflow-hidden">
@@ -397,17 +515,39 @@ export default function PatientAppointments() {
                     </div>
                   )}
 
-                  {canCheckInNow(apt) && (
-                    <Button
-                      size="sm"
-                      onClick={() => checkInMutation.mutate(apt._id)}
-                      disabled={checkInMutation.isPending}
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs h-8"
-                    >
-                      <LogIn className="h-3.5 w-3.5 mr-1.5" />
-                      {checkInMutation.isPending ? 'Checking In...' : 'Check In Now'}
-                    </Button>
-                  )}
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    {canCheckInNow(apt) &&
+                      (selfCheckInAllowed ? (
+                        <Button
+                          size="sm"
+                          onClick={() => checkInMutation.mutate(apt._id)}
+                          disabled={checkInMutation.isPending}
+                          className="h-8 flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs"
+                        >
+                          <LogIn className="mr-1.5 h-3.5 w-3.5" />
+                          {checkInMutation.isPending ? 'Checking In...' : 'Check In Now'}
+                        </Button>
+                      ) : (
+                        live && (
+                          <div className="flex flex-1 items-start gap-2 rounded-lg border border-dashed border-border bg-muted/30 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            Self check-in is off for this hospital - please check in at the reception desk.
+                          </div>
+                        )
+                      ))}
+                    {canCancel(apt) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setCancelTarget(apt)}
+                        disabled={cancelMutation.isPending}
+                        className="h-8 shrink-0 text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Cancel appointment
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -497,6 +637,55 @@ export default function PatientAppointments() {
           </div>
 
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(cancelTarget)}
+        onClose={() => {
+          if (!cancelMutation.isPending) setCancelTarget(null);
+        }}
+        title="Cancel this appointment?"
+        description={
+          cancelTarget
+            ? `${doctorName(cancelTarget.doctorId?.name, 'Doctor')} · ${new Date(
+                `${cancelTarget.date}T00:00:00`
+              ).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}${
+                cancelTarget.time ? ` · ${formatSlotTime(cancelTarget.time)}` : ''
+              }`
+            : undefined
+        }
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelTarget(null)}
+              disabled={cancelMutation.isPending}
+            >
+              Keep appointment
+            </Button>
+            <Button
+              type="button"
+              onClick={() => cancelMutation.mutate(cancelTarget._id)}
+              disabled={cancelMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold"
+            >
+              {cancelMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                'Yes, cancel it'
+              )}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Your appointment will be cancelled and the doctor's slot freed up for another patient. You can
+          book a new appointment afterwards - that slot may already be taken by then.
+        </p>
       </Modal>
     </div>
   );

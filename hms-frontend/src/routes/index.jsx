@@ -13,6 +13,8 @@ const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
 const ChangePassword = lazy(() => import('@/pages/ChangePassword'));
 const PatientSignup = lazy(() => import('@/pages/PatientSignup'));
 const SuperAdminDashboard = lazy(() => import('@/pages/SuperAdminDashboard'));
+// Public, login-free waiting-room screen (the URL carries a per-hospital display key).
+const DisplayBoard = lazy(() => import('@/pages/DisplayBoard'));
 
 const PatientPortalLayout = lazy(() => import('@/layouts/PatientPortalLayout'));
 const PatientOverview = lazy(() => import('@/pages/portal/PatientOverview'));
@@ -22,6 +24,7 @@ const PatientBills = lazy(() => import('@/pages/portal/PatientBills'));
 
 const HospitalDashboardLayout = lazy(() => import('@/layouts/HospitalDashboardLayout'));
 const HospitalOverview = lazy(() => import('@/pages/hospital/HospitalOverview'));
+const HospitalSettings = lazy(() => import('@/pages/hospital/HospitalSettings'));
 const StaffManagement = lazy(() => import('@/components/hospital/StaffManagement'));
 const PatientDirectory = lazy(() => import('@/components/hospital/PatientDirectory'));
 const AppointmentsQueue = lazy(() => import('@/components/hospital/AppointmentsQueue'));
@@ -89,6 +92,9 @@ export function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
 
         <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* Waiting-room TV: public by design - the ?key= in the URL is the credential. */}
+        <Route path="/display/:hospitalId" element={<DisplayBoard />} />
 
         <Route
           path="/change-password"
@@ -206,6 +212,15 @@ export function AppRoutes() {
               element={
                 <ProtectedRoute allowedRoles={['hospital_admin']}>
                   <AuditLogViewer />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="settings"
+              element={
+                <ProtectedRoute allowedRoles={['hospital_admin']}>
+                  <HospitalSettings />
                 </ProtectedRoute>
               }
             />
