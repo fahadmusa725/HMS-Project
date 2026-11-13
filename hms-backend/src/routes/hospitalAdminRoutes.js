@@ -9,6 +9,9 @@ const {
   setStaffStatus,
   resetStaffPassword,
   exportData,
+  getSettings,
+  updateSettings,
+  regenerateDisplayKey,
 } = require("../controllers/hospitalAdminController");
 
 const router = express.Router();
@@ -21,5 +24,10 @@ router.patch("/staff/:id", updateStaff);
 router.patch("/staff/:id/status", setStaffStatus);
 router.post("/staff/:id/reset-password", resetStaffPassword);
 router.get("/export", exportData);
+
+// Tenant behaviour toggles (display name, senior age, self check-in, wait estimates, TV key).
+router.get("/settings", getSettings);
+router.patch("/settings", updateSettings);
+router.post("/settings/display-key", regenerateDisplayKey);
 
 module.exports = router;

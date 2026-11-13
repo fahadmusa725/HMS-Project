@@ -1,3 +1,5 @@
+const crypto = require("crypto");
+const Hospital = require("../models/Hospital");
 const User = require("../models/User");
 const { ROLES } = require("../models/User");
 const Patient = require("../models/Patient");
@@ -7,6 +9,7 @@ const Appointment = require("../models/Appointment");
 const { sendEmail } = require("../utils/mailer");
 const { escapeHtml, generateTempPassword } = require("../utils/security");
 const { invalidateAccessCache } = require("../utils/accountAccess");
+const { DEFAULT_SETTINGS } = require("../utils/hospitalSettings");
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -425,6 +428,128 @@ async function exportData(req, res) {
   }
 }
 
+// --- Hospital settings -------------------------------------------------------
+// The settings subdocument holds only tenant behaviour toggles; the platform fields
+// (name, status, trial dates) stay Super-Admin-only.
+
+const DISPLAY_NAME_MAX = 80;
+
+function newDisplayKey() {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+/** Settings + the TV path, so the admin can copy the link straight out of the response. */
+function settingsResponse(hospital) {
+  const settings = hospital.settings || {};
+  const displayKey = settings.displayKey;
+  return {
+    displayName: settings.displayName || "",
+    seniorAgeThreshold: settings.seniorAgeThreshold ?? DEFAULT_SETTINGS.seniorAgeThreshold,
+    allowPatientSelfCheckIn: settings.allowPatientSelfCheckIn === true,
+    averageConsultationMinutes:
+      settings.averageConsultationMinutes ?? DEFAULT_SETTINGS.averageConsultationMinutes,
+    displayKey: displayKey || null,
+    // Relative on purpose - the frontend knows its own origin.
+    displayPath: displayKey ? `/display/${hospital._id}?key=${displayKey}` : null,
+  };
+}
+
+/**
+ * Reading the settings also backfills a display key for hospitals created before the
+ * settings subdocument existed (one write, only when it's genuinely missing). That is
+ * the only write this endpoint ever does, and it is admin-authenticated - the public
+ * display endpoint never writes.
+ */
+async function getSettings(req, res) {
+  try {
+    const hospital = await Hospital.findById(req.user.hospitalId);
+    if (!hospital) return res.status(404).json({ message: "Hospital not found." });
+
+    if (!hospital.settings?.displayKey) {
+      hospital.settings = hospital.settings || {};
+      hospital.settings.displayKey = newDisplayKey();
+      await hospital.save();
+    }
+
+    res.json(settingsResponse(hospital));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while loading hospital settings." });
+  }
+}
+
+/** Partial update - only the fields present in the body are touched. */
+async function updateSettings(req, res) {
+  try {
+    const hospital = await Hospital.findById(req.user.hospitalId);
+    if (!hospital) return res.status(404).json({ message: "Hospital not found." });
+
+    const { displayName, seniorAgeThreshold, allowPatientSelfCheckIn, averageConsultationMinutes } = req.body;
+    const updates = {};
+
+    if (displayName !== undefined) {
+      const trimmed = String(displayName).trim();
+      if (trimmed.length > DISPLAY_NAME_MAX) {
+        return res.status(400).json({ message: `Display name must be at most ${DISPLAY_NAME_MAX} characters.` });
+      }
+      updates.displayName = trimmed;
+    }
+
+    if (seniorAgeThreshold !== undefined) {
+      const value = Number(seniorAgeThreshold);
+      if (!Number.isInteger(value) || value < 0 || value > 130) {
+        return res.status(400).json({ message: "Senior age threshold must be a whole number between 0 and 130." });
+      }
+      updates.seniorAgeThreshold = value;
+    }
+
+    if (allowPatientSelfCheckIn !== undefined) {
+      if (typeof allowPatientSelfCheckIn !== "boolean") {
+        return res.status(400).json({ message: "allowPatientSelfCheckIn must be true or false." });
+      }
+      updates.allowPatientSelfCheckIn = allowPatientSelfCheckIn;
+    }
+
+    if (averageConsultationMinutes !== undefined) {
+      const value = Number(averageConsultationMinutes);
+      if (!Number.isInteger(value) || value < 1 || value > 240) {
+        return res.status(400).json({ message: "Average consultation minutes must be a whole number between 1 and 240." });
+      }
+      updates.averageConsultationMinutes = value;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "Nothing to update." });
+    }
+
+    hospital.settings = hospital.settings || {};
+    Object.assign(hospital.settings, updates);
+    await hospital.save();
+
+    res.json(settingsResponse(hospital));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while saving hospital settings." });
+  }
+}
+
+/** Rotating the key instantly invalidates every TV still showing the old link. */
+async function regenerateDisplayKey(req, res) {
+  try {
+    const hospital = await Hospital.findById(req.user.hospitalId);
+    if (!hospital) return res.status(404).json({ message: "Hospital not found." });
+
+    hospital.settings = hospital.settings || {};
+    hospital.settings.displayKey = newDisplayKey();
+    await hospital.save();
+
+    res.json(settingsResponse(hospital));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while regenerating the display key." });
+  }
+}
+
 module.exports = {
   createStaff,
   listStaff,
@@ -432,4 +557,7 @@ module.exports = {
   setStaffStatus,
   resetStaffPassword,
   exportData,
+  getSettings,
+  updateSettings,
+  regenerateDisplayKey,
 };
