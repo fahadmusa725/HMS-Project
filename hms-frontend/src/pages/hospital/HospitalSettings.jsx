@@ -73,7 +73,7 @@ function SettingsForm({ settings, onSave, isSaving }) {
           <FieldRow
             icon={Settings2}
             title="Display name"
-            description="Shown on the waiting-room TV instead of the official hospital name. Leave blank to use the official name."
+            description="Affects only the waiting-room TV screen: it becomes the board title instead of the official hospital name, and changes nothing else in the app. Leave blank to show the official name."
           >
             <Input
               value={form.displayName}
@@ -218,7 +218,9 @@ export default function HospitalSettings() {
       queryClient.invalidateQueries({ queryKey: ['hospital-settings'] });
       setConfirmRegenerate(false);
       setCopied(false);
-      toast.success('New display link generated. Any TV still using the old link has stopped updating.');
+      toast.success('Display link ready.', {
+        description: 'Open it on each waiting-room screen. Any TV still using an old link has stopped updating.',
+      });
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Could not regenerate the display key.');
@@ -263,6 +265,8 @@ export default function HospitalSettings() {
     );
   }
 
+  const hasDisplayKey = Boolean(data?.displayPath);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -275,6 +279,93 @@ export default function HospitalSettings() {
         </p>
       </div>
 
+      {/* First on the page on purpose - the TV link is what admins come here for. */}
+      <Card id="waiting-room-display" className="scroll-mt-24 border-border bg-card shadow-soft">
+        <CardHeader className="border-b border-border/60 pb-4">
+          <CardTitle className="flex items-center gap-2 text-base font-bold">
+            <Tv className="h-4 w-4 text-primary" />
+            Waiting room display
+          </CardTitle>
+          <CardDescription className="text-xs">
+            A login-free screen for the TV in the waiting area: one column per doctor with the token being
+            served and the next 5 tokens. The board title is the Display name set below.{' '}
+            <span className="font-semibold text-foreground">
+              It shows token numbers only - never patient names, MRNs or priority.
+            </span>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          {hasDisplayKey ? (
+            <>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-foreground/80">
+                  Display link
+                </label>
+                <Input
+                  readOnly
+                  value={displayUrl}
+                  className="font-mono text-xs"
+                  onFocus={(e) => e.target.select()}
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={copyLink}>
+                  {copied ? (
+                    <>
+                      <Check className="mr-2 h-4 w-4 text-success" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy link
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => window.open(displayUrl, '_blank', 'noopener')}
+                >
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Open display
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setConfirmRegenerate(true)}
+                  disabled={regenerateMutation.isPending}
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <RefreshCw className={cn('mr-2 h-4 w-4', regenerateMutation.isPending && 'animate-spin')} />
+                  Regenerate key
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Keep this link private - anyone who has it can see live token numbers for this hospital.
+                Regenerating the key stops every TV still using the old link immediately.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-muted-foreground">
+                No display link yet. Create one, then open it on the waiting-room TV - no login is needed
+                on that screen.
+              </p>
+              <Button
+                type="button"
+                onClick={() => setConfirmRegenerate(true)}
+                disabled={regenerateMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+              >
+                <Tv className={cn('mr-2 h-4 w-4', regenerateMutation.isPending && 'animate-pulse')} />
+                Create display link
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {data && (
         <SettingsForm
           settings={data}
@@ -283,80 +374,17 @@ export default function HospitalSettings() {
         />
       )}
 
-      <Card className="border-border bg-card shadow-soft">
-        <CardHeader className="border-b border-border/60 pb-4">
-          <CardTitle className="flex items-center gap-2 text-base font-bold">
-            <Tv className="h-4 w-4 text-primary" />
-            Waiting-room display
-          </CardTitle>
-          <CardDescription className="text-xs">
-            Open this link on the TV in the waiting area - no login needed. It shows one column per doctor
-            with the token being served and the next 5 tokens. Patient names are never shown.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 p-4 sm:p-6">
-          {displayUrl ? (
-            <>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  readOnly
-                  value={displayUrl}
-                  className="font-mono text-xs"
-                  onFocus={(e) => e.target.select()}
-                />
-                <div className="flex shrink-0 gap-2">
-                  <Button type="button" variant="outline" onClick={copyLink} className="flex-1 sm:flex-none">
-                    {copied ? (
-                      <>
-                        <Check className="mr-2 h-4 w-4 text-success" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Copy
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => window.open(displayUrl, '_blank', 'noopener')}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Open
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Keep this link private - anyone with it can see the live token numbers for this hospital.
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setConfirmRegenerate(true)}
-                disabled={regenerateMutation.isPending}
-                className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-              >
-                <RefreshCw className={cn('mr-2 h-4 w-4', regenerateMutation.isPending && 'animate-spin')} />
-                Regenerate link
-              </Button>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No display key yet. Save the settings once and a link will be generated.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       <Modal
         isOpen={confirmRegenerate}
         onClose={() => {
           if (!regenerateMutation.isPending) setConfirmRegenerate(false);
         }}
-        title="Regenerate display link?"
-        description="Every TV still showing the old link will stop updating immediately."
+        title={hasDisplayKey ? 'Regenerate display link?' : 'Create display link?'}
+        description={
+          hasDisplayKey
+            ? 'Every TV still showing the old link will stop updating immediately.'
+            : 'A new secret key is generated for this hospital.'
+        }
         footer={
           <>
             <Button
@@ -376,18 +404,21 @@ export default function HospitalSettings() {
               {regenerateMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Regenerating...
+                  {hasDisplayKey ? 'Regenerating...' : 'Creating...'}
                 </>
-              ) : (
+              ) : hasDisplayKey ? (
                 'Regenerate'
+              ) : (
+                'Create link'
               )}
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted-foreground">
-          You will need to open the new link on each waiting-room screen. This does not affect any queue
-          data or tokens already issued today.
+          {hasDisplayKey
+            ? 'You will need to open the new link on each waiting-room screen. This does not affect any queue data or tokens already issued today.'
+            : 'This does not affect any queue data or tokens already issued today.'}
         </p>
       </Modal>
     </div>
