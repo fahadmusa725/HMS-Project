@@ -25,6 +25,17 @@ const consultationSchema = new mongoose.Schema(
       height: { type: String }, // e.g. "170 cm"
     },
     symptoms: { type: String, trim: true },
+    // The pre-check the patient submitted before the visit, when this consultation built on it.
+    preCheckId: { type: mongoose.Schema.Types.ObjectId, ref: "PreCheck" },
+    // Where each vital sign came from: the patient's own pre-check submission, or a
+    // measurement taken in the room. Absent on consultations recorded before pre-checks.
+    vitalsSource: {
+      bloodPressure: { type: String, enum: ["patient", "staff"] },
+      temperature: { type: String, enum: ["patient", "staff"] },
+      pulse: { type: String, enum: ["patient", "staff"] },
+      weight: { type: String, enum: ["patient", "staff"] },
+      height: { type: String, enum: ["patient", "staff"] },
+    },
     diagnosis: { type: String, trim: true },
     notes: { type: String, trim: true },
     prescriptions: [prescriptionItemSchema],

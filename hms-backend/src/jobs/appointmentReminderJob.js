@@ -10,6 +10,14 @@ const { escapeHtml } = require("../utils/security");
 const SEND_CONCURRENCY = 5;
 const TIME_BUDGET_MS = 25 * 1000;
 
+/** The portal origin for links in emails - CLIENT_URL may list several, the first is canonical. */
+function clientBaseUrl() {
+  return String(process.env.CLIENT_URL || "")
+    .split(",")[0]
+    .trim()
+    .replace(/\/+$/, "");
+}
+
 /**
  * Finds all appointments scheduled for TOMORROW (across every hospital)
  * and emails a reminder to any patient who has an email on file - this
@@ -44,6 +52,13 @@ async function sendAppointmentReminders() {
       const appt = queue.shift();
       if (!appt) return;
       attempted++;
+      // Only worth linking while the appointment is still waiting for the visit - a patient
+      // who already checked in cannot edit their pre-check any more.
+      const preCheckUrl =
+        appt.status === "scheduled" && clientBaseUrl()
+          ? `${clientBaseUrl()}/portal/appointments?precheck=${appt._id}`
+          : "";
+
       const result = await sendEmail({
         to: appt.patient.email,
         subject: `Appointment Reminder: ${tomorrow}`,
@@ -52,6 +67,13 @@ async function sendAppointmentReminders() {
           <p>This is a reminder of your appointment <strong>tomorrow (${escapeHtml(tomorrow)})</strong>
           ${appt.time ? `at <strong>${escapeHtml(appt.time)}</strong>` : ""} with ${escapeHtml(doctorName(appt.doctor.name))}.</p>
           <p>Your token number will be: <strong>#${escapeHtml(appt.tokenNumber)}</strong></p>
+          ${
+            preCheckUrl
+              ? `<p>Save time at the front desk: <a href="${escapeHtml(preCheckUrl)}">complete your digital pre-check</a>
+                (symptoms, vitals and any reports you already have) before you arrive. It takes about two
+                minutes and your doctor sees it before the visit.</p>`
+              : ""
+          }
           <p>Please arrive a little early. If you need to reschedule, please contact the hospital.</p>
         `,
       });

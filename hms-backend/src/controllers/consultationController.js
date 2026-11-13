@@ -6,12 +6,26 @@ const PDFDocument = require("pdfkit");
 const doctorName = require("../utils/doctorName");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 
+const VITAL_FIELDS = ["bloodPressure", "temperature", "pulse", "weight", "height"];
+
+/** Keeps only known vital names with a known source, so nothing else can be written. */
+function cleanVitalsSource(source) {
+  if (!source || typeof source !== "object") return undefined;
+  const clean = {};
+  for (const key of VITAL_FIELDS) {
+    if (source[key] === "patient" || source[key] === "staff") clean[key] = source[key];
+  }
+  return Object.keys(clean).length > 0 ? clean : undefined;
+}
+
 async function createConsultation(req, res) {
   try {
     const {
       patientId,
       appointmentId,
       vitals,
+      vitalsSource,
+      preCheckId,
       symptoms,
       diagnosis,
       notes,
@@ -33,6 +47,8 @@ async function createConsultation(req, res) {
       doctorId: req.user.userId,
       appointmentId,
       vitals,
+      vitalsSource: cleanVitalsSource(vitalsSource),
+      preCheckId,
       symptoms,
       diagnosis,
       notes,
@@ -161,13 +177,19 @@ async function getPrescriptionPdf(req, res) {
     }
 
     const v = consultation.vitals || {};
+    // A patient-reported reading is labelled on the printed prescription too, so nobody
+    // downstream mistakes it for something measured in the room.
+    const source = consultation.vitalsSource || {};
     const vitalsLine = [
-      v.bloodPressure && `BP: ${v.bloodPressure}`,
-      v.temperature && `Temp: ${v.temperature}`,
-      v.pulse && `Pulse: ${v.pulse}`,
-      v.weight && `Weight: ${v.weight}`,
-      v.height && `Height: ${v.height}`,
-    ].filter(Boolean).join("   ");
+      ["bloodPressure", "BP"],
+      ["temperature", "Temp"],
+      ["pulse", "Pulse"],
+      ["weight", "Weight"],
+      ["height", "Height"],
+    ]
+      .filter(([key]) => v[key])
+      .map(([key, label]) => `${label}: ${v[key]}${source[key] === "patient" ? " (patient-reported)" : ""}`)
+      .join("   ");
     if (vitalsLine) {
       doc.font("Helvetica-Bold").fontSize(12).fillColor("#1F5F5B").text("Vitals");
       doc.fillColor("#000").font("Helvetica").fontSize(11).text(vitalsLine);

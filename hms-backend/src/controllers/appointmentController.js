@@ -6,6 +6,7 @@ const Hospital = require("../models/Hospital");
 const DoctorSchedule = require("../models/DoctorSchedule");
 const Bill = require("../models/Bill");
 const AuditLog = require("../models/AuditLog");
+const PreCheck = require("../models/PreCheck");
 const { getNextSequence, releaseSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { slotsForDate, hospitalNow, APP_TIMEZONE, HHMM_REGEX, toMinutes, toHHMM } = require("../utils/scheduleSlots");
@@ -14,6 +15,7 @@ const { REFERENCE_REQUIRED_METHODS, recalcBillTotals } = require("../utils/billT
 const { PRIORITY_RANK, compareWaitingOrder } = require("../utils/queueOrder");
 const { getHospitalSettings, ageInYears } = require("../utils/hospitalSettings");
 const { flagStaleNoShows } = require("../utils/noShowSweep");
+const { purgePreCheckAssets } = require("../utils/preCheckAssets");
 const { buildMrnPrefix } = require("../utils/mrn");
 
 /**
@@ -429,8 +431,16 @@ async function getQueue(req, res) {
       .lean();
     const billByAppointment = new Map(bills.map((b) => [String(b.appointmentId), b]));
 
+    // Front-desk badge only: whether a pre-check was submitted, and whether the desk has
+    // already measured vitals. The clinical content stays behind GET /api/pre-checks/:id.
+    const preChecks = await PreCheck.find({ appointmentId: { $in: appointments.map((a) => a._id) } })
+      .select("appointmentId submittedAt staffVitalsAt")
+      .lean();
+    const preCheckByAppointment = new Map(preChecks.map((p) => [String(p.appointmentId), p]));
+
     const queue = appointments.map((appointment) => {
       const bill = billByAppointment.get(String(appointment._id));
+      const preCheck = preCheckByAppointment.get(String(appointment._id));
       const age = ageInYears(appointment.patientId?.dob);
       const canSuggest =
         ["scheduled", "checked_in"].includes(appointment.status) &&
@@ -442,6 +452,9 @@ async function getQueue(req, res) {
         ...appointment,
         patientAge: age,
         suggestedPriority: canSuggest ? "senior" : null,
+        preCheck: preCheck
+          ? { submitted: Boolean(preCheck.submittedAt), staffVitalsRecorded: Boolean(preCheck.staffVitalsAt) }
+          : null,
         bill: bill
           ? { _id: bill._id, totalAmount: bill.totalAmount, amountPaid: bill.amountPaid, paymentStatus: bill.paymentStatus }
           : null,
@@ -665,6 +678,16 @@ async function updateAppointmentStatus(req, res) {
         });
       }
       throw err;
+    }
+
+    if (status === "cancelled") {
+      // Cancelling ends the visit, so the pre-check's uploaded reports go with it - they must
+      // not keep occupying Cloudinary storage for an appointment that will never happen.
+      // Never fails the cancellation itself: the patient-facing outcome matters more than a
+      // storage cleanup that the daily sweep can retry.
+      await purgePreCheckAssets(appointment._id).catch((err) =>
+        console.error("[PreCheck] failed to delete assets for a cancelled appointment:", err.message)
+      );
     }
 
     res.json(appointment);
