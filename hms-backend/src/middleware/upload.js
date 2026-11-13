@@ -25,4 +25,16 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-module.exports = upload;
+// Pre-check reports: 3 files, 5 MB each (keeps a clinic inside the Cloudinary free tier).
+// Deliberately no fileFilter - a browser-supplied MIME type proves nothing, so the
+// controller validates every buffer by its magic bytes (utils/fileSignature.js) and rejects
+// anything that isn't a real PDF/JPEG/PNG.
+const PRE_CHECK_MAX_FILE_BYTES = 5 * 1024 * 1024;
+const PRE_CHECK_MAX_FILES = 3;
+
+const preCheckUpload = multer({
+  storage,
+  limits: { fileSize: PRE_CHECK_MAX_FILE_BYTES, files: PRE_CHECK_MAX_FILES },
+});
+
+module.exports = { upload, preCheckUpload, PRE_CHECK_MAX_FILE_BYTES, PRE_CHECK_MAX_FILES };

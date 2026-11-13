@@ -2,7 +2,7 @@ const express = require("express");
 const protect = require("../middleware/auth");
 const auditLogger = require("../middleware/auditLogger");
 const allowRoles = require("../middleware/rbac");
-const upload = require("../middleware/upload");
+const { upload } = require("../middleware/upload");
 const {
   createLabTest,
   listLabTests,

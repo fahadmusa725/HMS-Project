@@ -5,7 +5,10 @@ const { cloudinary, isConfigured } = require("../config/cloudinary");
  * returns the secure URL. Throws a clear error if credentials aren't
  * configured yet, rather than failing with a confusing SDK error.
  */
-function uploadBufferToCloudinary(buffer, { folder = "hms-uploads", resourceType = "auto" } = {}) {
+function uploadBufferToCloudinary(
+  buffer,
+  { folder = "hms-uploads", resourceType = "auto", type = "upload", tags = [] } = {}
+) {
   if (!isConfigured()) {
     return Promise.reject(
       new Error("Cloudinary is not configured yet - add CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET to .env.")
@@ -13,8 +16,10 @@ function uploadBufferToCloudinary(buffer, { folder = "hms-uploads", resourceType
   }
 
   return new Promise((resolve, reject) => {
+    // type: "authenticated" keeps the asset off the public CDN - it can only be fetched
+    // through a signed URL with an expiry (see utils/cloudinaryAssets.js).
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: resourceType },
+      { folder, resource_type: resourceType, type, tags },
       (err, result) => {
         if (err) return reject(err);
         resolve(result);
