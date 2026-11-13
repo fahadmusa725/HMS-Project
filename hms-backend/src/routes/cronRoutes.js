@@ -1,6 +1,7 @@
 const express = require("express");
 const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
 const { sendAppointmentReminders } = require("../jobs/appointmentReminderJob");
+const { sweepNoShowsAcrossHospitals } = require("../utils/noShowSweep");
 
 const router = express.Router();
 
@@ -28,5 +29,8 @@ const run = (job) => async (req, res) => {
 
 router.get("/trial-check", requireCronSecret, run(checkTrialsEndingSoon)); // 04:00 UTC = 9 AM PKT
 router.get("/appointment-reminders", requireCronSecret, run(sendAppointmentReminders)); // 13:00 UTC = 6 PM PKT
+// Hourly catch-up so yesterday's unclaimed slots don't linger as "scheduled" when no
+// desk happens to touch the queue. The same sweep also runs (throttled) on write paths.
+router.get("/no-show-sweep", requireCronSecret, run(sweepNoShowsAcrossHospitals)); // hourly
 
 module.exports = router;

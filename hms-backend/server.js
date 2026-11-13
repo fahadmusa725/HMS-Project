@@ -3,6 +3,7 @@ const cron = require("node-cron");
 const app = require("./src/app");
 const { checkTrialsEndingSoon } = require("./src/jobs/trialReminderJob");
 const { sendAppointmentReminders } = require("./src/jobs/appointmentReminderJob");
+const { sweepNoShowsAcrossHospitals } = require("./src/utils/noShowSweep");
 
 const PORT = process.env.PORT || 5000;
 
@@ -28,4 +29,14 @@ cron.schedule("0 18 * * *", () => {
   sendAppointmentReminders()
     .then((result) => console.log("[Cron] Appointment reminder result:", result))
     .catch((err) => console.error("[Cron] Appointment reminder failed:", err.message));
+});
+
+// Daily no-show catch-up just after hospital midnight. The live queue GET never writes,
+// so this (plus the throttled sweep on booking/walk-in/call-next) is what retires a
+// "scheduled" row nobody claimed. Kept daily so it stays within Hobby-plan cron limits.
+cron.schedule("30 0 * * *", () => {
+  console.log("[Cron] Sweeping unclaimed appointments to no-show...");
+  sweepNoShowsAcrossHospitals()
+    .then((result) => console.log("[Cron] No-show sweep result:", result))
+    .catch((err) => console.error("[Cron] No-show sweep failed:", err.message));
 });

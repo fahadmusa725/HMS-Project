@@ -12,6 +12,7 @@
   ],
   "crons": [
     { "path": "/api/cron/trial-check", "schedule": "0 4 * * *" },
-    { "path": "/api/cron/appointment-reminders", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/appointment-reminders", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/no-show-sweep", "schedule": "30 19 * * *" }
   ]
 }
