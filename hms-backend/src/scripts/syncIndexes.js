@@ -2,8 +2,9 @@
  * One-off: brings every collection's indexes in line with the schemas.
  * Needed whenever an index's keys change - Mongoose won't replace an existing
  * index with the same keys on its own, so the old one stays until it is dropped here.
- * Current reasons: Patient MRN/CNIC indexes, and the list/dashboard indexes added
- * for Bill, LabOrder, Medicine and Admission.
+ * Current reasons: Patient MRN/CNIC indexes, the list/dashboard indexes added
+ * for Bill, LabOrder, Medicine and Admission, and the Appointment queue indexes
+ * (per-doctor/day lookups plus the one-patient-in-consultation guarantee).
  *
  * Usage: npm run sync:indexes
  */
@@ -15,8 +16,9 @@ const Bill = require("../models/Bill");
 const LabOrder = require("../models/LabOrder");
 const Medicine = require("../models/Medicine");
 const Admission = require("../models/Admission");
+const Appointment = require("../models/Appointment");
 
-const MODELS = [Patient, Bill, LabOrder, Medicine, Admission];
+const MODELS = [Patient, Bill, LabOrder, Medicine, Admission, Appointment];
 
 async function main() {
   await connectDB();

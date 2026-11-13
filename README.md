@@ -50,6 +50,8 @@ CareFlow HMS is designed for hospitals of any size to manage their day-to-day cl
 - **Role-Based Access Control:** 9 distinct roles (Platform Super Admin, Hospital Admin, Doctor, Receptionist, Nurse, Lab Technician, Pharmacist, Accountant, Patient), each with a tailored workspace
 - **Public Landing Page & Demo Requests:** a marketing front door where prospective hospitals can request a demo
 - **OPD & Appointments:** patient registration with auto-generated MRNs, doctor-wise scheduling, a live token-based queue, patient self check-in from the portal, double-booking prevention enforced at the database level, and automatic no-show detection that frees the slot for rebooking
+- **Clinic queue workflow:** priority queue (`normal`/`senior`/`emergency`) with a mandatory, audited reason for any jump; automatic senior suggestion from date of birth that staff must confirm; **walk-in tokens** issued at the front desk with no time slot, even when the doctor has a schedule; per-doctor-per-day token sequences; a "Call next" button that moves the next patient into consultation, with one patient in consultation per doctor enforced by a partial unique index
+- **Waiting-room TV display:** a public, login-free screen (per hospital, revocable link) showing one column per doctor with the token being served and the next five tokens only, with no patient names, MRNs or priority labels
 - **Clinical Records:** doctor consultations with vitals, diagnosis, and e-prescriptions; a full patient EMR timeline, including allergies and chronic conditions
 - **IPD / Ward Management:** ward and bed setup, live occupancy tracking, admission/discharge workflow, nursing rounds notes
 - **Laboratory:** test catalog, order tracking through to results
@@ -59,7 +61,8 @@ CareFlow HMS is designed for hospitals of any size to manage their day-to-day cl
 - **Data Export:** hospital admins can export their own patients, bills, medicines, or appointments as JSON or CSV at any time, with no lock-in
 - **Audit Logging:** a complete record of every action taken across the system
 - **Email Notifications:** low-stock, subscription-trial, and appointment reminder alerts
-- **Patient Self-Service Portal:** patients can sign up, book their own appointments, check themselves in, and view their medical history and bills
+- **Patient Self-Service Portal:** patients can sign up, book and cancel their own appointments, check themselves in (when the hospital allows it), and view their medical history and bills
+- **Hospital Settings:** per-hospital queue behaviour, senior age threshold, average consultation time (which turns "N patients ahead" into a wait estimate) and a regeneratable waiting-room display key
 
 ## Screenshots
 
@@ -93,6 +96,10 @@ _All screenshots use the seeded demo data created by `npm run seed:demo`._
 - Tenant isolation is enforced automatically at the database layer using an AsyncLocalStorage-based request context combined with a Mongoose plugin, so every Mongoose query is scoped to the logged-in user's hospital by construction, not something a developer has to remember to add per-query. Aggregations are the one exception (a pipeline can't be filtered after the fact), so the plugin rejects any aggregate that doesn't start with a `$match` on the current `hospitalId`; deliberate cross-tenant work must opt out explicitly with `skipTenantScope` (grep for it to audit every such place).
 - JWT-based authentication (1-day tokens, no refresh tokens) with the account, hospital status and trial state re-checked on every authenticated request, so suspending a hospital or disabling a staff member takes effect almost immediately.
 - A hybrid patient-account model: hospital staff can enable portal access for an existing patient record, or a patient can self-register. A self-registration that matches an existing clinical record is never linked automatically, the record's own email must confirm a one-time code first (or front desk links it after checking ID in person).
+- The waiting order for checked-in patients is defined in one place, `src/utils/queueOrder.js`: **priority rank (emergency → senior → normal) → check-in time → token number**. The queue, "Call next", the patient's live status and the TV display all use it, so no two surfaces can disagree about who is next.
+- Tokens are allocated per doctor per day (an atomic counter named `opd:<doctorId>:<YYYY-MM-DD>`), so each room runs its own sequence. A token number is only meaningful with its doctor, and every surface that prints one (slip PDF, reminder email, exports, portal, TV) prints the doctor alongside it. Duplicate-key races are mapped to friendly 409s, and a failed booking releases its token instead of burning it.
+- `GET /api/appointments/queue` is read-only. No-show flagging is a write, so it happens on write paths (booking, walk-in, call next) plus a daily cron, never inside a queue read — a read that writes breaks caching, retries and replicas, and lets a page load decide clinical state.
+- Live polling is scoped to the visible tab: the queue refreshes every 12s and the patient portal every 15s, but both stop while the tab is hidden. The waiting-room TV is the deliberate exception — it is a kiosk, so it keeps polling in the background.
 
 ## Getting Started
 
@@ -165,7 +172,7 @@ Vite only exposes env vars prefixed `VITE_` to client code (`import.meta.env.VIT
 | `npm start` | Starts the API with plain `node server.js`. |
 | `npm run seed:superadmin` | Creates the single Platform Super Admin account from the `SUPER_ADMIN_*` variables. |
 | `npm run seed:demo` | Builds or rebuilds the isolated "CareFlow Demo Hospital" tenant. `-- --dry-run` builds the dataset in memory and prints counts without writing; `-- --force` allows the run when `NODE_ENV=production`. |
-| `npm run sync:indexes` | Brings every collection's indexes in line with the schemas. Needed after an index definition changes, since Mongoose won't replace an existing index with the same keys on its own. |
+| `npm run sync:indexes` | Brings every collection's indexes in line with the schemas, including the `Appointment` partial unique indexes (slot uniqueness, one visit per patient+doctor+day, and at most one patient in consultation per doctor per day). Needed after an index definition changes, since Mongoose won't replace an existing index with the same keys on its own. Run it once after upgrading to the queue release. |
 | `npm run check:auth` | Repeatable auth regression checks (forgot-password delivery path, login lockout, client countdown data). It creates two throwaway Platform Super Admin users over HTTP against the configured database, then deletes them; email credentials are cleared in-process so nothing is sent. |
 
 ### Frontend
@@ -200,6 +207,7 @@ The other doctors and staff accounts follow the same `firstname.lastname@careflo
 
 - The demo seeder is tenant-safe: every write is scoped to the demo hospital's own `hospitalId`, no other hospital is read or modified, and the script aborts rather than reusing an email that already belongs to another tenant.
 - In production (`NODE_ENV=production`, set automatically by Vercel) the global error handler hides internal `err.message` text on 5xx responses.
+- The public waiting-room display is the only login-free data endpoint. Its key is 128 bits of randomness, compared in constant time (both sides are SHA-256 hashed first, so the comparison length never varies); it returns token numbers only — no names, MRNs or priority labels — with a 5-second `Cache-Control` and a per-IP fixed-window rate limit. Regenerating the key in Hospital Settings invalidates every screen using the old link immediately.
 - Real credentials stay out of the repository: `.env` is git-ignored and `.env.example` lists every variable with safe placeholders.
 
 ## Deploying to Vercel
@@ -210,7 +218,7 @@ Both projects deploy from the same repository as two separate Vercel projects.
 
 1. Import the repo into Vercel and set Root Directory to `hms-backend`.
 2. Add every backend variable from the table above in the Vercel dashboard (Project Settings, Environment Variables).
-3. Deploy. `vercel.json` already routes everything through `api/index.js`, bundles the PDFKit font files, and defines the two daily cron jobs (trial check and appointment reminders) protected by `CRON_SECRET`.
+3. Deploy. `vercel.json` already routes everything through `api/index.js`, bundles the PDFKit font files, and defines the three daily cron jobs (trial check, appointment reminders and the OPD no-show sweep) protected by `CRON_SECRET`.
 
 ### Frontend
 
@@ -220,7 +228,7 @@ Both projects deploy from the same repository as two separate Vercel projects.
 
 ### Hobby Plan Notes
 
-- **Cron jobs:** capped at once a day each (not a job-count limit); both jobs here are daily. Anything needing finer timing is done as a lazy check on read instead of an extra cron job.
+- **Cron jobs:** capped at once a day each (not a job-count limit); all three jobs here are daily. Anything needing finer timing is done as a lazy check on write instead of an extra cron job — which is also why the OPD no-show sweep is forced from the booking, walk-in and call-next paths rather than from a queue read.
 - **Function duration:** capped at 300 seconds; nothing here runs anywhere close to that.
 - **Response size:** capped at 4.5 MB; the data export endpoint caps record counts per request and flags truncation so it stays under that. The frontend is a static Vite build with no serverless functions, so these limits don't apply to it.
 

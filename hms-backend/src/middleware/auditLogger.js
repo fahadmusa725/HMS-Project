@@ -15,6 +15,9 @@ function auditLogger(req, res, next) {
 
   res.on("finish", () => {
     if (res.statusCode < 200 || res.statusCode >= 300) return; // only log successful actions
+    // The handler wrote its own richer entry (e.g. an appointment priority change with
+    // before/after details) - don't duplicate it with this generic one.
+    if (res.locals.auditHandled) return;
 
     const hospitalId = getCurrentHospitalId();
     if (!hospitalId || !req.user) return; // platform-level actions (super admin) aren't logged here

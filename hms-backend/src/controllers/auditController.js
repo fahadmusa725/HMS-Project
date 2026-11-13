@@ -6,6 +6,9 @@ function describeAction(method, path) {
     [/^POST \/api\/patients$/, "Registered a patient"],
     [/^PATCH \/api\/patients\/[^/]+$/, "Updated a patient record"],
     [/^POST \/api\/appointments$/, "Booked an appointment"],
+    [/^POST \/api\/appointments\/walk-in$/, "Issued a walk-in token"],
+    [/^POST \/api\/appointments\/call-next$/, "Called the next patient"],
+    [/^PATCH \/api\/appointments\/[^/]+\/priority$/, "Changed appointment queue priority"],
     [/^PATCH \/api\/appointments\/[^/]+\/status$/, "Updated appointment status"],
     [/^POST \/api\/consultations$/, "Recorded a consultation"],
     [/^POST \/api\/admissions$/, "Admitted a patient"],
@@ -28,6 +31,8 @@ function describeAction(method, path) {
     [/^POST \/api\/billing$/, "Created a bill"],
     [/^PATCH \/api\/billing\/[^/]+\/payment$/, "Recorded a payment"],
     [/^POST \/api\/hospital-admin\/staff$/, "Invited a staff member"],
+    [/^PATCH \/api\/hospital-admin\/settings$/, "Updated hospital settings"],
+    [/^POST \/api\/hospital-admin\/settings\/display-key$/, "Regenerated the waiting-room display key"],
   ];
 
   const key = `${method} ${path}`;
@@ -55,6 +60,8 @@ async function listAuditLogs(req, res) {
       id: log._id,
       user: log.userId ? { name: log.userId.name, role: log.userId.role } : null,
       action: describeAction(log.method, log.path),
+      // Optional richer context for handlers that write their own entry (e.g. priority changes).
+      details: log.details || null,
       method: log.method,
       path: log.path,
       statusCode: log.statusCode,

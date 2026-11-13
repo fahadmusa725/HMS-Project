@@ -8,6 +8,9 @@ const auditLogSchema = new mongoose.Schema(
     method: { type: String, required: true }, // POST, PATCH, DELETE
     path: { type: String, required: true }, // e.g. "/api/patients/64f.../discharge"
     statusCode: { type: Number, required: true },
+    // Optional human-readable detail for actions the generic method+path can't describe,
+    // e.g. "Priority normal -> senior (Senior citizen, age 72)".
+    details: { type: String, trim: true },
   },
   { timestamps: true }
 );
