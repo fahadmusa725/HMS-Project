@@ -2,11 +2,16 @@ const mongoose = require("mongoose");
 const Hospital = require("../models/Hospital");
 const Patient = require("../models/Patient");
 const User = require("../models/User");
+const Appointment = require("../models/Appointment");
 const { getNextSequence } = require("../models/Counter");
 const generateToken = require("../utils/generateToken");
 const { runWithTenantContext } = require("../utils/tenantContext");
 const { sendEmail } = require("../utils/mailer");
-const { escapeHtml, generateNumericCode, hashToken } = require("../utils/security");
+const { escapeHtml, generateNumericCode, hashToken, safeCompare } = require("../utils/security");
+const { buildMrnPrefix } = require("../utils/mrn");
+const { hospitalNow } = require("../utils/scheduleSlots");
+const { compareWaitingOrder } = require("../utils/queueOrder");
+const doctorName = require("../utils/doctorName");
 
 const MIN_PASSWORD_LENGTH = 8;
 const CLAIM_CODE_TTL_MS = 15 * 60 * 1000;
@@ -24,12 +29,6 @@ async function listSignupHospitals(req, res) {
     console.error(err);
     res.status(500).json({ message: "Server error while listing hospitals." });
   }
-}
-
-function buildMrnPrefix(hospitalName) {
-  const letters = hospitalName.replace(/[^a-zA-Z ]/g, "").split(" ").filter(Boolean);
-  const initials = letters.map((w) => w[0]).join("").toUpperCase();
-  return (initials || "HSP").slice(0, 4);
 }
 
 /**
@@ -257,4 +256,98 @@ async function requestDemo(req, res) {
   }
 }
 
-module.exports = { listSignupHospitals, patientSignup, requestDemo };
+/** How many upcoming token numbers the waiting-room TV shows per doctor. */
+const DISPLAY_NEXT_COUNT = 5;
+
+/**
+ * Public waiting-room TV feed - no login. The URL the hospital hands out on the TV
+ * carries a per-hospital display key; it is compared in constant time against the
+ * stored key (both are hashed first, so the comparison is always equal-length and
+ * can't leak the key's length or prefix). The key is every bit as sensitive as a
+ * password on a link, which is why rotating it instantly kills old screens.
+ *
+ * Returns only what a screen needs: the hospital's display name, and per doctor the
+ * token currently being served plus the next few checked-in token numbers, in the
+ * same call order used everywhere else (utils/queueOrder.js). Never patient names,
+ * MRNs or priority labels. Read-only - the no-show sweep deliberately does not run
+ * here, and a short cache header keeps a wall of screens from hammering the API.
+ */
+async function getDisplayQueue(req, res) {
+  try {
+    const { hospitalId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(hospitalId)) {
+      return res.status(404).json({ message: "Display not found." });
+    }
+
+    const hospital = await Hospital.findById(hospitalId).select("name status settings").lean();
+    if (!hospital) return res.status(404).json({ message: "Display not found." });
+    if (hospital.status === "suspended") {
+      return res.status(403).json({ message: "This hospital's display is unavailable." });
+    }
+
+    const storedKey = hospital.settings && hospital.settings.displayKey;
+    const providedKey = String(req.query.key || "");
+    if (!storedKey || !providedKey || !safeCompare(hashToken(providedKey), hashToken(storedKey))) {
+      return res.status(403).json({
+        message: "This display link is not valid. Ask the hospital administrator for a new link.",
+      });
+    }
+
+    const date = hospitalNow().date;
+    const rows = await runWithTenantContext({ hospitalId: hospital._id }, () =>
+      Appointment.find({ date, status: { $in: ["scheduled", "checked_in", "in_consultation"] } })
+        .select("doctorId tokenNumber status checkedInAt createdAt")
+        .populate("doctorId", "name department")
+        .lean()
+    );
+
+    // One column per doctor. Scheduled (not yet arrived) patients create the column but
+    // are not part of the waiting list - only checked-in patients are actually queued.
+    const byDoctor = new Map();
+    for (const row of rows) {
+      if (!row.doctorId) continue;
+      const id = String(row.doctorId._id);
+      if (!byDoctor.has(id)) {
+        byDoctor.set(id, {
+          id,
+          name: doctorName(row.doctorId.name),
+          department: row.doctorId.department || null,
+          nowServing: null,
+          waiting: [],
+        });
+      }
+
+      const entry = byDoctor.get(id);
+      if (row.status === "in_consultation") entry.nowServing = row.tokenNumber;
+      else if (row.status === "checked_in") entry.waiting.push(row);
+    }
+
+    const doctors = [...byDoctor.values()]
+      .map(({ waiting, ...entry }) => ({
+        ...entry,
+        nextTokens: waiting
+          .sort(compareWaitingOrder)
+          .slice(0, DISPLAY_NEXT_COUNT)
+          .map((row) => row.tokenNumber),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Screens poll every 10s; a 5s shared cache keeps them fresh while absorbing the
+    // burst when a whole waiting room refreshes at once.
+    res.setHeader("Cache-Control", "public, max-age=5");
+    res.json({
+      hospital: {
+        id: String(hospital._id),
+        name: (hospital.settings && hospital.settings.displayName) || hospital.name,
+      },
+      date,
+      updatedAt: new Date().toISOString(),
+      doctors,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while loading the display." });
+  }
+}
+
+module.exports = { listSignupHospitals, patientSignup, requestDemo, getDisplayQueue };
