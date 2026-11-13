@@ -294,11 +294,17 @@ async function getDisplayQueue(req, res) {
     }
 
     const date = hospitalNow().date;
-    const rows = await runWithTenantContext({ hospitalId: hospital._id }, () =>
+    // The query MUST be executed inside the context: a Mongoose query is lazy, so returning
+    // it and awaiting it outside would run the pre-hooks after AsyncLocalStorage.run has
+    // already restored the outer context - the tenant plugin then refuses the query. Hence
+    // the async callback plus .exec() rather than "() => Appointment.find(...)".
+    // `priority` is selected because the next-token order is priority -> checkedInAt -> token.
+    const rows = await runWithTenantContext({ hospitalId: hospital._id }, async () =>
       Appointment.find({ date, status: { $in: ["scheduled", "checked_in", "in_consultation"] } })
-        .select("doctorId tokenNumber status checkedInAt createdAt")
+        .select("doctorId tokenNumber status priority checkedInAt createdAt")
         .populate("doctorId", "name department")
         .lean()
+        .exec()
     );
 
     // One column per doctor. Scheduled (not yet arrived) patients create the column but

@@ -9,6 +9,12 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // window, and the payload is tiny (tokens only) with a short server cache.
 const DISPLAY_REFRESH_MS = 10 * 1000;
 
+// A rejected or revoked key never becomes valid again on its own, so the screen stops
+// instead of flashing "reconnecting" forever. Everything else (offline, cold backend,
+// 5xx) is expected to heal and keeps retrying.
+const TERMINAL_STATUSES = [403, 404];
+const isTerminalError = (error) => TERMINAL_STATUSES.includes(error?.status);
+
 async function fetchDisplay(hospitalId, key) {
   const res = await fetch(
     `${API_BASE_URL}/api/public/display/${encodeURIComponent(hospitalId)}?key=${encodeURIComponent(key)}`,
@@ -48,9 +54,12 @@ export default function DisplayBoard() {
     queryFn: () => fetchDisplay(hospitalId, key),
     enabled: Boolean(hospitalId && key),
     staleTime: 0,
-    refetchInterval: DISPLAY_REFRESH_MS,
+    // Keep polling a dead link and a TV behind a flaky network behave differently: the
+    // invalid-key screen is final, the reconnecting one retries itself on the interval.
+    refetchInterval: (query) => (isTerminalError(query.state.error) ? false : DISPLAY_REFRESH_MS),
     refetchIntervalInBackground: true,
-    retry: false,
+    retry: (failureCount, err) => !isTerminalError(err) && failureCount < 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
     refetchOnWindowFocus: false,
   });
 
@@ -95,15 +104,28 @@ export default function DisplayBoard() {
     );
   }
 
-  if (isError) {
+  // A revoked key is final, so it wins even over last-good data - those tokens are no longer
+  // updating and must not be trusted. "Reconnecting" is only for errors that can heal, and
+  // only when there is nothing to show yet (otherwise the board stays up with a warning).
+  if (isTerminalError(error)) {
+    return (
+      <div className="fixed inset-0 bg-background">
+        {renderMessage(
+          <ShieldAlert className="h-12 w-12" />,
+          'This display link is no longer valid',
+          'Ask the front desk for a new one.'
+        )}
+      </div>
+    );
+  }
+
+  if (isError && !data) {
     return (
       <div className="fixed inset-0 bg-background">
         {renderMessage(
           <WifiOff className="h-12 w-12" />,
-          error?.status === 403 ? 'Display link not valid' : 'Reconnecting…',
-          error?.status === 403
-            ? 'This link has been changed or disabled. Ask the hospital administrator for the current one.'
-            : 'The queue could not be loaded. This screen keeps retrying automatically.'
+          'Reconnecting…',
+          'The queue could not be loaded. This screen keeps retrying automatically.'
         )}
       </div>
     );
@@ -126,10 +148,14 @@ export default function DisplayBoard() {
 
         <div className="flex shrink-0 items-center gap-3 rounded-full border border-border bg-card px-5 py-2.5">
           <span className="relative flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-success" />
+            <span
+              className={`absolute inline-flex h-full w-full rounded-full opacity-60 ${
+                isError ? 'bg-warning' : 'animate-ping bg-success'
+              }`}
+            />
+            <span className={`relative inline-flex h-3 w-3 rounded-full ${isError ? 'bg-warning' : 'bg-success'}`} />
           </span>
-          <span className="text-lg font-semibold text-muted-foreground">Live</span>
+          <span className="text-lg font-semibold text-muted-foreground">{isError ? 'Reconnecting' : 'Live'}</span>
         </div>
       </header>
 

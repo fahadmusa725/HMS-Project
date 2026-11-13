@@ -52,8 +52,11 @@ async function sweepNoShowsAcrossHospitals() {
   let flagged = 0;
 
   for (const hospital of hospitals) {
-    const result = await runWithTenantContext({ hospitalId: hospital._id }, () =>
-      Appointment.updateMany(staleNoShowFilter(now), { $set: { status: "no_show" } })
+    // .exec() inside the callback on purpose: a Mongoose query is lazy, so awaiting a
+    // returned query would run its pre-hooks after the tenant context has been restored,
+    // and the plugin would refuse it as unscoped.
+    const result = await runWithTenantContext({ hospitalId: hospital._id }, async () =>
+      Appointment.updateMany(staleNoShowFilter(now), { $set: { status: "no_show" } }).exec()
     );
     flagged += result.modifiedCount || 0;
   }
