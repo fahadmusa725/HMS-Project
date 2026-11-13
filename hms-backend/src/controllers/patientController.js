@@ -5,18 +5,12 @@ const { getNextSequence } = require("../models/Counter");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
 const { sendEmail } = require("../utils/mailer");
 const { escapeHtml, escapeRegex, generateTempPassword, hashToken, safeCompare } = require("../utils/security");
+const { buildMrnPrefix } = require("../utils/mrn");
 
 const MAX_CLAIM_ATTEMPTS = 5;
 
 // Patient directory pages are small; anything larger is a client bug, not a use case.
 const MAX_PAGE_SIZE = 100;
-
-/** Builds a short prefix from the hospital name for readable MRNs, e.g. "City Hospital" -> "CTH" */
-function buildMrnPrefix(hospitalName) {
-  const letters = hospitalName.replace(/[^a-zA-Z ]/g, "").split(" ").filter(Boolean);
-  const initials = letters.map((w) => w[0]).join("").toUpperCase();
-  return (initials || "HSP").slice(0, 4);
-}
 
 /** Drops the pending-record verification fields from a User document. */
 function clearPendingClaim(userId) {
