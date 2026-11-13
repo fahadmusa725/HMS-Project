@@ -916,10 +916,35 @@ async function bookMyAppointment(req, res) {
   }
 }
 
+/**
+ * The waiting-room TV link for this hospital, for the staff who work the queue.
+ *
+ * Read-only: it reports the key that already exists and never creates one, because a GET
+ * must not write (an admin generates the first key from Hospital Settings). The key is the
+ * only thing protecting the public display endpoint, so this stays behind the queue roles.
+ */
+async function getDisplayLink(req, res) {
+  try {
+    const settings = await getHospitalSettings();
+    const hospitalId = getCurrentHospitalId();
+
+    res.json({
+      displayKey: settings.displayKey || null,
+      displayPath: settings.displayKey
+        ? `/display/${hospitalId}?key=${settings.displayKey}`
+        : null,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while fetching the display link." });
+  }
+}
+
 module.exports = {
   bookAppointment,
   createWalkIn,
   getQueue,
+  getDisplayLink,
   callNextPatient,
   setAppointmentPriority,
   updateAppointmentStatus,

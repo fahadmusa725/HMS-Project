@@ -6,6 +6,7 @@ const {
   bookAppointment,
   createWalkIn,
   getQueue,
+  getDisplayLink,
   callNextPatient,
   setAppointmentPriority,
   updateAppointmentStatus,
@@ -40,6 +41,9 @@ router.post("/", canBook, bookAppointment);
 // Front desk quick flow: existing patient or a minimal quick-register, same-day token, checked_in.
 router.post("/walk-in", canRunFrontDesk, createWalkIn);
 router.get("/queue", canViewQueue, getQueue);
+// The "TV display" button in the queue header: same audience as the queue itself, and it
+// only echoes the key that already exists (read-only - generating one stays an admin action).
+router.get("/display-link", canViewQueue, getDisplayLink);
 // "Call next" - a doctor is always scoped to themself; admin/reception must pass doctorId.
 router.post("/call-next", allowRoles("hospital_admin", "receptionist", "doctor"), callNextPatient);
 // Patients must never be able to set priority, so they are deliberately absent here.

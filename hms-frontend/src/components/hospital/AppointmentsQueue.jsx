@@ -25,6 +25,7 @@ import {
   Plus,
   Star,
   TriangleAlert,
+  Tv,
 } from 'lucide-react';
 import api, { openPdf } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -87,6 +88,8 @@ export default function AppointmentsQueue() {
   const canWalkIn = role === 'hospital_admin' || role === 'receptionist';
   const canSetPriority = CAN_SET_PRIORITY.includes(role);
   const canCallNext = ['doctor', 'hospital_admin', 'receptionist'].includes(role);
+  // Mirrors the roles allowed on GET /api/appointments/display-link (the queue audience).
+  const canOpenDisplay = ['hospital_admin', 'receptionist', 'doctor', 'nurse'].includes(role);
   const can = (status) => STATUS_TRANSITION_ROLES[status]?.includes(role);
 
   const todayStr = localDateStr();
@@ -187,6 +190,28 @@ export default function AppointmentsQueue() {
     refetchInterval: liveQueueInterval,
     refetchIntervalInBackground: false,
   });
+
+  // Waiting-room TV link. Only staff who work the queue may read the key, and the server
+  // never creates one here - that stays an explicit admin action in Hospital Settings.
+  const { data: displayLink } = useQuery({
+    queryKey: ['queue-display-link'],
+    queryFn: async () => {
+      const response = await api.get('/api/appointments/display-link');
+      return response.data;
+    },
+    enabled: canOpenDisplay,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const openTvDisplay = () => {
+    if (!displayLink?.displayPath) {
+      toast.info('The waiting-room display is not set up yet.', {
+        description: 'A hospital admin can create it under Settings > Waiting room display.',
+      });
+      return;
+    }
+    window.open(`${window.location.origin}${displayLink.displayPath}`, '_blank', 'noopener');
+  };
 
   const bookMutation = useMutation({
     mutationFn: async (formData) => {
@@ -534,6 +559,18 @@ export default function AppointmentsQueue() {
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+          {canOpenDisplay && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openTvDisplay}
+              title="Open the waiting-room TV screen"
+              className="h-10 px-3 text-muted-foreground hover:text-foreground"
+            >
+              <Tv className="h-4 w-4 mr-2" />
+              TV display
+            </Button>
+          )}
           {canCallNext && activeRoomId && selectedDate === todayStr && (
             <Button
               onClick={() => setCallNextDoctorId(activeRoomId)}
@@ -734,6 +771,15 @@ export default function AppointmentsQueue() {
                           </span>
                         )}
                       </div>
+                      {/* Why this patient is ahead of the queue - kept on screen, not just in a tooltip. */}
+                      {(item.priority || 'normal') !== 'normal' && item.priorityReason && (
+                        <p
+                          className="mt-1 max-w-[220px] truncate text-[11px] leading-snug text-muted-foreground"
+                          title={item.priorityReason}
+                        >
+                          {item.priorityReason}
+                        </p>
+                      )}
                       <div className="mt-0.5 text-xs font-mono text-muted-foreground">
                         MRN: {item.patientId?.mrn || '—'}
                         {item.patientAge !== null && item.patientAge !== undefined && (
@@ -761,10 +807,18 @@ export default function AppointmentsQueue() {
                     </td>
 
                     <td className="py-4 px-4 text-xs">
-                      <div className="font-medium text-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        {formatSlotTime(item.time)}
-                      </div>
+                      {/* Walk-ins have no slot time on purpose - they are seen in token order. */}
+                      {item.time ? (
+                        <div className="font-medium text-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          {formatSlotTime(item.time)}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 font-semibold text-primary" title="No appointment slot - seen in token order">
+                          <Ticket className="h-3 w-3" />
+                          Walk-in
+                        </div>
+                      )}
                       {item.reason && (
                         <div className="text-muted-foreground truncate max-w-[160px] mt-0.5">
                           {item.reason}
@@ -1043,6 +1097,31 @@ export default function AppointmentsQueue() {
         }
       >
         <form id="priority-form" onSubmit={submitPriority} className="space-y-4">
+          {/* What the desk has on record right now - the same reason shown in the queue row. */}
+          {priorityTarget && (priorityTarget.priority || 'normal') !== 'normal' && (
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                    PRIORITY_CHIP[priorityTarget.priority]
+                  )}
+                >
+                  {priorityTarget.priority === 'emergency' ? (
+                    <TriangleAlert className="h-2.5 w-2.5" />
+                  ) : (
+                    <Star className="h-2.5 w-2.5" />
+                  )}
+                  {priorityTarget.priority}
+                </span>
+                <span className="text-xs font-medium text-muted-foreground">Current priority</span>
+              </div>
+              <p className="mt-1.5 text-xs text-foreground">
+                {priorityTarget.priorityReason || 'No reason was recorded for this priority.'}
+              </p>
+            </div>
+          )}
+
           {priorityTarget?.suggestedPriority && (
             <div className="flex items-start gap-2.5 rounded-lg border border-info/30 bg-info/10 p-3 text-xs font-medium text-info">
               <Star className="mt-0.5 h-4 w-4 shrink-0" />
