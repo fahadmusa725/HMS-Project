@@ -1,11 +1,21 @@
 /**
  * Seeds a standalone demo tenant, "CareFlow Demo Hospital", with 12 months of realistic
- * activity for screenshots and sales demos. No other hospital is read, modified, or deleted -
- * every write is scoped to this tenant's own hospitalId.
+ * activity for screenshots and sales demos: patients and portal accounts, doctor schedules,
+ * per-doctor OPD tokens, queue priorities, walk-in tokens, digital pre-checks, consultations,
+ * IPD stays, lab orders, pharmacy stock and sales, bills, and an audit trail with readable
+ * actions and PHI reads. No other hospital is read, modified, or deleted - every write is
+ * scoped to this tenant's own hospitalId.
  *
- * Usage: npm run seed:demo [-- --force]
- * Re-running wipes and rebuilds only the demo hospital's data. The script refuses to run with
- * NODE_ENV=production unless --force is passed.
+ * Idempotent: a run wipes this hospital's documents and reinserts a freshly generated set, so
+ * repeating it always converges on the same dataset (same logins, same relative dates, same
+ * queue). If a demo email is already owned by a different hospital the script aborts instead
+ * of hijacking that account.
+ *
+ * Usage:
+ *   npm run seed:demo              rebuild the demo hospital
+ *   npm run seed:demo -- --dry-run generate and validate in memory, write nothing
+ *   npm run seed:demo -- --force   allow NODE_ENV=production
+ * Every demo account shares the password CareFlow@123 (printed at the end of the run).
  */
 require("dotenv").config();
 const bcrypt = require("bcryptjs");
@@ -28,7 +38,9 @@ const Medicine = require("../models/Medicine");
 const PharmacySale = require("../models/PharmacySale");
 const Bill = require("../models/Bill");
 const AuditLog = require("../models/AuditLog");
+const PreCheck = require("../models/PreCheck");
 const { Counter } = require("../models/Counter");
+const { describeAction, extractResourceId } = require("../utils/auditActions");
 const { APP_TIMEZONE, hospitalNow, hospitalDate, slotsForDate, toMinutes, toHHMM } = require("../utils/scheduleSlots");
 
 const DEMO_HOSPITAL_NAME = "CareFlow Demo Hospital";
@@ -798,8 +810,20 @@ function buildAppointments(patients, doctors, schedules, adminId, receptionists)
   const bookers = [...receptionists.map((user) => user._id), adminId];
   const portalPatients = patients.slice(0, PORTAL_PATIENTS.length);
 
-  const book = ({ patient, doctor, date, time, status, reason, createdAt, updatedAt }) => {
-    usedSlots.add(`${doctor._id}|${date}|${time}`);
+  const book = ({
+    patient,
+    doctor,
+    date,
+    time,
+    status,
+    reason,
+    priority,
+    priorityReason,
+    checkedInAt,
+    createdAt,
+    updatedAt,
+  }) => {
+    if (time) usedSlots.add(`${doctor._id}|${date}|${time}`);
     usedPatientDoctorDay.add(`${patient._id}|${doctor._id}|${date}`);
     const doc = {
       _id: id(),
@@ -808,15 +832,18 @@ function buildAppointments(patients, doctors, schedules, adminId, receptionists)
       doctorId: doctor._id,
       type: "OPD",
       date,
-      time,
       tokenNumber: 0,
+      priority: priority || "normal",
       reason,
       status,
       bookedBy: pick(bookers),
       createdAt,
       updatedAt: updatedAt || createdAt,
-      _slotKey: `${doctor._id}|${date}|${time}`,
     };
+    // A walk-in has no slot: the partial slot index only covers documents that have `time`.
+    if (time) doc.time = time;
+    if (priority && priority !== "normal") doc.priorityReason = priorityReason;
+    if (checkedInAt) doc.checkedInAt = checkedInAt;
     appointments.push(doc);
     return doc;
   };
@@ -932,39 +959,110 @@ function buildAppointments(patients, doctors, schedules, adminId, receptionists)
       if (usedPatients.has(String(patient._id)) || usedPatientDoctorDay.has(`${patient._id}|${doctor._id}|${TODAY}`)) return;
       usedPatients.add(String(patient._id));
       const instant = zoned(TODAY, time);
+      const status = statuses[position] || "checked_in";
       const createdAt = new Date(
         Math.max(
           patient.createdAt.getTime() + 3600000,
           Math.min(NOW.getTime(), instant.getTime() - randInt(30, 300) * 60000)
         )
       );
+      // Arrival time is the queue's tie-breaker. A no-show never checked in, so it has none.
+      const checkedInAt =
+        status === "no_show" || status === "scheduled"
+          ? undefined
+          : new Date(Math.min(NOW.getTime() - 60000, instant.getTime() - randInt(4, 18) * 60000));
       book({
         patient,
         doctor,
         date: TODAY,
         time,
-        status: statuses[position] || "checked_in",
+        status,
         reason: pick(APPOINTMENT_REASONS[doctor.department] || ["Consultation"]),
+        checkedInAt,
         createdAt: new Date(Math.min(createdAt.getTime(), instant.getTime())),
       });
     });
   });
 
-  const byDate = new Map();
-  appointments.forEach((appointment) => {
-    if (!byDate.has(appointment.date)) byDate.set(appointment.date, []);
-    byDate.get(appointment.date).push(appointment);
-  });
-  let maxTokenToday = 0;
-  byDate.forEach((group, date) => {
-    group.sort((a, b) => toMinutes(a.time) - toMinutes(b.time) || String(a.doctorId).localeCompare(String(b.doctorId)));
-    group.forEach((appointment, index) => {
-      appointment.tokenNumber = index + 1;
-      if (date === TODAY) maxTokenToday = Math.max(maxTokenToday, index + 1);
+  // One booked patient is flagged senior by the desk, so the queue shows a mix of booked and
+  // walk-in priorities rather than priorities only on walk-ins.
+  const flagged = appointments.find(
+    (appointment) =>
+      appointment.date === TODAY &&
+      appointment.status === "checked_in" &&
+      String(appointment.doctorId) === String(doctors[4]._id)
+  );
+  if (flagged) {
+    flagged.priority = "senior";
+    flagged.priorityReason = "Senior citizen, 82 years, knee pain - cannot stand for long";
+  }
+
+  // Walk-ins: no slot, token only, checked in the moment the desk registers them. This is the
+  // path the queue's emergency/senior-first ordering exists for, so the demo covers both.
+  const walkInPlan = [
+    {
+      doctor: doctors[2],
+      priority: "emergency",
+      priorityReason: "Child with 104 F fever and vomiting, lethargic - emergency",
+      reason: "High fever and vomiting since last night",
+      arrivedMinutesAgo: 9,
+    },
+    {
+      doctor: doctors[6],
+      priority: "senior",
+      priorityReason: "79-year-old, dizzy and unable to stand in line",
+      reason: "Blood pressure not controlled, dizziness",
+      arrivedMinutesAgo: 24,
+    },
+    { doctor: doctors[5], priority: "normal", reason: "Itching and rash on both arms", arrivedMinutesAgo: 41 },
+    { doctor: doctors[4], priority: "normal", reason: "Twisted ankle, mild swelling", arrivedMinutesAgo: 63 },
+  ];
+
+  walkInPlan.forEach((entry) => {
+    const eligible = patients.filter(
+      (patient) =>
+        !usedPatientDoctorDay.has(`${patient._id}|${entry.doctor._id}|${TODAY}`) &&
+        patient.createdAt.getTime() < NOW.getTime() - DAY_MS
+    );
+    if (!eligible.length) return;
+    const arrivedAt = minutesAgo(entry.arrivedMinutesAgo);
+    book({
+      patient: pick(eligible),
+      doctor: entry.doctor,
+      date: TODAY,
+      status: "checked_in",
+      reason: entry.reason,
+      priority: entry.priority,
+      priorityReason: entry.priorityReason,
+      checkedInAt: arrivedAt,
+      createdAt: arrivedAt,
     });
   });
 
-  return { appointments, maxTokenToday, feeByDoctor };
+  // Tokens are per doctor per day (opd_token_<doctorId>_<date>) - each room has its own
+  // sequence - numbered in the order the desk would issue them: by slot time, and by arrival
+  // for walk-ins, which have no time.
+  const byDoctorDay = new Map();
+  appointments.forEach((appointment) => {
+    const key = `${appointment.doctorId}|${appointment.date}`;
+    if (!byDoctorDay.has(key)) byDoctorDay.set(key, []);
+    byDoctorDay.get(key).push(appointment);
+  });
+  const tokenCounters = [];
+  byDoctorDay.forEach((group) => {
+    group.sort(
+      (a, b) =>
+        (a.time ? toMinutes(a.time) : toMinutes(NOW_TIME)) - (b.time ? toMinutes(b.time) : toMinutes(NOW_TIME)) ||
+        a.createdAt - b.createdAt
+    );
+    group.forEach((appointment, index) => {
+      appointment.tokenNumber = index + 1;
+    });
+    // Only today's counters are needed - token allocation always starts from the booking date.
+    if (group[0].date === TODAY) tokenCounters.push({ doctorId: group[0].doctorId, seq: group.length });
+  });
+
+  return { appointments, tokenCounters, feeByDoctor };
 }
 
 function makeVitals() {
@@ -1006,6 +1104,87 @@ function buildConsultations(appointments, doctors) {
   });
 
   return consultations;
+}
+
+// What the three portal patients typed in at home, in the order of PORTAL_PATIENTS.
+const PRE_CHECK_DRAFTS = [
+  {
+    symptoms:
+      "Chest tightness when walking uphill since four days, spreads slightly to the left arm. No sweating, no breathlessness at rest.",
+    duration: "4 days",
+    vitals: { temperature: "98.4 F", bloodPressure: "146/92", pulse: "88 bpm", weight: "86 kg" },
+  },
+  {
+    symptoms:
+      "Fasting sugar readings between 180 and 220 for the last week, feeling thirsty and tired in the afternoons. Medicines taken regularly.",
+    duration: "1 week",
+    vitals: { temperature: "98.6 F", bloodPressure: "152/94", pulse: "80 bpm", weight: "74 kg" },
+  },
+  {
+    symptoms:
+      "Itchy red rash on both forearms after applying henna, spreading slowly since two days. No fever.",
+    duration: "2 days",
+    vitals: { temperature: "98.2 F", bloodPressure: "118/76", pulse: "72 bpm", weight: "58 kg" },
+  },
+];
+
+function buildPreChecks(appointments, patients, staff) {
+  const preChecks = [];
+  const portalPatients = patients.slice(0, PORTAL_PATIENTS.length);
+
+  portalPatients.forEach((patient, index) => {
+    const appointment = appointments.find(
+      (entry) => entry.date === TODAY && String(entry.patientId) === String(patient._id)
+    );
+    if (!appointment) return;
+    const draft = PRE_CHECK_DRAFTS[index] || PRE_CHECK_DRAFTS[0];
+    // Submitted at home before the visit: close to the slot time, never in the future.
+    const submittedAt = new Date(
+      Math.min(NOW.getTime() - 90 * 60000, zoned(appointment.date, appointment.time).getTime() - randInt(20, 55) * 60000)
+    );
+    preChecks.push({
+      _id: id(),
+      hospitalId: appointment.hospitalId,
+      appointmentId: appointment._id,
+      patientId: appointment.patientId,
+      doctorId: appointment.doctorId,
+      symptoms: draft.symptoms,
+      duration: draft.duration,
+      patientVitals: draft.vitals,
+      attachments: [],
+      consentAccepted: true,
+      consentAcceptedAt: submittedAt,
+      submittedAt,
+      lastEditedByRole: "patient",
+      createdAt: submittedAt,
+      updatedAt: submittedAt,
+    });
+  });
+
+  // A walk-in arrives without a pre-check, so the desk records the vitals instead.
+  const walkIn = appointments.find(
+    (entry) => entry.date === TODAY && !entry.time && entry.priority === "senior"
+  );
+  if (walkIn) {
+    const staffVitalsAt = minutesAgo(20);
+    preChecks.push({
+      _id: id(),
+      hospitalId: walkIn.hospitalId,
+      appointmentId: walkIn._id,
+      patientId: walkIn.patientId,
+      doctorId: walkIn.doctorId,
+      staffVitals: { temperature: "98.6 F", bloodPressure: "158/96", pulse: "88 bpm", weight: "71 kg" },
+      staffVitalsBy: staff.receptionists[0]._id,
+      staffVitalsAt,
+      attachments: [],
+      consentAccepted: false,
+      lastEditedByRole: "receptionist",
+      createdAt: staffVitalsAt,
+      updatedAt: staffVitalsAt,
+    });
+  }
+
+  return preChecks;
 }
 
 function buildAdmissions(patients, doctors, wards, beds, receptionists) {
@@ -1486,7 +1665,20 @@ function buildNurseNotes(currentAdmissions, nurses) {
   return notes;
 }
 
-function buildAuditLogs({ hospitalId, staff, doctors, appointments, admissions, bills, labOrders, medicines, wards }) {
+function buildAuditLogs({
+  hospitalId,
+  staff,
+  doctors,
+  patients,
+  consultations,
+  preChecks,
+  appointments,
+  admissions,
+  bills,
+  labOrders,
+  medicines,
+  wards,
+}) {
   const appointmentIds = appointments.map((appointment) => String(appointment._id));
   const dischargedIds = admissions.filter((admission) => admission.status === "discharged").map((admission) => String(admission._id));
   const currentIds = admissions.filter((admission) => admission.status === "admitted").map((admission) => String(admission._id));
@@ -1495,7 +1687,10 @@ function buildAuditLogs({ hospitalId, staff, doctors, appointments, admissions, 
   const medicineIds = medicines.map((medicine) => String(medicine._id));
   const wardIds = wards.map((ward) => String(ward._id));
   const doctorIds = doctors.map((doctor) => String(doctor._id));
+  const patientIds = patients.map((patient) => String(patient._id));
 
+  // Snapshots are taken from the seeded users, exactly like the middleware does at runtime.
+  const userById = new Map(staff.users.map((user) => [String(user._id), user]));
   const roleUsers = {
     hospital_admin: [staff.admin._id],
     doctor: doctors.map((doctor) => doctor._id),
@@ -1505,11 +1700,70 @@ function buildAuditLogs({ hospitalId, staff, doctors, appointments, admissions, 
     pharmacist: [staff.pharmacist._id],
   };
 
+  // PHI reads carry the patient they exposed - the audit viewer answers "who opened whose chart".
+  const patientRecordRead = (role) => {
+    const patientId = pick(patientIds);
+    return { method: "GET", path: `/api/patients/${patientId}`, role, patientId };
+  };
+  const consultationRead = () => {
+    const consultation = pick(consultations);
+    return {
+      method: "GET",
+      path: `/api/consultations/${consultation._id}`,
+      role: "doctor",
+      patientId: consultation.patientId,
+    };
+  };
+  const historyRead = () => {
+    const consultation = pick(consultations);
+    return {
+      method: "GET",
+      path: `/api/consultations/patient/${consultation.patientId}`,
+      role: "doctor",
+      patientId: consultation.patientId,
+    };
+  };
+  const prescriptionDownload = () => {
+    const consultation = pick(consultations);
+    return {
+      method: "GET",
+      path: `/api/consultations/${consultation._id}/prescription-pdf`,
+      role: "doctor",
+      patientId: consultation.patientId,
+    };
+  };
+  const labHistoryRead = () => {
+    const patientId = pick(patientIds);
+    return { method: "GET", path: `/api/lab/orders/patient/${patientId}`, role: "doctor", patientId };
+  };
+  const preCheckRead = () => {
+    const preCheck = pick(preChecks);
+    return {
+      method: "GET",
+      path: `/api/pre-checks/${preCheck._id}`,
+      role: "doctor",
+      patientId: preCheck.patientId,
+    };
+  };
+  const priorityChange = () => {
+    const appointment = pick(appointments);
+    return {
+      method: "PATCH",
+      path: `/api/appointments/${appointment._id}/priority`,
+      role: "receptionist",
+      patientId: appointment.patientId,
+      details: "Priority normal -> senior (Senior citizen, age 74)",
+    };
+  };
+
   const actions = [
     () => ({ method: "POST", path: "/api/patients", role: "receptionist" }),
     () => ({ method: "POST", path: "/api/appointments", role: "receptionist" }),
+    () => ({ method: "POST", path: "/api/appointments/walk-in", role: "receptionist" }),
+    () => ({ method: "POST", path: "/api/appointments/call-next", role: "doctor" }),
     () => ({ method: "PATCH", path: `/api/appointments/${pick(appointmentIds)}/status`, role: "receptionist" }),
     () => ({ method: "PATCH", path: `/api/appointments/${pick(appointmentIds)}/status`, role: "doctor" }),
+    priorityChange,
     () => ({ method: "POST", path: "/api/consultations", role: "doctor" }),
     () => ({ method: "POST", path: "/api/billing", role: "receptionist" }),
     () => ({ method: "PATCH", path: `/api/billing/${pick(billIds)}/payment`, role: "receptionist" }),
@@ -1527,29 +1781,50 @@ function buildAuditLogs({ hospitalId, staff, doctors, appointments, admissions, 
     () => ({ method: "POST", path: "/api/pharmacy/medicines", role: "hospital_admin" }),
     () => ({ method: "PATCH", path: `/api/pharmacy/medicines/${pick(medicineIds)}/restock`, role: "pharmacist" }),
     () => ({ method: "POST", path: "/api/hospital-admin/staff", role: "hospital_admin" }),
+    () => patientRecordRead("doctor"),
+    () => patientRecordRead("receptionist"),
+    consultationRead,
+    historyRead,
+    prescriptionDownload,
+    labHistoryRead,
+    preCheckRead,
   ];
 
-  const makeLog = (action, at) => ({
-    _id: id(),
-    hospitalId,
-    userId: pick(roleUsers[action.role]),
-    userRole: action.role,
-    method: action.method,
-    path: action.path,
-    statusCode: action.method === "POST" ? 201 : 200,
-    createdAt: at,
-    updatedAt: at,
-  });
+  const makeLog = (action, at) => {
+    const userId = pick(roleUsers[action.role]);
+    const actor = userById.get(String(userId));
+    return {
+      _id: id(),
+      hospitalId,
+      userId,
+      userName: actor ? actor.name : undefined,
+      userRole: action.role,
+      method: action.method,
+      path: action.path,
+      statusCode: action.method === "POST" ? 201 : 200,
+      action: describeAction(action.method, action.path),
+      resourceId: extractResourceId(action.path) || undefined,
+      patientId: action.patientId,
+      details: action.details,
+      createdAt: at,
+      updatedAt: at,
+    };
+  };
 
   const logs = [];
   const recentMinutes = [2, 5, 9, 14, 21, 29, 38, 50, 64, 82, 104, 130, 160, 195, 235, 285, 340, 410];
-  // Step 8 is coprime with 21, so the feed shows 18 different actions instead of repeats.
-  recentMinutes.forEach((minutes, index) => logs.push(makeLog(actions[(index * 8 + 3) % actions.length](), minutesAgo(minutes))));
+  // Shuffle once so the live feed shows a spread of actions instead of a repeating pattern.
+  const shuffled = [...actions];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  recentMinutes.forEach((minutes, index) => logs.push(makeLog(shuffled[index % shuffled.length](), minutesAgo(minutes))));
   for (let i = 0; i < 380; i++) logs.push(makeLog(pick(actions)(), historicMoment(362, 0)));
   return logs;
 }
 
-function validateData({ patients, appointments, medicines, sales, labOrders, bills }) {
+function validateData({ patients, appointments, preChecks, medicines, sales, labOrders, bills }) {
   const mrns = new Set();
   patients.forEach((patient) => {
     if (mrns.has(patient.mrn)) throw new Error(`Duplicate MRN generated: ${patient.mrn}`);
@@ -1557,11 +1832,43 @@ function validateData({ patients, appointments, medicines, sales, labOrders, bil
   });
 
   const slots = new Set();
+  const tokens = new Set();
   appointments.forEach((appointment) => {
-    if (["cancelled", "no_show"].includes(appointment.status) || !appointment.time) return;
+    const tokenKey = `${appointment.doctorId}|${appointment.date}|${appointment.tokenNumber}`;
+    if (tokens.has(tokenKey)) throw new Error(`Duplicate doctor token: ${tokenKey}`);
+    tokens.add(tokenKey);
+    if (!Number.isInteger(appointment.tokenNumber) || appointment.tokenNumber < 1) {
+      throw new Error(`Invalid token number on appointment ${appointment._id}`);
+    }
+    if (appointment.priority !== "normal" && !appointment.priorityReason) {
+      throw new Error(`Priority ${appointment.priority} without a reason: ${appointment._id}`);
+    }
+    if (!appointment.time) {
+      // A walk-in: token only, already at the desk, so it must never sit on a slot.
+      if (appointment.status !== "checked_in") throw new Error(`Walk-in not checked in: ${appointment._id}`);
+      if (!appointment.checkedInAt) throw new Error(`Walk-in without checkedInAt: ${appointment._id}`);
+      return;
+    }
+    if (["cancelled", "no_show"].includes(appointment.status)) return;
     const key = `${appointment.doctorId}|${appointment.date}|${appointment.time}`;
     if (slots.has(key)) throw new Error(`Duplicate active appointment slot: ${key}`);
     slots.add(key);
+  });
+
+  const appointmentById = new Map(appointments.map((appointment) => [String(appointment._id), appointment]));
+  const preCheckAppointments = new Set();
+  preChecks.forEach((preCheck) => {
+    const key = String(preCheck.appointmentId);
+    if (preCheckAppointments.has(key)) throw new Error(`Duplicate pre-check for appointment ${key}`);
+    preCheckAppointments.add(key);
+    const appointment = appointmentById.get(key);
+    if (!appointment) throw new Error(`Pre-check points at a missing appointment: ${key}`);
+    if (String(appointment.patientId) !== String(preCheck.patientId)) {
+      throw new Error(`Pre-check patient does not match its appointment: ${preCheck._id}`);
+    }
+    if (!preCheck.submittedAt && !preCheck.staffVitalsAt) {
+      throw new Error(`Pre-check has neither a patient submission nor desk vitals: ${preCheck._id}`);
+    }
   });
 
   medicines.forEach((medicine) => {
@@ -1588,7 +1895,7 @@ function validateData({ patients, appointments, medicines, sales, labOrders, bil
 }
 
 const TENANT_MODELS = [
-  User, Patient, DoctorSchedule, Appointment, Consultation, Ward, Bed, Admission, NurseNote,
+  User, Patient, DoctorSchedule, Appointment, PreCheck, Consultation, Ward, Bed, Admission, NurseNote,
   LabTest, LabOrder, Medicine, PharmacySale, Bill, AuditLog,
 ];
 
@@ -1621,7 +1928,7 @@ async function generateDemoData(hospitalId) {
   const { patients, portalUsers } = buildPatients(hospitalId, passwordHash, staff.admin._id, staff.receptionists);
   const { wards, beds } = buildWardsAndBeds(hospitalId, staff.admin._id);
   const schedules = buildSchedules(hospitalId, staff.doctors);
-  const { appointments, maxTokenToday, feeByDoctor } = buildAppointments(
+  const { appointments, tokenCounters, feeByDoctor } = buildAppointments(
     patients,
     staff.doctors,
     schedules,
@@ -1629,6 +1936,7 @@ async function generateDemoData(hospitalId) {
     staff.receptionists
   );
   const consultations = buildConsultations(appointments, staff.doctors);
+  const preChecks = buildPreChecks(appointments, patients, staff);
   const { admissions, stays } = buildAdmissions(patients, staff.doctors, wards, beds, staff.receptionists);
 
   const labTestCreatedAt = zoned(hospitalDate(-390), "09:00");
@@ -1664,6 +1972,9 @@ async function generateDemoData(hospitalId) {
     hospitalId,
     staff,
     doctors: staff.doctors,
+    patients,
+    consultations,
+    preChecks,
     appointments,
     admissions,
     bills,
@@ -1673,10 +1984,15 @@ async function generateDemoData(hospitalId) {
   });
   const counters = [
     { _id: id(), hospitalId, name: "patient_mrn", seq: patients.length },
-    { _id: id(), hospitalId, name: `opd_token_${TODAY}`, seq: maxTokenToday },
+    ...tokenCounters.map((entry) => ({
+      _id: id(),
+      hospitalId,
+      name: `opd_token_${entry.doctorId}_${TODAY}`,
+      seq: entry.seq,
+    })),
   ];
 
-  validateData({ patients, appointments, medicines, sales, labOrders, bills });
+  validateData({ patients, appointments, preChecks, medicines, sales, labOrders, bills });
 
   return {
     staff,
@@ -1687,6 +2003,7 @@ async function generateDemoData(hospitalId) {
     beds,
     appointments,
     consultations,
+    preChecks,
     admissions,
     currentAdmissions,
     labTests,
@@ -1708,6 +2025,7 @@ async function insertAll(data) {
   await insertDocs(Ward, data.wards);
   await insertDocs(Bed, data.beds);
   await insertDocs(Appointment, data.appointments);
+  await insertDocs(PreCheck, data.preChecks);
   await insertDocs(Consultation, data.consultations);
   await insertDocs(Admission, data.admissions);
   await insertDocs(LabTest, data.labTests);
@@ -1730,6 +2048,7 @@ function printSummary(data) {
     beds,
     appointments,
     consultations,
+    preChecks,
     admissions,
     currentAdmissions,
     labTests,
@@ -1742,6 +2061,8 @@ function printSummary(data) {
   } = data;
   const todays = appointments.filter((appointment) => appointment.date === TODAY);
   const countToday = (status) => todays.filter((appointment) => appointment.status === status).length;
+  const walkIns = todays.filter((appointment) => !appointment.time);
+  const flaggedToday = todays.filter((appointment) => appointment.priority !== "normal");
   const invoiced = bills.reduce((sum, bill) => sum + bill.totalAmount, 0);
   const collected = bills.reduce((sum, bill) => sum + bill.amountPaid, 0);
   const withBalance = bills.filter((bill) => bill.paymentStatus !== "paid").length;
@@ -1758,7 +2079,11 @@ function printSummary(data) {
     ["Portal patient accounts", portalUsers.length],
     ["Doctors with schedules", schedules.length],
     ["Appointments (today / total)", `${todays.length} / ${appointments.length}`],
+    ["Walk-in tokens (today)", walkIns.length],
+    ["Priority flagged (today)", `${flaggedToday.length} (${flaggedToday.map((a) => a.priority).join(", ")})`],
+    ["Doctor token counters", todays.length ? new Set(todays.map((a) => String(a.doctorId))).size : 0],
     ["Consultations", consultations.length],
+    ["Pre-checks", preChecks.length],
     ["Wards / beds", `${wards.length} / ${beds.length}`],
     ["Admissions (current + past)", `${currentAdmissions.length} + ${admissions.length - currentAdmissions.length}`],
     ["Lab tests in catalogue", labTests.length],
