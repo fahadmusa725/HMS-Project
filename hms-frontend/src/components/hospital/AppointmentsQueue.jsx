@@ -602,7 +602,7 @@ export default function AppointmentsQueue() {
             <Button
               onClick={() => setCallNextDoctorId(activeRoomId)}
               disabled={callNextMutation.isPending}
-              className="h-10 bg-primary-bright text-primary-bright-foreground hover:bg-primary-bright/90 font-semibold flex items-center gap-2 shadow-sm"
+              className="h-10 bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary-bright dark:text-primary-bright-foreground dark:hover:bg-primary-bright/90 font-semibold flex items-center gap-2 shadow-sm"
             >
               <Megaphone className="h-4 w-4" />
               <span>Call next</span>
@@ -1254,7 +1254,7 @@ export default function AppointmentsQueue() {
             <Button
               onClick={() => callNextMutation.mutate(callNextDoctorId)}
               disabled={callNextMutation.isPending}
-              className="bg-primary-bright text-primary-bright-foreground hover:bg-primary-bright/90 font-semibold"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary-bright dark:text-primary-bright-foreground dark:hover:bg-primary-bright/90 font-semibold"
             >
               {callNextMutation.isPending ? (
                 <>

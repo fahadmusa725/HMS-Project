@@ -42,6 +42,7 @@ const PreCheck = require("../models/PreCheck");
 const { Counter } = require("../models/Counter");
 const { describeAction, extractResourceId } = require("../utils/auditActions");
 const { APP_TIMEZONE, hospitalNow, hospitalDate, slotsForDate, toMinutes, toHHMM } = require("../utils/scheduleSlots");
+const { ageInYears } = require("../utils/hospitalSettings");
 
 const DEMO_HOSPITAL_NAME = "CareFlow Demo Hospital";
 const DEMO_PASSWORD = "CareFlow@123";
@@ -1010,7 +1011,9 @@ function buildAppointments(patients, doctors, schedules, adminId, receptionists)
     {
       doctor: doctors[6],
       priority: "senior",
-      priorityReason: "79-year-old, dizzy and unable to stand in line",
+      // The patient is picked at random below, so the age is read off that record instead of
+      // being typed here - the reason can never contradict the MRN line next to it.
+      priorityReason: (age) => (age ? `${age}-year-old, dizzy and unable to stand in line` : "Dizzy and unable to stand in line"),
       reason: "Blood pressure not controlled, dizziness",
       arrivedMinutesAgo: 24,
     },
@@ -1025,15 +1028,17 @@ function buildAppointments(patients, doctors, schedules, adminId, receptionists)
         patient.createdAt.getTime() < NOW.getTime() - DAY_MS
     );
     if (!eligible.length) return;
+    const patient = pick(eligible);
     const arrivedAt = minutesAgo(entry.arrivedMinutesAgo);
     book({
-      patient: pick(eligible),
+      patient,
       doctor: entry.doctor,
       date: TODAY,
       status: "checked_in",
       reason: entry.reason,
       priority: entry.priority,
-      priorityReason: entry.priorityReason,
+      priorityReason:
+        typeof entry.priorityReason === "function" ? entry.priorityReason(ageInYears(patient.dob)) : entry.priorityReason,
       checkedInAt: arrivedAt,
       createdAt: arrivedAt,
     });

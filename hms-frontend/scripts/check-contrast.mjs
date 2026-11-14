@@ -1,6 +1,8 @@
 /**
  * Verifies every colour pair the UI actually renders against WCAG 2.1:
  * 4.5:1 for text, 3:1 for UI boundaries, focus rings and chart series.
+ * Pairs may carry `max` instead of `min` for combinations that must stay unusable
+ * (white ink on the bright teal fill), and `themes` to scope them to one mode.
  *
  * Tokens are read straight out of src/index.css, so this fails if the palette drifts.
  * Run with `npm run check:contrast`.
@@ -118,15 +120,26 @@ const PAIRS = [
   { label: 'secondary ink on card (stat numbers)', fg: solid('secondary-foreground'), bg: solid('card'), min: TEXT_MIN },
   { label: 'primary label on primary fill (nav, buttons)', fg: solid('primary-foreground'), bg: solid('primary'), min: TEXT_MIN },
   { label: 'primary label on primary hover (90%)', fg: solid('primary-foreground'), bg: tinted('primary', 0.9, 'background'), min: TEXT_MIN },
+  // Filled buttons stand on cards, so the 90% hover composites with `card`, not the canvas.
+  { label: 'primary label on primary/90 hover over card', fg: solid('primary-foreground'), bg: tinted('primary', 0.9, 'card'), min: TEXT_MIN },
   { label: 'secondary label on secondary fill', fg: solid('secondary-foreground'), bg: solid('secondary'), min: TEXT_MIN },
   { label: 'accent text on accent fill', fg: solid('accent-foreground'), bg: solid('accent'), min: TEXT_MIN },
 
-  // Bright teal: icon tiles, chart series and the dark-mode active nav fill (light mode
-  // uses `primary` with white text). It is deliberately not used for small text on white,
-  // because it only clears non-text contrast there.
+  // Bright teal: icon tiles, chart series and the dark-mode fills (active nav, call-next
+  // buttons). Light mode uses `primary` with white text for those fills. A bright fill only
+  // ever carries the dark `primary-bright-foreground` ink - white on it stays below 4.5:1,
+  // which the last pair below asserts so the pairing cannot come back.
   { label: 'bright icon on primary-bright/10 tile', fg: solid('primary-bright'), bg: tinted('primary-bright', 0.1, 'card'), min: UI_MIN },
   { label: 'bright icon on canvas', fg: solid('primary-bright'), bg: solid('background'), min: UI_MIN },
   { label: 'bright ink on primary-bright fill (active nav, dark)', fg: solid('primary-bright-foreground'), bg: solid('primary-bright'), min: TEXT_MIN },
+  { label: 'bright ink on primary-bright/90 hover over card', fg: solid('primary-bright-foreground'), bg: tinted('primary-bright', 0.9, 'card'), min: TEXT_MIN },
+  {
+    label: 'white ink on primary-bright fill must stay unusable (light)',
+    fg: solid('primary-foreground'),
+    bg: solid('primary-bright'),
+    max: TEXT_MIN,
+    themes: ['light'],
+  },
 
   // Destructive
   { label: 'danger ink on canvas', fg: solid('destructive'), bg: solid('background'), min: TEXT_MIN },
@@ -177,16 +190,18 @@ for (const theme of Object.keys(THEMES)) {
   console.log(`\n${theme.toUpperCase()}\n${'-'.repeat(96)}`);
   console.log(`${'pair'.padEnd(44)}${'fg'.padEnd(10)}${'bg'.padEnd(10)}${'ratio'.padEnd(9)}result`);
   for (const pair of PAIRS) {
+    if (pair.themes && !pair.themes.includes(theme)) continue;
     const ratio = check(theme, pair);
-    const ok = ratio >= pair.min;
+    // `min` is the usual bar. A `max` pair guards a pairing that must stay unusable - e.g.
+    // white ink on the bright teal fill - so it fails when the pair becomes legible.
+    const ok = pair.max === undefined ? ratio >= pair.min : ratio <= pair.max;
     if (!ok) failures += 1;
     const fgHex = toHex(resolveSpec(pair.fg, THEMES[theme], hex(THEMES[theme].card)));
     const bgHex = toHex(resolveSpec(pair.bg, THEMES[theme], null));
-    console.log(
-      `${pair.label.padEnd(44)}${fgHex.padEnd(10)}${bgHex.padEnd(10)}${ratio.toFixed(2).padEnd(9)}${
-        ok ? `pass (>= ${pair.min})` : `FAIL (needs ${pair.min})`
-      }`
-    );
+    const verdict = pair.max === undefined
+      ? ok ? `pass (>= ${pair.min})` : `FAIL (needs ${pair.min})`
+      : ok ? `pass (<= ${pair.max})` : `FAIL (must stay <= ${pair.max})`;
+    console.log(`${pair.label.padEnd(44)}${fgHex.padEnd(10)}${bgHex.padEnd(10)}${ratio.toFixed(2).padEnd(9)}${verdict}`);
   }
 }
 
