@@ -7,6 +7,7 @@ const { uploadBufferToCloudinary } = require("../utils/uploadBufferToCloudinary"
 const { detectFileType } = require("../utils/fileSignature");
 const { signedAttachmentUrl, destroyAsset } = require("../utils/cloudinaryAssets");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
+const { describeAction, auditPath, extractResourceId } = require("../utils/auditActions");
 const { PRE_CHECK_MAX_FILES } = require("../middleware/upload");
 
 const SYMPTOMS_MAX_LENGTH = 2000;
@@ -24,26 +25,32 @@ function httpError(status, message) {
   return error;
 }
 
-function requestPath(req) {
-  return String(req.originalUrl || req.path || "").split("?")[0];
-}
-
 /**
  * Every pre-check access is access to medical information, so it is audited even for reads -
  * the generic auditLogger middleware only writes on mutations. `auditHandled` stops that
  * middleware from adding a second, poorer entry on top of this one.
+ *
+ * The patient is attached to `req.auditPatientId` by the loader below, so each entry says
+ * whose medical data was opened, not just which appointment id was in the URL.
  */
 function recordAccess(req, res, { statusCode, details }) {
   res.locals.auditHandled = true;
   const hospitalId = req.user?.hospitalId;
   if (!hospitalId || !req.user) return;
 
+  const path = auditPath(req);
+
   AuditLog.create({
+    hospitalId,
     userId: req.user.userId,
+    userName: req.user.name,
     userRole: req.user.role,
     method: req.method,
-    path: requestPath(req),
+    path,
     statusCode,
+    action: describeAction(req.method, path),
+    resourceId: extractResourceId(path),
+    patientId: req.auditPatientId,
     details,
   }).catch((err) => console.error("[AuditLog] failed to write pre-check entry:", err.message));
 }
@@ -123,6 +130,7 @@ async function loadAccessibleAppointment(req, appointmentId) {
     }
   }
 
+  req.auditPatientId = appointment.patientId?._id || appointment.patientId;
   return appointment;
 }
 
@@ -304,6 +312,7 @@ async function listMyPreChecks(req, res) {
   try {
     const patient = await Patient.findOne({ userId: req.user.userId }).select("_id");
     if (!patient) throw httpError(404, "No patient record linked to this account.");
+    req.auditPatientId = patient._id;
 
     const preChecks = await PreCheck.find({ patientId: patient._id })
       .select("appointmentId symptoms submittedAt patientVitals staffVitalsAt attachments")

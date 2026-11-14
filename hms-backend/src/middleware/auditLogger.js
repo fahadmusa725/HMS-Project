@@ -1,5 +1,5 @@
 const AuditLog = require("../models/AuditLog");
-const { getCurrentHospitalId } = require("../utils/tenantContext");
+const { describeAction, auditPath, extractResourceId } = require("../utils/auditActions");
 
 const MUTATING_METHODS = ["POST", "PATCH", "PUT", "DELETE"];
 
@@ -9,6 +9,9 @@ const MUTATING_METHODS = ["POST", "PATCH", "PUT", "DELETE"];
  * audit entry for successful mutations. Never blocks or fails the actual
  * request - a logging failure is only ever console.error'd, never surfaced
  * to the client.
+ *
+ * hospitalId is passed explicitly so the write does not depend on the request's
+ * AsyncLocalStorage context still being alive when the response finishes.
  */
 function auditLogger(req, res, next) {
   if (!MUTATING_METHODS.includes(req.method)) return next();
@@ -19,15 +22,23 @@ function auditLogger(req, res, next) {
     // before/after details) - don't duplicate it with this generic one.
     if (res.locals.auditHandled) return;
 
-    const hospitalId = getCurrentHospitalId();
+    const hospitalId = req.user && req.user.hospitalId;
     if (!hospitalId || !req.user) return; // platform-level actions (super admin) aren't logged here
 
+    // The path is stored without its query string; see utils/auditActions.js.
+    const path = auditPath(req);
+
     AuditLog.create({
+      hospitalId,
       userId: req.user.userId,
+      userName: req.user.name,
       userRole: req.user.role,
       method: req.method,
-      path: req.originalUrl,
+      path,
       statusCode: res.statusCode,
+      action: res.locals.auditAction || describeAction(req.method, path),
+      resourceId: res.locals.auditResourceId || extractResourceId(path),
+      patientId: res.locals.auditPatientId || undefined,
     }).catch((err) => console.error("[AuditLog] failed to write entry:", err.message));
   });
 

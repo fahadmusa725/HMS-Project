@@ -88,6 +88,9 @@ async function getConsultationById(req, res) {
       .populate("patientId", "name mrn");
 
     if (!consultation) return res.status(404).json({ message: "Consultation not found." });
+    // Lets the PHI audit middleware record whose chart this was (the URL only has the
+    // consultation id).
+    res.locals.auditPatientId = consultation.patientId?._id || consultation.patientId;
     res.json(consultation);
   } catch (err) {
     console.error(err);
@@ -100,6 +103,7 @@ async function getMyEMR(req, res) {
   try {
     const patient = await Patient.findOne({ userId: req.user.userId });
     if (!patient) return res.status(404).json({ message: "No patient record linked to this account." });
+    res.locals.auditPatientId = patient._id;
 
     const consultations = await Consultation.find({ patientId: patient._id })
       .sort({ createdAt: -1 })
@@ -127,6 +131,7 @@ async function getPrescriptionPdf(req, res) {
       .populate("patientId", "name mrn dob gender phone");
 
     if (!consultation) return res.status(404).json({ message: "Consultation not found." });
+    res.locals.auditPatientId = consultation.patientId?._id || consultation.patientId;
 
     if (req.user.role === "patient") {
       const myPatient = await Patient.findOne({ userId: req.user.userId });

@@ -86,6 +86,7 @@ async function getRequestIdentity(userId) {
 
   const identity = {
     userId: String(user._id),
+    name: user.name,
     role: user.role,
     hospitalId: user.hospitalId ? String(user.hospitalId) : null,
     mustChangePassword: Boolean(user.mustChangePassword),

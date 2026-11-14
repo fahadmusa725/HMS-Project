@@ -1,7 +1,7 @@
 const express = require("express");
 const protect = require("../middleware/auth");
 const allowRoles = require("../middleware/rbac");
-const { listAuditLogs } = require("../controllers/auditController");
+const { listAuditLogs, listAuditActions } = require("../controllers/auditController");
 
 const router = express.Router();
 
@@ -9,6 +9,7 @@ const router = express.Router();
 // act of viewing audit logs, only mutating actions.
 router.use(protect, allowRoles("hospital_admin"));
 
+router.get("/actions", listAuditActions);
 router.get("/", listAuditLogs);
 
 module.exports = router;

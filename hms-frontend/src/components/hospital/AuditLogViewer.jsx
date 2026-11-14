@@ -58,7 +58,7 @@ function StatusDot({ code }) {
 
 export default function AuditLogViewer() {
   const [page, setPage] = useState(1);
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [filters, setFilters] = useState({ userId: '', action: '', from: '', to: '' });
 
   const {
     data,
@@ -68,10 +68,13 @@ export default function AuditLogViewer() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['audit-logs', page, selectedUserId],
+    queryKey: ['audit-logs', page, filters],
     queryFn: async () => {
       const params = { page, limit: PAGE_LIMIT };
-      if (selectedUserId) params.userId = selectedUserId;
+      if (filters.userId) params.userId = filters.userId;
+      if (filters.action) params.action = filters.action;
+      if (filters.from) params.from = filters.from;
+      if (filters.to) params.to = filters.to;
       const res = await api.get('/api/audit-logs', { params });
       return res.data;
     },
@@ -87,12 +90,30 @@ export default function AuditLogViewer() {
     staleTime: 5 * 60 * 1000, // reuse cached staff list for 5 min
   });
 
+  const { data: actionList = [] } = useQuery({
+    queryKey: ['audit-actions'],
+    queryFn: async () => {
+      const res = await api.get('/api/audit-logs/actions');
+      return res.data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const logs = data?.logs ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
+  const hasFilters = Boolean(
+    filters.userId || filters.action || filters.from || filters.to
+  );
 
-  const handleUserFilterChange = (e) => {
-    setSelectedUserId(e.target.value);
+  const handleFilterChange = (key) => (e) => {
+    const { value } = e.target;
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({ userId: '', action: '', from: '', to: '' });
     setPage(1);
   };
 
@@ -104,7 +125,8 @@ export default function AuditLogViewer() {
             Audit Logs
           </h2>
           <p className="text-muted-foreground mt-0.5 text-sm">
-            A read-only record of every mutating action performed across the hospital.
+            A read-only record of every mutating action and every patient record opened across the
+            hospital.
           </p>
         </div>
 
@@ -121,27 +143,96 @@ export default function AuditLogViewer() {
       </div>
 
       <Card className="bg-card border-border shadow-soft overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
+        <div className="p-4 sm:p-5 border-b border-border flex flex-col gap-3 bg-muted/20">
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-            <select
-              id="audit-user-filter"
-              value={selectedUserId}
-              onChange={handleUserFilterChange}
-              className="h-9 rounded-lg border border-input bg-card px-3 py-1.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-w-[200px]"
-            >
-              <option value="">All staff members</option>
-              {staffList.map((s) => (
-                <option key={s._id} value={s._id}>
-                  {s.name} ({ROLE_LABELS[s.role] ?? s.role})
-                </option>
-              ))}
-            </select>
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden="true" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Filters
+            </span>
+            <span className="text-xs text-muted-foreground font-medium sm:ml-auto">
+              {isLoading ? '…' : `${total.toLocaleString()} log${total !== 1 ? 's' : ''} total`}
+            </span>
           </div>
 
-          <span className="text-xs text-muted-foreground font-medium">
-            {isLoading ? '…' : `${total.toLocaleString()} log${total !== 1 ? 's' : ''} total`}
-          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2.5">
+            <div>
+              <label htmlFor="audit-user-filter" className="sr-only">
+                Filter by staff member
+              </label>
+              <select
+                id="audit-user-filter"
+                value={filters.userId}
+                onChange={handleFilterChange('userId')}
+                className="h-10 w-full rounded-lg border border-input bg-card px-3 py-1.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <option value="">All staff members</option>
+                {staffList.map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.name} ({ROLE_LABELS[s.role] ?? s.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="audit-action-filter" className="sr-only">
+                Filter by action
+              </label>
+              <select
+                id="audit-action-filter"
+                value={filters.action}
+                onChange={handleFilterChange('action')}
+                className="h-10 w-full rounded-lg border border-input bg-card px-3 py-1.5 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <option value="">All actions</option>
+                {actionList.map((action) => (
+                  <option key={action} value={action}>
+                    {action}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="audit-from-filter" className="sr-only">
+                Filter from date
+              </label>
+              <input
+                id="audit-from-filter"
+                type="date"
+                value={filters.from}
+                max={filters.to || undefined}
+                onChange={handleFilterChange('from')}
+                aria-label="From date"
+                className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="audit-to-filter" className="sr-only">
+                Filter to date
+              </label>
+              <input
+                id="audit-to-filter"
+                type="date"
+                value={filters.to}
+                min={filters.from || undefined}
+                onChange={handleFilterChange('to')}
+                aria-label="To date"
+                className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+              {hasFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearFilters}
+                  className="h-10 px-3 shrink-0 text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -176,8 +267,8 @@ export default function AuditLogViewer() {
               </div>
               <h3 className="text-lg font-bold text-foreground">No audit entries found</h3>
               <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-                {selectedUserId
-                  ? 'No actions logged for the selected staff member.'
+                {hasFilters
+                  ? 'No entries match the selected filters. Widen the date range or clear the filters.'
                   : 'No mutating actions have been recorded yet.'}
               </p>
             </div>
@@ -214,6 +305,9 @@ export default function AuditLogViewer() {
 
                     <td className="py-4 px-4 max-w-xs">
                       <span className="font-medium text-foreground">{log.action}</span>
+                      {log.details && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{log.details}</div>
+                      )}
                       <div className="text-[11px] text-muted-foreground font-mono mt-0.5 truncate" title={`${log.method} ${log.path}`}>
                         {log.method} {log.path}
                       </div>

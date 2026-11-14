@@ -51,6 +51,7 @@ async function protect(req, res, next) {
 
     req.user = {
       userId: identity.userId,
+      name: identity.name,
       role: identity.role,
       hospitalId: identity.hospitalId,
     };

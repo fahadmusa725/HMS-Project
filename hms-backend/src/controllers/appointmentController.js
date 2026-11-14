@@ -575,11 +575,16 @@ async function setAppointmentPriority(req, res) {
 
     res.locals.auditHandled = true;
     await AuditLog.create({
+      hospitalId: req.user.hospitalId,
       userId: req.user.userId,
+      userName: req.user.name,
       userRole: req.user.role,
       method: "PATCH",
       path: `/api/appointments/${appointment._id}/priority`,
       statusCode: 200,
+      action: "Changed appointment queue priority",
+      resourceId: appointment._id,
+      patientId: appointment.patientId,
       details: `Priority ${previousPriority} -> ${normalized.priority}${
         normalized.priorityReason ? ` (${normalized.priorityReason})` : ""
       }`,

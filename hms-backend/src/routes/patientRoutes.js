@@ -1,6 +1,7 @@
 const express = require("express");
 const protect = require("../middleware/auth");
 const auditLogger = require("../middleware/auditLogger");
+const { auditPhiRead } = require("../middleware/phiAudit");
 const allowRoles = require("../middleware/rbac");
 const {
   registerPatient,
@@ -29,7 +30,9 @@ router.post("/me/claim", allowRoles("patient"), claimPatientRecord);
 
 router.post("/", canManagePatients, registerPatient);
 router.get("/", canManagePatients, listPatients);
-router.get("/:id", canManagePatients, getPatientById);
+// Opening a chart is a PHI read: audited with the patient id so the trail answers
+// "who looked at this patient" without guessing from the path.
+router.get("/:id", canManagePatients, auditPhiRead("Viewed a patient record", { patientParam: "id" }), getPatientById);
 router.patch("/:id", canManagePatients, updatePatient);
 router.post("/:id/enable-portal", allowRoles("hospital_admin", "receptionist"), enablePortalAccess);
 router.post("/:id/link-account", allowRoles("hospital_admin", "receptionist"), linkPortalAccount);
