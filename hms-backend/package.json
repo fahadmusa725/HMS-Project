@@ -10,7 +10,8 @@
     "seed:superadmin": "node src/scripts/seedSuperAdmin.js",
     "sync:indexes": "node src/scripts/syncIndexes.js",
     "seed:demo": "node src/scripts/seedDemoData.js",
-    "check:auth": "node src/scripts/checkAuthRegressions.js"
+    "check:auth": "node src/scripts/checkAuthRegressions.js",
+    "test": "node --test \"tests/*.test.js\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -28,6 +29,8 @@
     "pdfkit": "^0.20.2"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "mongodb-memory-server": "^11.3.0",
+    "nodemon": "^3.1.7",
+    "supertest": "^7.3.2"
   }
 }
