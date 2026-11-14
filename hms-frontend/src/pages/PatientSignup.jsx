@@ -167,7 +167,7 @@ export default function PatientSignup() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="signup-hospital" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Select Hospital *
                 </label>
                 <div className="relative">
@@ -175,6 +175,7 @@ export default function PatientSignup() {
                     <Building2 className="h-4 w-4" />
                   </div>
                   <select
+                    id="signup-hospital"
                     {...register('hospitalId')}
                     disabled={isLoading || loadingHospitals}
                     className={`pl-10 h-11 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
@@ -199,7 +200,7 @@ export default function PatientSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="signup-name" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Full Name *
                 </label>
                 <div className="relative">
@@ -207,6 +208,7 @@ export default function PatientSignup() {
                     <User className="h-4 w-4" />
                   </div>
                   <Input
+                    id="signup-name"
                     placeholder="e.g. Fatima Ali"
                     className={`pl-10 h-11 bg-card border-border text-foreground ${
                       errors.name ? 'border-destructive focus-visible:ring-destructive' : ''
@@ -225,7 +227,7 @@ export default function PatientSignup() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  <label htmlFor="signup-phone" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Phone Number <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                   </label>
                   <div className="relative">
@@ -233,6 +235,7 @@ export default function PatientSignup() {
                       <Phone className="h-4 w-4" />
                     </div>
                     <Input
+                      id="signup-phone"
                       placeholder="03001234567"
                       className="pl-10 h-11 bg-card border-border text-foreground"
                       {...register('phone')}
@@ -243,7 +246,7 @@ export default function PatientSignup() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  <label htmlFor="signup-cnic" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     CNIC / ID <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                   </label>
                   <div className="relative">
@@ -251,6 +254,7 @@ export default function PatientSignup() {
                       <CreditCard className="h-4 w-4" />
                     </div>
                     <Input
+                      id="signup-cnic"
                       placeholder="35201-1234567-1"
                       className="pl-10 h-11 bg-card border-border text-foreground"
                       {...register('cnic')}
@@ -271,7 +275,7 @@ export default function PatientSignup() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  <label htmlFor="signup-dob" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Date of Birth <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                   </label>
                   <div className="relative">
@@ -279,6 +283,7 @@ export default function PatientSignup() {
                       <CalendarDays className="h-4 w-4" />
                     </div>
                     <Input
+                      id="signup-dob"
                       type="date"
                       className="pl-10 h-11 bg-card border-border text-foreground"
                       {...register('dob')}
@@ -288,7 +293,7 @@ export default function PatientSignup() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  <label htmlFor="signup-gender" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Gender <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                   </label>
                   <div className="relative">
@@ -296,6 +301,7 @@ export default function PatientSignup() {
                       <ChevronDown className="h-4 w-4" />
                     </div>
                     <select
+                      id="signup-gender"
                       {...register('gender')}
                       disabled={isLoading}
                       className="pl-10 h-11 w-full rounded-lg border border-input bg-card px-3.5 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -310,7 +316,7 @@ export default function PatientSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="signup-address" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Address <span className="text-muted-foreground font-normal lowercase">(optional)</span>
                 </label>
                 <div className="relative">
@@ -318,6 +324,7 @@ export default function PatientSignup() {
                     <MapPin className="h-4 w-4" />
                   </div>
                   <Input
+                    id="signup-address"
                     placeholder="e.g. House 5, Street 12, Islamabad"
                     className="pl-10 h-11 bg-card border-border text-foreground"
                     {...register('address')}
@@ -328,7 +335,7 @@ export default function PatientSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="signup-email" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Email Address *
                 </label>
                 <div className="relative">
@@ -336,6 +343,7 @@ export default function PatientSignup() {
                     <Mail className="h-4 w-4" />
                   </div>
                   <Input
+                    id="signup-email"
                     type="email"
                     placeholder="patient@example.com"
                     className={`pl-10 h-11 bg-card border-border text-foreground ${
@@ -354,7 +362,7 @@ export default function PatientSignup() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="signup-password" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Password *
                 </label>
                 <div className="relative">
@@ -362,6 +370,7 @@ export default function PatientSignup() {
                     <Lock className="h-4 w-4" />
                   </div>
                   <Input
+                    id="signup-password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="At least 8 characters"
                     className={`pl-10 pr-10 h-11 bg-card border-border text-foreground ${
@@ -374,8 +383,9 @@ export default function PatientSignup() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -402,6 +412,18 @@ export default function PatientSignup() {
                 )}
               </Button>
             </form>
+
+            <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+              Please review our{' '}
+              <Link to="/terms" className="font-semibold text-primary hover:underline">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link to="/privacy" className="font-semibold text-primary hover:underline">
+                Privacy Policy
+              </Link>{' '}
+              before creating an account.
+            </p>
 
             <div className="mt-5 text-center text-sm text-muted-foreground">
               Already have an account?{' '}

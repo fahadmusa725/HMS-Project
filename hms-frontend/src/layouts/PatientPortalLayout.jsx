@@ -51,6 +51,16 @@ export default function PatientPortalLayout() {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
+  // Escape closes the off-canvas drawer, same as the overlay tap.
+  useEffect(() => {
+    if (!isSidebarOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsSidebarOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSidebarOpen]);
+
   const handleLogout = () => {
     logout();
     navigate('/login', { replace: true });
@@ -66,6 +76,7 @@ export default function PatientPortalLayout() {
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden -ml-1 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 shrink-0"
               aria-label="Open navigation menu"
+              aria-expanded={isSidebarOpen}
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -90,16 +101,17 @@ export default function PatientPortalLayout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <UserIdentityBlock />
-            <div className="h-6 w-px bg-border mx-1" />
+            <div className="hidden h-6 w-px bg-border sm:block" />
             <ThemeToggle />
             <Link
               to="/change-password"
+              aria-label="Change password"
               className={buttonVariants({
                 variant: 'outline',
                 size: 'sm',
-                className: 'flex items-center gap-1.5 text-muted-foreground',
+                className: 'hidden sm:inline-flex items-center gap-1.5 text-muted-foreground',
               })}
             >
               <KeyRound className="h-4 w-4" />
@@ -109,6 +121,7 @@ export default function PatientPortalLayout() {
               variant="outline"
               size="sm"
               onClick={handleLogout}
+              aria-label="Sign out"
               className="flex items-center gap-1.5 text-muted-foreground hover:text-destructive hover:border-destructive/30"
             >
               <LogOut className="h-4 w-4" />
@@ -123,6 +136,7 @@ export default function PatientPortalLayout() {
           <div
             className="fixed inset-0 z-30 bg-overlay/50 lg:hidden"
             onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
           />
         )}
 
@@ -179,6 +193,18 @@ export default function PatientPortalLayout() {
                 </NavLink>
               );
             })}
+          </div>
+
+          {/* The header link is hidden below sm to keep the top bar readable at 360px, so the
+              drawer carries the same shortcut for phones. */}
+          <div className="mt-auto pt-4 lg:hidden">
+            <NavLink
+              to="/change-password"
+              className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-muted-foreground transition-all hover:bg-muted/60 hover:text-foreground"
+            >
+              <KeyRound className="h-4 w-4 shrink-0" />
+              <span>Change Password</span>
+            </NavLink>
           </div>
         </aside>
 

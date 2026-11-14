@@ -145,7 +145,7 @@ export default function Login() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                <label htmlFor="login-email" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                   Email Address
                 </label>
                 <div className="relative">
@@ -153,6 +153,7 @@ export default function Login() {
                     <Mail className="h-4 w-4" />
                   </div>
                   <Input
+                    id="login-email"
                     type="email"
                     placeholder="name@hospital.org"
                     className={`pl-10 h-11 bg-card border-input text-foreground ${errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}`}
@@ -170,7 +171,7 @@ export default function Login() {
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+                  <label htmlFor="login-password" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
                     Password
                   </label>
                   <Link to="/forgot-password" className="text-xs font-medium text-primary hover:underline">
@@ -182,6 +183,7 @@ export default function Login() {
                     <Lock className="h-4 w-4" />
                   </div>
                   <Input
+                    id="login-password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••••••"
                     className={`pl-10 pr-10 h-11 bg-card border-input text-foreground ${errors.password ? 'border-destructive focus-visible:ring-destructive' : ''}`}
@@ -192,8 +194,9 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
                     className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted-foreground hover:text-foreground transition-colors"
-                    tabIndex={-1}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

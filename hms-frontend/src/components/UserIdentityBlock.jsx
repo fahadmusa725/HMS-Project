@@ -26,12 +26,17 @@ export function UserIdentityBlock({ showInitialOnly = false, className = '' }) {
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
-      <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary border border-primary/25 flex items-center justify-center font-bold text-sm shadow-soft-sm shrink-0">
+      <div
+        className="h-9 w-9 rounded-xl bg-primary/15 text-primary border border-primary/25 flex items-center justify-center font-bold text-sm shadow-soft-sm shrink-0"
+        title={`${name} - ${getRoleDisplayName(role)}`}
+      >
         {initial}
       </div>
 
       {!showInitialOnly && (
-        <div className="flex flex-col min-w-0 text-left">
+        // Name and role collapse on phones - the header has to fit a menu button, the brand,
+        // the theme toggle and sign out at 360px, and the full name is still in the avatar title.
+        <div className="hidden min-w-0 flex-col text-left sm:flex">
           <span className="font-semibold text-xs sm:text-sm text-foreground truncate max-w-[150px] leading-tight">
             {name}
           </span>

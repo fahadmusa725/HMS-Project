@@ -15,6 +15,9 @@ const PatientSignup = lazy(() => import('@/pages/PatientSignup'));
 const SuperAdminDashboard = lazy(() => import('@/pages/SuperAdminDashboard'));
 // Public, login-free waiting-room screen (the URL carries a per-hospital display key).
 const DisplayBoard = lazy(() => import('@/pages/DisplayBoard'));
+const Terms = lazy(() => import('@/pages/Terms'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
+const NotFound = lazy(() => import('@/pages/NotFound'));
 
 const PatientPortalLayout = lazy(() => import('@/layouts/PatientPortalLayout'));
 const PatientOverview = lazy(() => import('@/pages/portal/PatientOverview'));
@@ -95,6 +98,10 @@ export function AppRoutes() {
 
         {/* Waiting-room TV: public by design - the ?key= in the URL is the credential. */}
         <Route path="/display/:hospitalId" element={<DisplayBoard />} />
+
+        {/* Legal pages: public, linked from the landing footer and the signup form. */}
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         <Route
           path="/change-password"
@@ -278,7 +285,7 @@ export function AppRoutes() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );

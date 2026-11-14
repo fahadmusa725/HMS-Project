@@ -229,6 +229,7 @@ function ScheduleForm({ doctor, schedule, onClose }) {
                     size="icon"
                     variant="ghost"
                     title="Remove"
+                    aria-label="Remove this working-hours block"
                     onClick={() => setBlocks((prev) => prev.filter((_, i) => i !== idx))}
                     disabled={busy}
                     className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"

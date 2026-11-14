@@ -106,36 +106,56 @@ function DemoRequestForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Your Name *</label>
-          <Input placeholder="Dr. Ayesha Khan" {...register('name')} disabled={isSubmitting} className={errors.name ? 'border-destructive' : ''} />
+          <label htmlFor="demo-name" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Your Name *</label>
+          <Input
+            id="demo-name"
+            placeholder="Dr. Ayesha Khan"
+            {...register('name')}
+            disabled={isSubmitting}
+            className={errors.name ? 'border-destructive' : ''}
+          />
           {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Hospital / Clinic Name *</label>
-          <Input placeholder="City Hospital" {...register('hospitalName')} disabled={isSubmitting} className={errors.hospitalName ? 'border-destructive' : ''} />
+          <label htmlFor="demo-hospital" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Hospital / Clinic Name *</label>
+          <Input
+            id="demo-hospital"
+            placeholder="City Hospital"
+            {...register('hospitalName')}
+            disabled={isSubmitting}
+            className={errors.hospitalName ? 'border-destructive' : ''}
+          />
           {errors.hospitalName && <p className="text-xs text-destructive">{errors.hospitalName.message}</p>}
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Email *</label>
-          <Input type="email" placeholder="you@hospital.com" {...register('email')} disabled={isSubmitting} className={errors.email ? 'border-destructive' : ''} />
+          <label htmlFor="demo-email" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">Email *</label>
+          <Input
+            id="demo-email"
+            type="email"
+            placeholder="you@hospital.com"
+            {...register('email')}
+            disabled={isSubmitting}
+            className={errors.email ? 'border-destructive' : ''}
+          />
           {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+          <label htmlFor="demo-phone" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
             Phone <span className="text-muted-foreground font-normal lowercase">(optional)</span>
           </label>
-          <Input placeholder="03001234567" {...register('phone')} disabled={isSubmitting} />
+          <Input id="demo-phone" placeholder="03001234567" {...register('phone')} disabled={isSubmitting} />
         </div>
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
+        <label htmlFor="demo-message" className="text-xs font-semibold text-foreground/80 uppercase tracking-wider block">
           Message <span className="text-muted-foreground font-normal lowercase">(optional)</span>
         </label>
         <textarea
+          id="demo-message"
           rows={3}
           placeholder="Tell us a bit about your hospital and what you're looking for..."
           {...register('message')}
@@ -285,9 +305,11 @@ export default function Landing() {
             <HeartPulse className="h-4 w-4 text-primary" />
             <span className="font-semibold text-foreground">CareFlow HMS</span>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
             <Link to="/login" className="hover:text-foreground transition-colors">Log In</Link>
             <Link to="/signup" className="hover:text-foreground transition-colors">Patient Sign Up</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
             <a href="#demo" className="hover:text-foreground transition-colors">Contact Us</a>
           </div>
           <span>&copy; {new Date().getFullYear()} CareFlow HMS. All rights reserved.</span>

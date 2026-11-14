@@ -757,7 +757,7 @@ export default function AppointmentsQueue() {
               )}
             </div>
           ) : (
-            <table className="w-full text-left border-collapse text-sm">
+            <table className="w-full min-w-[760px] text-left border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   <th className="py-3.5 px-6">Token #</th>

@@ -12,6 +12,7 @@ import {
   User,
   FileText,
   Bed,
+  AlertCircle,
 } from 'lucide-react';
 
 import api from '@/lib/api';
@@ -111,6 +112,8 @@ export default function BillingModule({ initialPatient = null }) {
   const {
     data: bills = [],
     isLoading: isBillsLoading,
+    isError: isBillsError,
+    error: billsError,
     refetch: refetchBills,
     isRefetching: isBillsRefetching,
   } = useQuery({
@@ -472,6 +475,17 @@ export default function BillingModule({ initialPatient = null }) {
             <div className="p-12 text-center text-muted-foreground flex flex-col items-center justify-center">
               <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
               <span className="text-sm font-medium">Loading hospital bills...</span>
+            </div>
+          ) : isBillsError ? (
+            <div className="p-12 text-center">
+              <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
+              <h3 className="text-base font-bold text-foreground">Error loading invoices</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-4">
+                {billsError?.response?.data?.message || 'Could not fetch the invoice list.'}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetchBills()}>
+                Try Again
+              </Button>
             </div>
           ) : filteredBills.length === 0 ? (
             <div className="p-12 text-center">

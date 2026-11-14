@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/queryClient';
 import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import { AppRoutes } from '@/routes';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function App() {
   const { theme } = useThemeStore();
@@ -20,7 +21,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
         <Toaster
           theme={theme}
           position="bottom-right"
