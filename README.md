@@ -123,8 +123,8 @@ _All screenshots show the seeded demo data created by `npm run seed:demo` (CareF
   </tr>
   <tr>
     <td align="center"><img src="screenshots/14-mobile-phone.png" alt="Reception queue on a phone-width layout" width="100%" /></td>
-    <td align="center"><img src="screenshots/15-audit-logs.png" alt="Audit log viewer filtered by user, action and date range" width="100%" /></td>
-    <td align="center"><img src="screenshots/16-settings.png" alt="Hospital settings page with queue behaviour, senior age threshold and display key" width="100%" /></td>
+    <td align="center"><img src="screenshots/14-audit-logs.png" alt="Audit log viewer filtered by user, action and date range" width="100%" /></td>
+    <td align="center"><img src="screenshots/15-settings.png" alt="Hospital settings page with queue behaviour, senior age threshold and display key" width="100%" /></td>
   </tr>
 </table>
 
