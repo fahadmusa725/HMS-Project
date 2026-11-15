@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { warmUpServer } from '@/lib/api';
+import { readHospitalBrand } from '@/lib/hospitalBrand';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import HospitalLogo from '@/components/HospitalLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -39,6 +41,10 @@ export default function Login() {
     if (stored) sessionStorage.removeItem('careflow-auth-error');
     return stored;
   });
+
+  // The hospital this device last signed in to, if any. Nothing is known about the hospital
+  // before sign-in, so this stays absent on a first visit and the platform mark stands alone.
+  const [hospitalBrand] = useState(() => readHospitalBrand());
 
   const {
     register,
@@ -108,6 +114,21 @@ export default function Login() {
           <p className="text-sm text-muted-foreground mt-1.5 font-normal">
             Enterprise Multi-Tenant Healthcare Management Platform
           </p>
+          {hospitalBrand && (
+            <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-soft-sm">
+              <HospitalLogo
+                name={hospitalBrand.name}
+                logoUrl={hospitalBrand.logoUrl}
+                className="h-6 w-6"
+                rounded="rounded-md"
+                textClassName="text-[10px]"
+                iconClassName="h-3.5 w-3.5"
+              />
+              <span className="truncate text-xs font-semibold text-foreground" title={hospitalBrand.name}>
+                {hospitalBrand.name || 'Last hospital'}
+              </span>
+            </div>
+          )}
         </div>
 
         <Card className="bg-card border-border shadow-soft-xl">

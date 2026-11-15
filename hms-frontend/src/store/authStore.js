@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
+import { rememberHospitalBrand } from '@/lib/hospitalBrand';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -22,6 +23,7 @@ export const useAuthStore = create(
           });
 
           const { token, user } = response.data;
+          rememberHospitalBrand({ name: user?.hospitalName, logoUrl: user?.hospitalLogoUrl });
           set({
             token,
             user,
@@ -54,6 +56,7 @@ export const useAuthStore = create(
         try {
           const response = await axios.post(`${API_BASE_URL}/api/public/patient-signup`, signupData);
           const { token, user, verificationRequired, recordLinked, message } = response.data;
+          rememberHospitalBrand({ name: user?.hospitalName, logoUrl: user?.hospitalLogoUrl });
           set({
             token,
             user,
@@ -79,6 +82,7 @@ export const useAuthStore = create(
       },
 
       setAuthSession: (token, user) => {
+        rememberHospitalBrand({ name: user?.hospitalName, logoUrl: user?.hospitalLogoUrl });
         set({
           token,
           user,
@@ -98,6 +102,9 @@ export const useAuthStore = create(
             },
           });
           const user = response.data;
+          // Keeps the header (and the login screen's remembered brand) in step with a rename or
+          // a new logo, because this is what the app calls to re-hydrate identity.
+          rememberHospitalBrand({ name: user?.hospitalName, logoUrl: user?.hospitalLogoUrl });
           set({ user, isAuthenticated: true });
           return user;
         } catch (err) {

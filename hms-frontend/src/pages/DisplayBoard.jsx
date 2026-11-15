@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { HeartPulse, ShieldAlert, WifiOff } from 'lucide-react';
+import HospitalLogo from '@/components/HospitalLogo';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -135,9 +136,14 @@ export default function DisplayBoard() {
     <div className="fixed inset-0 flex flex-col overflow-hidden bg-background text-foreground">
       <header className="flex shrink-0 items-center justify-between gap-6 border-b border-border px-8 py-5">
         <div className="flex min-w-0 items-center gap-5">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <HeartPulse className="h-9 w-9" />
-          </div>
+          <HospitalLogo
+            name={data?.hospital?.name}
+            logoUrl={data?.hospital?.logoUrl}
+            className="h-16 w-16"
+            rounded="rounded-2xl"
+            textClassName="text-2xl"
+            iconClassName="h-9 w-9"
+          />
           <div className="min-w-0">
             <h1 className="truncate text-4xl font-extrabold tracking-tight sm:text-5xl">
               {data?.hospital?.name || 'OPD Queue'}
@@ -221,7 +227,7 @@ export default function DisplayBoard() {
 
       <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-border px-8 py-3">
         <span className="text-sm font-medium text-muted-foreground">
-          Please keep this token with you and watch this screen.
+          CareFlow HMS · Please keep this token with you and watch this screen.
         </span>
         <span className="text-sm font-medium text-muted-foreground">
           Updated{' '}

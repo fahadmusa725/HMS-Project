@@ -3,11 +3,11 @@ import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
+import HospitalLogo from '@/components/HospitalLogo';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   LogOut,
   Building2,
-  HeartPulse,
   Users,
   UserCheck,
   Calendar,
@@ -118,9 +118,13 @@ export default function HospitalDashboardLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="h-9 w-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm shrink-0">
-              <HeartPulse className="h-5 w-5" />
-            </div>
+            <HospitalLogo
+              name={user?.hospitalName}
+              logoUrl={user?.hospitalLogoUrl}
+              className="h-9 w-9 shadow-sm"
+              textClassName="text-sm"
+              iconClassName="h-5 w-5"
+            />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className="font-bold text-base tracking-tight text-foreground whitespace-nowrap">CareFlow HMS</span>

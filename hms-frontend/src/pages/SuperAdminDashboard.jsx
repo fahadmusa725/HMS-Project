@@ -21,6 +21,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserIdentityBlock } from '@/components/UserIdentityBlock';
+import HospitalLogo from '@/components/HospitalLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -426,12 +427,20 @@ export default function SuperAdminDashboard() {
                     {filteredHospitals.map((hospital) => (
                       <tr key={hospital._id} className="hover:bg-accent/40 transition-colors group">
                         <td className="py-4 px-6">
-                          <div className="font-semibold text-foreground flex items-center gap-2">
-                            <Building2 className="h-4 w-4 text-primary shrink-0" />
-                            <span>{hospital.name}</span>
-                          </div>
-                          <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
-                            ID: {hospital._id}
+                          <div className="flex items-center gap-3">
+                            <HospitalLogo
+                              name={hospital.name}
+                              logoUrl={hospital.logoUrl}
+                              className="h-9 w-9"
+                              textClassName="text-xs"
+                              iconClassName="h-4 w-4"
+                            />
+                            <div className="min-w-0">
+                              <div className="font-semibold text-foreground truncate">{hospital.name}</div>
+                              <div className="text-[11px] font-mono text-muted-foreground mt-0.5">
+                                ID: {hospital._id}
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="py-4 px-4">
@@ -728,10 +737,27 @@ export default function SuperAdminDashboard() {
         }
       >
         <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+            <HospitalLogo
+              name={confirmStatusAction?.hospital?.name}
+              logoUrl={confirmStatusAction?.hospital?.logoUrl}
+              className="h-10 w-10"
+              textClassName="text-sm"
+              iconClassName="h-5 w-5"
+            />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-foreground">
+                {confirmStatusAction?.hospital?.name}
+              </div>
+              <div className="text-[11px] font-mono text-muted-foreground">
+                ID: {confirmStatusAction?.hospital?._id}
+              </div>
+            </div>
+          </div>
           <p className="text-sm text-foreground">
             Are you sure you want to{' '}
             <strong className="font-semibold lowercase">{confirmStatusAction?.targetStatus}</strong>{' '}
-            hospital <span className="font-bold text-primary">"{confirmStatusAction?.hospital?.name}"</span>?
+            this hospital tenant?
           </p>
           <p className="text-xs text-muted-foreground">
             {confirmStatusAction?.targetStatus === 'active'
@@ -794,6 +820,19 @@ export default function SuperAdminDashboard() {
         }
       >
         <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+            <HospitalLogo
+              name={deleteHospitalTarget?.name}
+              logoUrl={deleteHospitalTarget?.logoUrl}
+              className="h-10 w-10"
+              textClassName="text-sm"
+              iconClassName="h-5 w-5"
+            />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-foreground">{deleteHospitalTarget?.name}</div>
+              <div className="text-[11px] font-mono text-muted-foreground">ID: {deleteHospitalTarget?._id}</div>
+            </div>
+          </div>
           <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-xs text-destructive leading-relaxed font-medium">
             <AlertTriangle className="h-5 w-5 shrink-0 text-destructive mt-0.5" />
             <div className="space-y-1.5">

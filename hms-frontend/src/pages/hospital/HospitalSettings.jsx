@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -14,8 +14,13 @@ import {
   UserRound,
   Clock3,
   LogIn,
+  Building2,
+  Upload,
+  Trash2,
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useAuthStore } from '@/store/authStore';
+import HospitalLogo from '@/components/HospitalLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -37,6 +42,190 @@ function FieldRow({ icon: Icon, title, description, children }) {
   );
 }
 
+const LOGO_MAX_BYTES = 1024 * 1024;
+const LOGO_TYPES = ['image/png', 'image/jpeg'];
+
+/**
+ * The hospital's own name and logo. Both are saved through the settings endpoint, but the
+ * logo uploads on its own (it is a file, not a field) - so this card keeps its own name form
+ * and hands the picked file straight up to the caller.
+ */
+function IdentityCard({
+  name,
+  logoUrl,
+  isSavingName,
+  isUploadingLogo,
+  isRemovingLogo,
+  onSaveName,
+  onUploadLogo,
+  onRemoveLogo,
+}) {
+  const [nameValue, setNameValue] = useState(name || '');
+  const [nameError, setNameError] = useState('');
+  const fileInputRef = useRef(null);
+  const busy = isSavingName || isUploadingLogo || isRemovingLogo;
+
+  const submit = (e) => {
+    e.preventDefault();
+    const trimmed = nameValue.trim();
+    if (trimmed.length < 2 || trimmed.length > 80) {
+      setNameError('The hospital name must be between 2 and 80 characters.');
+      return;
+    }
+    setNameError('');
+    setNameValue(trimmed);
+    onSaveName(trimmed);
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    // Clear the input so picking the same file again (after a failure) still fires onChange.
+    e.target.value = '';
+    if (!file) return;
+
+    // The server decides by magic bytes; this only avoids a doomed round trip.
+    if (file.type && !LOGO_TYPES.includes(file.type)) {
+      toast.error('The logo must be a PNG or JPG image.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      toast.error('The logo must be 1 MB or smaller.');
+      return;
+    }
+    onUploadLogo(file);
+  };
+
+  return (
+    <Card className="border-border bg-card shadow-soft">
+      <CardHeader className="border-b border-border/60 pb-4">
+        <CardTitle className="flex items-center gap-2 text-base font-bold">
+          <Building2 className="h-4 w-4 text-primary" />
+          Hospital identity
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Your hospital's own name and logo, shown in the app header, patient portal, waiting-room TV,
+          printable slips and reminder emails. CareFlow HMS stays the platform name above them.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5 p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <HospitalLogo
+            name={name}
+            logoUrl={logoUrl}
+            className="h-16 w-16"
+            rounded="rounded-2xl"
+            textClassName="text-xl"
+            iconClassName="h-8 w-8"
+          />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                {isUploadingLogo ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="mr-2 h-4 w-4" />
+                )}
+                {logoUrl ? 'Replace logo' : 'Upload logo'}
+              </Button>
+              {logoUrl && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onRemoveLogo}
+                  disabled={busy}
+                  className="text-destructive hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                >
+                  {isRemovingLogo ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              PNG or JPG, up to 1 MB. Square images look best; SVG is not supported.
+            </p>
+            {!logoUrl && (
+              <p className="text-xs text-muted-foreground">
+                No logo yet - the initials of the hospital name stand in for it.
+              </p>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg"
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+              onChange={handleFile}
+            />
+          </div>
+        </div>
+
+        <form onSubmit={submit} className="space-y-1.5 border-t border-border/60 pt-5">
+          <label
+            htmlFor="hospital-name"
+            className="block text-xs font-semibold uppercase tracking-wider text-foreground/80"
+          >
+            Hospital name
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="w-full sm:max-w-md">
+              <Input
+                id="hospital-name"
+                value={nameValue}
+                maxLength={80}
+                required
+                onChange={(e) => {
+                  setNameValue(e.target.value);
+                  if (nameError) setNameError('');
+                }}
+                disabled={isSavingName}
+                aria-invalid={Boolean(nameError)}
+                className={nameError ? 'border-destructive' : ''}
+              />
+              {nameError ? (
+                <p className="mt-1 text-xs text-destructive">{nameError}</p>
+              ) : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  2 to 80 characters. This is the official name everywhere, including the super admin
+                  hospital list.
+                </p>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={busy}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              {isSavingName ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save name
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
  * Owns the editable form state. Mounted only once the server values have arrived (the
  * parent renders it conditionally), so the initial state can simply BE the server values -
@@ -44,7 +233,6 @@ function FieldRow({ icon: Icon, title, description, children }) {
  */
 function SettingsForm({ settings, onSave, isSaving }) {
   const [form, setForm] = useState({
-    displayName: settings.displayName || '',
     seniorAgeThreshold: settings.seniorAgeThreshold,
     allowPatientSelfCheckIn: Boolean(settings.allowPatientSelfCheckIn),
     averageConsultationMinutes: settings.averageConsultationMinutes,
@@ -53,7 +241,6 @@ function SettingsForm({ settings, onSave, isSaving }) {
   const submit = (e) => {
     e.preventDefault();
     onSave({
-      displayName: form.displayName.trim(),
       seniorAgeThreshold: Number(form.seniorAgeThreshold),
       allowPatientSelfCheckIn: form.allowPatientSelfCheckIn,
       averageConsultationMinutes: Number(form.averageConsultationMinutes),
@@ -70,20 +257,6 @@ function SettingsForm({ settings, onSave, isSaving }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <FieldRow
-            icon={Settings2}
-            title="Display name"
-            description="Affects only the waiting-room TV screen: it becomes the board title instead of the official hospital name, and changes nothing else in the app. Leave blank to show the official name."
-          >
-            <Input
-              value={form.displayName}
-              maxLength={80}
-              placeholder="e.g. City Hospital - OPD"
-              onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-              disabled={isSaving}
-            />
-          </FieldRow>
-
           <FieldRow
             icon={UserRound}
             title="Senior age threshold"
@@ -184,6 +357,7 @@ function SettingsForm({ settings, onSave, isSaving }) {
  */
 export default function HospitalSettings() {
   const queryClient = useQueryClient();
+  const fetchMe = useAuthStore((state) => state.fetchMe);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -206,6 +380,58 @@ export default function HospitalSettings() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Could not save the settings.');
+    },
+  });
+
+  // Renaming refreshes the session too: the header, the tenant card and the login screen's
+  // remembered brand all read the hospital name from the signed-in user.
+  const saveNameMutation = useMutation({
+    mutationFn: async (name) => {
+      const res = await api.patch('/api/hospital-admin/settings', { name });
+      return res.data;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-settings'] });
+      await fetchMe();
+      toast.success('Hospital name updated.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not update the hospital name.');
+    },
+  });
+
+  const logoUploadMutation = useMutation({
+    // axios only sends real multipart when the content type is not the JSON default.
+    mutationFn: async (file) => {
+      const payload = new FormData();
+      payload.append('logo', file);
+      const res = await api.post('/api/hospital-admin/settings/logo', payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res.data;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-settings'] });
+      await fetchMe();
+      toast.success('Hospital logo updated.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not upload the logo.');
+    },
+  });
+
+  const removeLogoMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.delete('/api/hospital-admin/settings/logo');
+      return res.data;
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['hospital-settings'] });
+      await fetchMe();
+      toast.success('Hospital logo removed.');
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Could not remove the logo.');
     },
   });
 
@@ -275,11 +501,25 @@ export default function HospitalSettings() {
           Hospital Settings
         </h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Clinic-wide behaviour for the OPD queue, the patient portal and the waiting-room display.
+          Your hospital's name and logo, plus clinic-wide behaviour for the OPD queue, the patient
+          portal and the waiting-room display.
         </p>
       </div>
 
-      {/* First on the page on purpose - the TV link is what admins come here for. */}
+      {data && (
+        <IdentityCard
+          name={data.name}
+          logoUrl={data.logoUrl}
+          isSavingName={saveNameMutation.isPending}
+          isUploadingLogo={logoUploadMutation.isPending}
+          isRemovingLogo={removeLogoMutation.isPending}
+          onSaveName={(name) => saveNameMutation.mutate(name)}
+          onUploadLogo={(file) => logoUploadMutation.mutate(file)}
+          onRemoveLogo={() => removeLogoMutation.mutate()}
+        />
+      )}
+
+      {/* The TV link is what admins come here for most often, so it stays high on the page. */}
       <Card id="waiting-room-display" className="scroll-mt-24 border-border bg-card shadow-soft">
         <CardHeader className="border-b border-border/60 pb-4">
           <CardTitle className="flex items-center gap-2 text-base font-bold">
@@ -288,7 +528,7 @@ export default function HospitalSettings() {
           </CardTitle>
           <CardDescription className="text-xs">
             A login-free screen for the TV in the waiting area: one column per doctor with the token being
-            served and the next 5 tokens. The board title is the Display name set below.{' '}
+            served and the next 5 tokens. The board title is your hospital name, next to your logo.{' '}
             <span className="font-semibold text-foreground">
               It shows token numbers only - never patient names, MRNs or priority.
             </span>
