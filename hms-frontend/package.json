@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "check:contrast": "node scripts/check-contrast.mjs",
+    "check:focus": "node scripts/check-input-focus.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

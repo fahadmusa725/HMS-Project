@@ -12,31 +12,48 @@ import { Button } from '@/components/ui/button';
  *
  * Keyboard: Escape closes, Tab is trapped inside the dialog, focus moves in on open and back
  * to the trigger on close, so the page behind is never reachable while the dialog is up.
+ *
+ * The effect below depends on `isOpen` alone and keeps `onClose` in a ref. Callers pass an
+ * inline arrow for `onClose` (usually guarding a pending mutation), so depending on the prop
+ * re-ran the whole effect - focus restore, body lock, re-focus - on every parent render, which
+ * is every keystroke for a form whose state lives in the component that renders the dialog.
+ * The result was the caret jumping to the header's close button after each character.
+ * Focusing in is also skipped when focus is already inside the dialog, so a re-render can never
+ * pull the user out of a field they are typing in.
  */
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export function Modal({ isOpen, onClose, title, description, children, footer }) {
   const modalRef = useRef(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
+
+  // Keep the latest handler without making it an effect dependency (see the header comment).
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return undefined;
 
-    const previouslyFocused = document.activeElement;
     const node = modalRef.current;
+    const returnFocusTo = document.activeElement;
     const visibleFocusables = () =>
       Array.from(node?.querySelectorAll(FOCUSABLE) ?? []).filter((el) => el.offsetParent !== null);
 
-    // Focus the first control (or the dialog itself when the body is just text).
-    const first = visibleFocusables()[0];
-    (first || node)?.focus();
+    // Move focus in only when it is still outside the dialog: never steal the caret from a field
+    // the user is already typing in (StrictMode's double run, or a parent re-render on open).
+    if (node && !node.contains(document.activeElement)) {
+      const first = visibleFocusables()[0];
+      (first || node).focus();
+    }
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
-        onClose();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -58,11 +75,16 @@ export function Modal({ isOpen, onClose, title, description, children, footer })
     return () => {
       document.body.style.overflow = 'unset';
       window.removeEventListener('keydown', handleKeyDown);
-      if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
-        previouslyFocused.focus();
+      // Back to the trigger on close - never to something that lived inside the dialog.
+      if (
+        returnFocusTo instanceof HTMLElement &&
+        returnFocusTo.isConnected &&
+        !node?.contains(returnFocusTo)
+      ) {
+        returnFocusTo.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
