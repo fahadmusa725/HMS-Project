@@ -75,6 +75,8 @@ const ROUTES = [
   ["get", "/api/hospital-admin/export", ADMIN],
   ["get", "/api/hospital-admin/settings", ADMIN],
   ["patch", "/api/hospital-admin/settings", ADMIN],
+  ["post", "/api/hospital-admin/settings/logo", ADMIN],
+  ["delete", "/api/hospital-admin/settings/logo", ADMIN],
   ["post", "/api/hospital-admin/settings/display-key", ADMIN],
 
   // consultations

@@ -187,6 +187,7 @@ async function patientSignup(req, res) {
         role: result.user.role,
         hospitalId,
         hospitalName: hospital.name,
+        hospitalLogoUrl: hospital.logoUrl || null,
         mustChangePassword: false,
       },
       recordLinked: result.linked,
@@ -279,7 +280,7 @@ async function getDisplayQueue(req, res) {
       return res.status(404).json({ message: "Display not found." });
     }
 
-    const hospital = await Hospital.findById(hospitalId).select("name status settings").lean();
+    const hospital = await Hospital.findById(hospitalId).select("name status logoUrl settings").lean();
     if (!hospital) return res.status(404).json({ message: "Display not found." });
     if (hospital.status === "suspended") {
       return res.status(403).json({ message: "This hospital's display is unavailable." });
@@ -344,7 +345,9 @@ async function getDisplayQueue(req, res) {
     res.json({
       hospital: {
         id: String(hospital._id),
-        name: (hospital.settings && hospital.settings.displayName) || hospital.name,
+        // The hospital's own name and logo - there is no separate TV-only display name.
+        name: hospital.name,
+        logoUrl: hospital.logoUrl || null,
       },
       date,
       updatedAt: new Date().toISOString(),

@@ -21,13 +21,21 @@ function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || ""));
 }
 
-/** The user's hospital name plus its subscription state, so the dashboard can warn about an ending trial. */
+/**
+ * The user's hospital name, logo and subscription state, so every shell (and the login screen
+ * after a previous session) can show the hospital's own brand next to the platform name.
+ */
 async function resolveHospital(hospitalId) {
-  const none = { hospitalName: null, hospitalStatus: null, trialEndDate: null };
+  const none = { hospitalName: null, hospitalLogoUrl: null, hospitalStatus: null, trialEndDate: null };
   if (!hospitalId) return none;
   const hospital = await Hospital.findById(hospitalId);
   if (!hospital) return none;
-  return { hospitalName: hospital.name, hospitalStatus: hospital.status, trialEndDate: hospital.trialEndDate || null };
+  return {
+    hospitalName: hospital.name,
+    hospitalLogoUrl: hospital.logoUrl || null,
+    hospitalStatus: hospital.status,
+    trialEndDate: hospital.trialEndDate || null,
+  };
 }
 
 /**
@@ -128,7 +136,7 @@ async function login(req, res) {
         role: user.role,
         hospitalId: user.hospitalId,
         mustChangePassword: Boolean(user.mustChangePassword),
-        ...hospitalInfo, // hospitalName ("City Hospital"), hospitalStatus, trialEndDate - null for platform_super_admin
+        ...hospitalInfo, // hospitalName, hospitalLogoUrl, hospitalStatus, trialEndDate - null for platform_super_admin
       },
     });
   } catch (err) {

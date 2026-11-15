@@ -17,6 +17,7 @@ const { getHospitalSettings, ageInYears } = require("../utils/hospitalSettings")
 const { flagStaleNoShows } = require("../utils/noShowSweep");
 const { purgePreCheckAssets } = require("../utils/preCheckAssets");
 const { buildMrnPrefix } = require("../utils/mrn");
+const { drawHospitalLogo } = require("../utils/pdfLogo");
 
 /**
  * Who may move an appointment INTO each status. The front desk runs arrival
@@ -733,7 +734,7 @@ async function getAppointmentSlipPdf(req, res) {
     }
 
     const [hospital, bill] = await Promise.all([
-      Hospital.findById(getCurrentHospitalId()).select("name"),
+      Hospital.findById(getCurrentHospitalId()).select("name logoUrl"),
       Bill.findOne({ appointmentId: appointment._id }),
     ]);
 
@@ -742,6 +743,8 @@ async function getAppointmentSlipPdf(req, res) {
     res.setHeader("Content-Disposition", `inline; filename="token-slip-${appointment.date}-${appointment.tokenNumber}.pdf"`);
     doc.pipe(res);
 
+    // Best effort: a logo that can't be fetched simply prints nothing (see utils/pdfLogo.js).
+    await drawHospitalLogo(doc, hospital, { maxWidth: 56, maxHeight: 36 });
     doc.font("Helvetica-Bold").fontSize(13).fillColor("#000").text(hospital ? hospital.name : "Hospital", { align: "center" });
     doc.font("Helvetica").fontSize(9).fillColor("#555").text("OPD Token Slip", { align: "center" });
     doc.moveDown(0.6);

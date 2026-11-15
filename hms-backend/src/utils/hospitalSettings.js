@@ -7,7 +7,6 @@ const { hospitalNow } = require("./scheduleSlots");
  * the settings subdocument existed have no settings object at all until they are saved.
  */
 const DEFAULT_SETTINGS = {
-  displayName: "",
   seniorAgeThreshold: 60,
   allowPatientSelfCheckIn: false,
   averageConsultationMinutes: 15,
@@ -20,7 +19,6 @@ function normalizeSettings(raw) {
   const average = Number(source.averageConsultationMinutes);
 
   return {
-    displayName: typeof source.displayName === "string" ? source.displayName.trim() : "",
     seniorAgeThreshold: Number.isFinite(threshold) ? threshold : DEFAULT_SETTINGS.seniorAgeThreshold,
     allowPatientSelfCheckIn: source.allowPatientSelfCheckIn === true,
     averageConsultationMinutes: Number.isFinite(average) ? average : DEFAULT_SETTINGS.averageConsultationMinutes,

@@ -51,13 +51,23 @@ const ACTION_RULES = [
   [/^PATCH \/api\/hospital-admin\/staff\/[^/]+\/status$/, "Changed a staff member's status"],
   [/^POST \/api\/hospital-admin\/staff\/[^/]+\/reset-password$/, "Reset a staff password"],
   [/^PATCH \/api\/hospital-admin\/settings$/, "Updated hospital settings"],
+  [/^POST \/api\/hospital-admin\/settings\/logo$/, "Updated the hospital logo"],
+  [/^DELETE \/api\/hospital-admin\/settings\/logo$/, "Removed the hospital logo"],
   [/^POST \/api\/hospital-admin\/settings\/display-key$/, "Regenerated the waiting-room display key"],
   [/^POST \/api\/pre-checks$/, "Submitted a pre-check"],
   [/^PATCH \/api\/pre-checks\/[^/]+\/staff-vitals$/, "Recorded desk vitals"],
 ];
 
+/**
+ * Labels written by a handler through res.locals.auditAction rather than derived from a path,
+ * so they are still offered by the viewer's action filter.
+ */
+const HANDLER_LABELS = ["Renamed the hospital"];
+
 /** Every label the rules can produce - used by the viewer's action filter. */
-const ACTION_LABELS = [...new Set(ACTION_RULES.map(([, label]) => label))].sort((a, b) => a.localeCompare(b));
+const ACTION_LABELS = [...new Set([...ACTION_RULES.map(([, label]) => label), ...HANDLER_LABELS])].sort(
+  (a, b) => a.localeCompare(b)
+);
 
 /** "POST /api/patients" -> "Registered a patient". Falls back to the raw key. */
 function describeAction(method, path) {

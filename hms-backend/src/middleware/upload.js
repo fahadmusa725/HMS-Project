@@ -37,4 +37,20 @@ const preCheckUpload = multer({
   limits: { fileSize: PRE_CHECK_MAX_FILE_BYTES, files: PRE_CHECK_MAX_FILES },
 });
 
-module.exports = { upload, preCheckUpload, PRE_CHECK_MAX_FILE_BYTES, PRE_CHECK_MAX_FILES };
+// The hospital logo appears in headers, emails and printed slips, so it is small on purpose.
+// Same rule as above: the controller's magic-byte check decides the format, not the browser.
+const LOGO_MAX_FILE_BYTES = 1024 * 1024;
+
+const logoUpload = multer({
+  storage,
+  limits: { fileSize: LOGO_MAX_FILE_BYTES, files: 1 },
+});
+
+module.exports = {
+  upload,
+  preCheckUpload,
+  PRE_CHECK_MAX_FILE_BYTES,
+  PRE_CHECK_MAX_FILES,
+  logoUpload,
+  LOGO_MAX_FILE_BYTES,
+};

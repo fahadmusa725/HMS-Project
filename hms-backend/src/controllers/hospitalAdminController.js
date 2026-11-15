@@ -10,6 +10,14 @@ const { sendEmail } = require("../utils/mailer");
 const { escapeHtml, generateTempPassword } = require("../utils/security");
 const { invalidateAccessCache } = require("../utils/accountAccess");
 const { DEFAULT_SETTINGS } = require("../utils/hospitalSettings");
+const {
+  normalizeHospitalName,
+  hospitalNameError,
+  findHospitalNameClash,
+} = require("../utils/hospitalBranding");
+const { uploadBufferToCloudinary } = require("../utils/uploadBufferToCloudinary");
+const { destroyAsset } = require("../utils/cloudinaryAssets");
+const { detectFileType } = require("../utils/fileSignature");
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -429,10 +437,14 @@ async function exportData(req, res) {
 }
 
 // --- Hospital settings -------------------------------------------------------
-// The settings subdocument holds only tenant behaviour toggles; the platform fields
-// (name, status, trial dates) stay Super-Admin-only.
+// The settings subdocument holds tenant behaviour toggles. The hospital's own identity (name
+// and logo) lives on the Hospital document instead, because every surface reads it; the
+// platform fields (status, trial dates) stay Super-Admin-only.
 
-const DISPLAY_NAME_MAX = 80;
+// Only these two formats may become a logo. SVG is deliberately absent: an SVG can carry
+// script, and it would be served from Cloudinary's own origin.
+const LOGO_FORMATS = ["png", "jpg"];
+const LOGO_FOLDER = "hms-branding";
 
 function newDisplayKey() {
   return crypto.randomBytes(16).toString("hex");
@@ -443,7 +455,8 @@ function settingsResponse(hospital) {
   const settings = hospital.settings || {};
   const displayKey = settings.displayKey;
   return {
-    displayName: settings.displayName || "",
+    name: hospital.name,
+    logoUrl: hospital.logoUrl || "",
     seniorAgeThreshold: settings.seniorAgeThreshold ?? DEFAULT_SETTINGS.seniorAgeThreshold,
     allowPatientSelfCheckIn: settings.allowPatientSelfCheckIn === true,
     averageConsultationMinutes:
@@ -484,15 +497,25 @@ async function updateSettings(req, res) {
     const hospital = await Hospital.findById(req.user.hospitalId);
     if (!hospital) return res.status(404).json({ message: "Hospital not found." });
 
-    const { displayName, seniorAgeThreshold, allowPatientSelfCheckIn, averageConsultationMinutes } = req.body;
-    const updates = {};
+    const { name, seniorAgeThreshold, allowPatientSelfCheckIn, averageConsultationMinutes } = req.body;
+    const settingsUpdates = {};
+    let renamedFrom = null;
 
-    if (displayName !== undefined) {
-      const trimmed = String(displayName).trim();
-      if (trimmed.length > DISPLAY_NAME_MAX) {
-        return res.status(400).json({ message: `Display name must be at most ${DISPLAY_NAME_MAX} characters.` });
+    // The hospital's name is the single source every surface reads, so a rename is validated
+    // here (trim, 2-80) and checked against other tenants before it is applied.
+    if (name !== undefined) {
+      const error = hospitalNameError(name);
+      if (error) return res.status(400).json({ message: error });
+
+      const trimmed = normalizeHospitalName(name);
+      if (trimmed !== hospital.name) {
+        const clash = await findHospitalNameClash(trimmed, hospital._id);
+        if (clash) {
+          return res.status(409).json({ message: "Another hospital already uses that name." });
+        }
+        renamedFrom = hospital.name;
+        hospital.name = trimmed;
       }
-      updates.displayName = trimmed;
     }
 
     if (seniorAgeThreshold !== undefined) {
@@ -500,14 +523,14 @@ async function updateSettings(req, res) {
       if (!Number.isInteger(value) || value < 0 || value > 130) {
         return res.status(400).json({ message: "Senior age threshold must be a whole number between 0 and 130." });
       }
-      updates.seniorAgeThreshold = value;
+      settingsUpdates.seniorAgeThreshold = value;
     }
 
     if (allowPatientSelfCheckIn !== undefined) {
       if (typeof allowPatientSelfCheckIn !== "boolean") {
         return res.status(400).json({ message: "allowPatientSelfCheckIn must be true or false." });
       }
-      updates.allowPatientSelfCheckIn = allowPatientSelfCheckIn;
+      settingsUpdates.allowPatientSelfCheckIn = allowPatientSelfCheckIn;
     }
 
     if (averageConsultationMinutes !== undefined) {
@@ -515,21 +538,91 @@ async function updateSettings(req, res) {
       if (!Number.isInteger(value) || value < 1 || value > 240) {
         return res.status(400).json({ message: "Average consultation minutes must be a whole number between 1 and 240." });
       }
-      updates.averageConsultationMinutes = value;
+      settingsUpdates.averageConsultationMinutes = value;
     }
 
-    if (Object.keys(updates).length === 0) {
+    if (!renamedFrom && Object.keys(settingsUpdates).length === 0) {
       return res.status(400).json({ message: "Nothing to update." });
     }
 
     hospital.settings = hospital.settings || {};
-    Object.assign(hospital.settings, updates);
+    Object.assign(hospital.settings, settingsUpdates);
     await hospital.save();
+
+    if (renamedFrom) {
+      // The name is printed on every slip, email and TV board, so the entry keeps both values.
+      res.locals.auditAction = Object.keys(settingsUpdates).length
+        ? "Updated hospital settings"
+        : "Renamed the hospital";
+      res.locals.auditDetails = `Name "${renamedFrom}" -> "${hospital.name}"`;
+    }
 
     res.json(settingsResponse(hospital));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error while saving hospital settings." });
+  }
+}
+
+/**
+ * The logo is public by design (it appears on the login-free TV board and in emails), so it
+ * is uploaded as a normal Cloudinary asset into a folder of its own per hospital. The bytes
+ * decide the format - a renamed .exe or an SVG served as image/png never gets through.
+ */
+async function uploadHospitalLogo(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ message: "Choose a PNG or JPG image to upload." });
+
+    const detected = detectFileType(req.file.buffer);
+    if (!detected || !LOGO_FORMATS.includes(detected.format)) {
+      return res.status(400).json({ message: "The logo must be a PNG or JPG image." });
+    }
+
+    const hospital = await Hospital.findById(req.user.hospitalId);
+    if (!hospital) return res.status(404).json({ message: "Hospital not found." });
+
+    // Upload first, swap second: a Cloudinary failure must leave the current logo in place.
+    const uploaded = await uploadBufferToCloudinary(req.file.buffer, {
+      folder: `${LOGO_FOLDER}/${hospital._id}`,
+      resourceType: "image",
+    });
+
+    const previousPublicId = hospital.logoPublicId;
+    hospital.logoUrl = uploaded.secure_url;
+    hospital.logoPublicId = uploaded.public_id;
+    await hospital.save();
+
+    if (previousPublicId && previousPublicId !== hospital.logoPublicId) {
+      await destroyAsset({ publicId: previousPublicId, resourceType: "image", type: "upload" });
+    }
+
+    res.json(settingsResponse(hospital));
+  } catch (err) {
+    console.error(err);
+    if (err.message && err.message.includes("Cloudinary is not configured")) {
+      return res.status(503).json({ message: err.message });
+    }
+    res.status(500).json({ message: "Server error while saving the hospital logo." });
+  }
+}
+
+/** Clears the logo and deletes the asset - the hospital falls back to its initials. */
+async function removeHospitalLogo(req, res) {
+  try {
+    const hospital = await Hospital.findById(req.user.hospitalId);
+    if (!hospital) return res.status(404).json({ message: "Hospital not found." });
+
+    const publicId = hospital.logoPublicId;
+    hospital.logoUrl = "";
+    hospital.logoPublicId = "";
+    await hospital.save();
+
+    if (publicId) await destroyAsset({ publicId, resourceType: "image", type: "upload" });
+
+    res.json(settingsResponse(hospital));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error while removing the hospital logo." });
   }
 }
 
@@ -559,5 +652,7 @@ module.exports = {
   exportData,
   getSettings,
   updateSettings,
+  uploadHospitalLogo,
+  removeHospitalLogo,
   regenerateDisplayKey,
 };

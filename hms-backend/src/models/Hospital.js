@@ -8,8 +8,6 @@ const mongoose = require("mongoose");
  */
 const hospitalSettingsSchema = new mongoose.Schema(
   {
-    // Shown on the waiting-room TV; falls back to the official hospital name when blank.
-    displayName: { type: String, trim: true, default: "" },
     // Patients at or above this age get a "senior" priority suggestion at the desk.
     // It is only ever a suggestion - staff still confirm it (and give a reason).
     seniorAgeThreshold: { type: Number, default: 60, min: 0, max: 130 },
@@ -31,7 +29,17 @@ const hospitalSettingsSchema = new mongoose.Schema(
  */
 const hospitalSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
+    // The single source for the hospital's name everywhere: headers, the tenant card, the
+    // waiting-room TV, printed slips, emails and the Super Admin console. The Hospital Admin
+    // may edit it from Hospital Settings; nothing is keyed off it (no lookup, no index), so a
+    // rename never breaks a reference. MRN prefixes are baked into existing MRNs by design.
+    name: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
+    // The hospital's own brand mark. Public on purpose: it is shown on the login-free TV
+    // board and embedded in emails, so it is uploaded as a normal (non-authenticated)
+    // Cloudinary asset in a per-hospital folder. `logoPublicId` exists only so a replaced
+    // or removed logo can be deleted instead of leaking storage.
+    logoUrl: { type: String, trim: true, default: "" },
+    logoPublicId: { type: String, trim: true, default: "" },
     status: {
       type: String,
       enum: ["trial", "active", "suspended"],

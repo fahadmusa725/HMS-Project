@@ -36,13 +36,16 @@ function signedAttachmentUrl({ publicId, format, resourceType = "image" }) {
 /**
  * Deletes one asset. Never throws: a cancellation must not fail because Cloudinary is down,
  * and a already-deleted asset is a success as far as the caller is concerned.
+ *
+ * Pre-check reports are uploaded as "authenticated" assets; the hospital logo is a normal
+ * public "upload" asset, so the delivery type has to be given explicitly for it to be found.
  */
-async function destroyAsset({ publicId, resourceType = "image" }) {
+async function destroyAsset({ publicId, resourceType = "image", type = "authenticated" }) {
   if (!publicId || !isConfigured()) return false;
   try {
     await cloudinary.uploader.destroy(publicId, {
       resource_type: resourceType,
-      type: "authenticated",
+      type,
       invalidate: true,
     });
     return true;

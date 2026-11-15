@@ -5,6 +5,7 @@ const Hospital = require("../models/Hospital");
 const PDFDocument = require("pdfkit");
 const doctorName = require("../utils/doctorName");
 const { getCurrentHospitalId } = require("../utils/tenantContext");
+const { drawHospitalLogo } = require("../utils/pdfLogo");
 
 const VITAL_FIELDS = ["bloodPressure", "temperature", "pulse", "weight", "height"];
 
@@ -147,6 +148,8 @@ async function getPrescriptionPdf(req, res) {
     res.setHeader("Content-Disposition", `attachment; filename="prescription-${consultation.patientId.mrn}.pdf"`);
     doc.pipe(res);
 
+    // Best effort: a logo that can't be fetched simply prints nothing (see utils/pdfLogo.js).
+    await drawHospitalLogo(doc, hospital, { maxWidth: 96, maxHeight: 56 });
     doc.fontSize(18).font("Helvetica-Bold").text(hospital ? hospital.name : "Hospital", { align: "center" });
     doc.fontSize(10).font("Helvetica").fillColor("#555").text("Prescription", { align: "center" });
     doc.moveDown(1.5);

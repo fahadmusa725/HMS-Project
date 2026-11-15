@@ -19,6 +19,20 @@ function clientBaseUrl() {
 }
 
 /**
+ * Email clients need a plain <img> with absolute sizing - the logo is a public Cloudinary URL,
+ * so it renders without a signed link. Falls back to the hospital name when there is no logo.
+ */
+function hospitalBrandHtml(hospital) {
+  if (!hospital) return "";
+  const logo = hospital.logoUrl
+    ? `<img src="${escapeHtml(hospital.logoUrl)}" alt="" width="64" height="64"
+         style="display:block;margin:0 0 12px;border-radius:8px;object-fit:contain" />`
+    : "";
+  const name = hospital.name ? `<p style="margin:0 0 16px;font-weight:600">${escapeHtml(hospital.name)}</p>` : "";
+  return logo || name ? `<div style="margin-bottom:16px">${logo}${name}</div>` : "";
+}
+
+/**
  * Finds all appointments scheduled for TOMORROW (across every hospital)
  * and emails a reminder to any patient who has an email on file - this
  * works regardless of whether the patient has portal access, since the
@@ -39,6 +53,9 @@ async function sendAppointmentReminders() {
     { $unwind: "$patient" },
     { $lookup: { from: "users", localField: "doctorId", foreignField: "_id", as: "doctor" } },
     { $unwind: "$doctor" },
+    // The reminder carries the hospital's own name and logo, not just the platform brand.
+    { $lookup: { from: "hospitals", localField: "hospitalId", foreignField: "_id", as: "hospital" } },
+    { $unwind: { path: "$hospital", preserveNullAndEmptyArrays: true } },
     { $match: { "patient.email": { $exists: true, $ne: null, $ne: "" } } },
   ]).option({ skipTenantScope: true });
 
@@ -63,9 +80,11 @@ async function sendAppointmentReminders() {
         to: appt.patient.email,
         subject: `Appointment Reminder: ${tomorrow}`,
         html: `
+          ${hospitalBrandHtml(appt.hospital)}
           <p>Hello ${escapeHtml(appt.patient.name)},</p>
           <p>This is a reminder of your appointment <strong>tomorrow (${escapeHtml(tomorrow)})</strong>
-          ${appt.time ? `at <strong>${escapeHtml(appt.time)}</strong>` : ""} with ${escapeHtml(doctorName(appt.doctor.name))}.</p>
+          ${appt.time ? `at <strong>${escapeHtml(appt.time)}</strong>` : ""} with ${escapeHtml(doctorName(appt.doctor.name))}
+          ${appt.hospital?.name ? `at <strong>${escapeHtml(appt.hospital.name)}</strong>` : ""}.</p>
           <p>Your token number will be: <strong>#${escapeHtml(appt.tokenNumber)}</strong></p>
           ${
             preCheckUrl

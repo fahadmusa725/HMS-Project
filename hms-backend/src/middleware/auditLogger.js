@@ -39,6 +39,8 @@ function auditLogger(req, res, next) {
       action: res.locals.auditAction || describeAction(req.method, path),
       resourceId: res.locals.auditResourceId || extractResourceId(path),
       patientId: res.locals.auditPatientId || undefined,
+      // Handlers that need to say more (e.g. a rename keeps the old and new name) set this.
+      details: res.locals.auditDetails || undefined,
     }).catch((err) => console.error("[AuditLog] failed to write entry:", err.message));
   });
 

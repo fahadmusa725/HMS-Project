@@ -19,6 +19,12 @@ const { runWithTenantContext } = require("../utils/tenantContext");
 const { checkTrialsEndingSoon } = require("../jobs/trialReminderJob");
 const { sendAppointmentReminders } = require("../jobs/appointmentReminderJob");
 const { sendEmail } = require("../utils/mailer");
+const {
+  normalizeHospitalName,
+  hospitalNameError,
+  findHospitalNameClash,
+} = require("../utils/hospitalBranding");
+const { destroyAsset } = require("../utils/cloudinaryAssets");
 
 /**
  * Create a new hospital (tenant) + its first Hospital Admin account.
@@ -35,8 +41,17 @@ async function createHospital(req, res) {
         message: "hospitalName, adminName, adminEmail and adminPassword are required.",
       });
     }
+    const nameError = hospitalNameError(hospitalName);
+    if (nameError) return res.status(400).json({ message: nameError });
+
     if (String(adminPassword).length < 8) {
       return res.status(400).json({ message: "Admin password must be at least 8 characters." });
+    }
+
+    // Names identify a tenant on the public signup list and in this console, so they may not
+    // be reused - the same rule the Hospital Admin's rename is held to.
+    if (await findHospitalNameClash(hospitalName)) {
+      return res.status(409).json({ message: "A hospital with that name already exists." });
     }
 
     const days = Number.isFinite(trialDays) ? trialDays : 14; // sensible default, fully overridable
@@ -44,7 +59,7 @@ async function createHospital(req, res) {
     const trialEndDate = days > 0 ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000) : null;
 
     const hospital = await Hospital.create({
-      name: hospitalName,
+      name: normalizeHospitalName(hospitalName),
       status: days > 0 ? "trial" : "active",
       trialStartDate: days > 0 ? now : undefined,
       trialEndDate,
@@ -171,6 +186,11 @@ async function deleteHospital(req, res) {
     ]);
 
     await Hospital.findByIdAndDelete(hospitalId);
+
+    // The tenant registry is the only place the logo's public id lived, so its asset goes too.
+    if (hospital.logoPublicId) {
+      await destroyAsset({ publicId: hospital.logoPublicId, resourceType: "image", type: "upload" });
+    }
 
     res.json({ message: `"${hospital.name}" and all its data have been permanently deleted.` });
   } catch (err) {
