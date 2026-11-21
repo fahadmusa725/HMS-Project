@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
 import { rememberHospitalBrand } from '@/lib/hospitalBrand';
+import { resetClientCache } from '@/lib/queryClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -31,6 +32,11 @@ export const useAuthStore = create(
             isLoading: false,
             error: null,
           });
+          // The new session must not inherit a single cached response from whoever was signed in
+          // before: the login form navigates client-side, so this cache outlives the old session.
+          // Cleared after the identity is in place, so anything that refetches during the reset
+          // does so as the user who just signed in.
+          resetClientCache();
           return { success: true, user, token };
         } catch (err) {
           const errorMessage =
@@ -64,6 +70,7 @@ export const useAuthStore = create(
             isLoading: false,
             error: null,
           });
+          resetClientCache();
           return { success: true, user, token, verificationRequired, recordLinked, message };
         } catch (err) {
           const errorMessage =
@@ -90,6 +97,7 @@ export const useAuthStore = create(
           isLoading: false,
           error: null,
         });
+        resetClientCache();
       },
 
       fetchMe: async () => {
@@ -122,12 +130,17 @@ export const useAuthStore = create(
       },
 
       logout: () => {
+        // Every path out of a session lands here: the sign-out button, the 401 handler and the
+        // blocked-account 403 handler in lib/api.js, and a revoked token found by fetchMe.
         set({
           token: null,
           user: null,
           isAuthenticated: false,
           error: null,
         });
+        // After the token is gone, so a screen that re-renders on the way out cannot refetch
+        // with the old session's credentials - its request would be unauthenticated and rejected.
+        resetClientCache();
       },
 
       setUser: (user) => set({ user }),

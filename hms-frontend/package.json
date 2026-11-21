@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:focus": "node scripts/check-input-focus.mjs",
+    "check:cache": "node scripts/check-query-cache.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

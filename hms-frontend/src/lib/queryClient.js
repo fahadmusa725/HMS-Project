@@ -31,3 +31,18 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+/**
+ * Empties the cache, which is the only thing standing between two sessions in one tab: this
+ * client is a module-level singleton, its keys are tenant-agnostic (['hospital-patients',
+ * search, page], ['patient-appointments-mine'], ['dashboard-summary', 30]), and a logout is a
+ * client-side navigation - so without this the next user's first paint is the previous user's
+ * rows, patient names included, until their refetch lands.
+ *
+ * Cancelling first keeps a request that is already in flight from resolving into the cache a
+ * moment after it was cleared.
+ */
+export function resetClientCache() {
+  void queryClient.cancelQueries();
+  queryClient.clear();
+}

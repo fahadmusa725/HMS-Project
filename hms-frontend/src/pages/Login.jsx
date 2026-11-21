@@ -44,6 +44,8 @@ export default function Login() {
 
   // The hospital this device last signed in to, if any. Nothing is known about the hospital
   // before sign-in, so this stays absent on a first visit and the platform mark stands alone.
+  // It is labelled "Last signed in" because it is device history, not the hospital this visitor
+  // is about to sign in to: on a shared workstation the next person sees the previous tenant.
   const [hospitalBrand] = useState(() => readHospitalBrand());
 
   const {
@@ -124,6 +126,7 @@ export default function Login() {
                 textClassName="text-[10px]"
                 iconClassName="h-3.5 w-3.5"
               />
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">Last signed in:</span>
               <span className="truncate text-xs font-semibold text-foreground" title={hospitalBrand.name}>
                 {hospitalBrand.name || 'Last hospital'}
               </span>

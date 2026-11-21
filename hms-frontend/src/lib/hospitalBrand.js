@@ -3,6 +3,11 @@
  * brand mark - only when it is already known, which is after a previous session on this device.
  * Nothing but the display name and the public logo URL is kept, and it survives logout on
  * purpose: it is branding, not a session.
+ *
+ * It is the one per-user value logout keeps, so the rules are worth stating: no patient data ever
+ * reaches this key, it is overwritten by the next successful sign-in, nothing reads it for
+ * authorisation, and it is shown as "Last signed in" because on a shared workstation the next
+ * person - possibly from another hospital - does see the tenant that was here before them.
  */
 const STORAGE_KEY = 'careflow-hospital-brand';
 
