@@ -34,6 +34,20 @@ const app = express();
 // HSTS, no-referrer, frameguard - are correct for this app and cost nothing.
 app.use(helmet({ contentSecurityPolicy: false }));
 
+// Everything under /api is somebody's private data, so nothing may be stored by the browser or by
+// the CDN in front of the deployment: no-store forbids both, and Vary: Authorization stops an
+// intermediary from handing one user's stored response to another. With no stored response there
+// is no conditional GET either, and the ETag is switched off below so no route can answer a 304
+// from a validator another session was given. The one deliberate exception is the public waiting-
+// room display, which sets its own short-lived Cache-Control (see publicController.getDisplayQueue)
+// and holds tokens and doctor names only - never a patient.
+app.disable("etag");
+app.use("/api", (req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  res.vary("Authorization");
+  next();
+});
+
 // CLIENT_URL may list several origins separated by commas (e.g. local dev + the Vercel URL).
 // Trailing slashes are ignored so "https://x.vercel.app/" and "https://x.vercel.app" both match.
 // Required above, and there is deliberately NO "*" fallback - an unlisted origin simply gets
